@@ -1,7 +1,8 @@
 const IS_FILE = location.protocol === 'file:';
 const IS_LIVE_SERVER = location.host.includes('127.0.0.1:5500') || location.host.includes('127.0.0.1:5501') || location.host.includes('localhost:5500') || location.host.includes('localhost:5501');
-const API_BASE = (IS_FILE || IS_LIVE_SERVER) ? 'http://localhost:3000' : '';
-
+const API_BASE = (window.api && typeof window.api.base === 'function')
+  ? window.api.base()
+  : ((IS_FILE || IS_LIVE_SERVER) ? 'http://localhost:3000' : '');
 (function () {
   const form = document.getElementById('loginForm');
   const alertEl = document.getElementById('alert');
@@ -19,40 +20,21 @@ const API_BASE = (IS_FILE || IS_LIVE_SERVER) ? 'http://localhost:3000' : '';
   }
 
   async function login(studentId, password) {
-    let res;
     try {
       if (IS_FILE || IS_LIVE_SERVER) {
         showAlert('Tip: If login fails from file:// or Live Server, open http://localhost:3000/public/index.html so it is same-origin with the API.');
       }
-      res = await fetch(API_BASE + '/api/login', {
+      const body = await window.api.fetch('/api/login', {
         method: 'POST',
-        mode: (IS_FILE || IS_LIVE_SERVER) ? 'cors' : 'same-origin',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ studentId, password })
       });
+      return body || {};
     } catch (e) {
-      throw new Error('Unable to reach the server. Make sure the backend is running.');
+      const msg = (e && e.message) ? e.message : 'Unable to reach the server. Make sure the backend is running.';
+      throw new Error(msg);
     }
-
-    let text = '';
-    try { text = await res.text(); } catch (_) {}
-
-    let body = null;
-    try { body = text ? JSON.parse(text) : null; } catch (_) {}
-
-    if (!res.ok) {
-      let serverMsg = (body && (body.message || body.error)) || text || 'Login failed';
-      if (res.status === 400) serverMsg = (body && (body.message || body.error)) || 'Please enter your Student ID and Password.';
-      if (res.status === 401) serverMsg = (body && (body.message || body.error)) || 'Incorrect Student ID or Password.';
-      if (res.status === 403) {
-        serverMsg = (body && (body.message || body.error)) || 'Access forbidden. Please contact support if this persists.';
-      }      throw new Error(serverMsg);
-    }
-
-    return body || {};
-  }
-  if (form) {
+  }  if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       hideAlert();
@@ -90,23 +72,13 @@ const API_BASE = (IS_FILE || IS_LIVE_SERVER) ? 'http://localhost:3000' : '';
             btn.disabled = true;
             btn.textContent = 'Sending...';
             try {
-              const res = await fetch(API_BASE + '/api/resend-verification', {
+              const payload = await window.api.fetch('/api/resend-verification', {
                 method: 'POST',
-                mode: (IS_FILE || IS_LIVE_SERVER) ? 'cors' : 'same-origin',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify({ studentId })
               });
-              const ok = res.ok;
-              let payload = {};
-              try { payload = await res.json(); } catch (_) {}
-              if (!ok) {
-                const errMsg = (payload && payload.message) ? payload.message : 'Failed to resend verification email.';
-                throw new Error(errMsg);
-              }
               const successMsg = (payload && payload.message) ? payload.message : 'Verification email sent. Please check your inbox.';
-              showAlert(successMsg);
-            } catch (e) {
+              showAlert(successMsg);            } catch (e) {
               const errMsg = (e && e.message) ? e.message : 'Could not resend verification email. Please try again later.';
               showAlert(errMsg);
             } finally {

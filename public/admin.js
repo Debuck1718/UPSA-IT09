@@ -5,14 +5,28 @@ async function safeFetch(input, init) {
     return null;
   }
   try {
+    if (typeof window !== 'undefined' && window.api && typeof window.api.fetch === 'function') {
+      try {
+        const data = await window.api.fetch(input, init);
+        return {
+          ok: true,
+          json: async () => data,
+        };
+      } catch (err) {
+        const data = err && err.data ? err.data : null;
+        return {
+          ok: false,
+          json: async () => (data || {}),
+        };
+      }
+    }
     const res = await fetch(input, init);
     return res;
   } catch (err) {
     showAlert('Cannot reach the server. Please check your connection and try again.', 'warning');
     return null;
   }
-}
-async function init() {
+}async function init() {
   try {
     const s = await safeFetch('/api/session');
     if (!s) return;
@@ -115,10 +129,15 @@ document.addEventListener('DOMContentLoaded', () => {
         fd.append('course', courseInput.value);
       }
       try {
-        const res = await safeFetch('/api/admin/slides/upload', { method: 'POST', body: fd });
-        if (!res) return;
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok) return showAlert(json.message || 'Upload failed');
+        let json;
+        if (window.api && typeof window.api.fetch === 'function') {
+          json = await window.api.fetch('/api/admin/slides/upload', { method: 'POST', body: fd });
+        } else {
+          const res = await safeFetch('/api/admin/slides/upload', { method: 'POST', body: fd });
+          if (!res) return;
+          json = await res.json().catch(() => ({}));
+          if (!res.ok) return showAlert(json.message || 'Upload failed');
+        }
         const resultEl = document.getElementById('uploadSlideResult');
         if (resultEl) {
           resultEl.textContent = json.message || 'Upload successful';
@@ -126,8 +145,9 @@ document.addEventListener('DOMContentLoaded', () => {
         showAlert('Slide uploaded', 'success');
         slideForm.reset();
       } catch (err) {
+        const data = err && err.data ? err.data : null;
+        if (data && data.message) return showAlert(data.message);
         showAlert('Upload failed');
-      }
-    });
+      }    });
   }
 });

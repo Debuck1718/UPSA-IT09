@@ -31,8 +31,7 @@
   }
 
   async function loadCourses() {
-    const res = await fetch('./api/courses');
-    const data = await res.json();
+    const data = await window.api.fetch('/api/courses');
     if (!data.ok) throw new Error('Failed to load courses');
     coursesList.innerHTML = '';
     for (const c of data.courses) {
@@ -47,8 +46,7 @@
 
   async function selectCourse(course) {
     courseTitle.textContent = course;
-    const res = await fetch(`./api/slides?course=${encodeURIComponent(course)}`);
-    const data = await res.json();
+    const data = await window.api.fetch(`/api/slides?course=${encodeURIComponent(course)}`);
     if (!data.ok) {
       setSlides([]);
       return;

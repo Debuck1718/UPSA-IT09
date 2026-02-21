@@ -17,17 +17,8 @@
     alertBox.classList.remove('d-none');
   }
 
-  async function api(path, opts) {
-    const res = await fetch(path, opts);
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || data.ok === false) {
-      throw new Error(data.message || `Request failed (${res.status})`);
-    }
-    return data;
-  }
-
   async function uploadSlide(fd) {
-    return api('./api/upload', { method: 'POST', body: fd });
+    return window.api.fetch('/api/upload', { method: 'POST', body: fd });
   }
 
   function setSlides(items) {
@@ -57,7 +48,7 @@
   }
 
   async function loadCourses() {
-    const data = await api('./api/courses');
+    const data = await window.api.fetch('/api/courses');
     coursesList.innerHTML = '';
     (data.courses || []).forEach(c => {
       const li = document.createElement('li');
@@ -78,7 +69,7 @@
 
   async function selectCourse(course) {
     courseTitle.textContent = course;
-    const data = await api(`./api/slides?course=${encodeURIComponent(course)}`);
+    const data = await window.api.fetch(`/api/slides?course=${encodeURIComponent(course)}`);
     setSlides(data.slides);
   }
 
