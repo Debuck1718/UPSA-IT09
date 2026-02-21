@@ -1,0 +1,37 @@
+{
+  "users": [
+    {
+      "id": "S1001",
+      "username": "student1",
+      "full_name": "John Doe",
+      "password": "studentpass",
+      "role": "student",
+      "course": "IT09"
+    },
+    {
+      "id": "S2001",
+      "username": "student2",
+      "full_name": "Jane Smith",
+      "password": "studentpass",
+      "role": "student",
+      "course": "IT10"
+    },
+    {
+      "id": "R3001",
+      "username": "rep1",
+      "full_name": "Mary Representative",
+      "password": "reppass",
+      "role": "rep",
+      "course": "IT09"
+    },
+    {
+      "id": "R4001",
+      "username": "rep2",
+      "full_name": "Paul Representative",
+      "password": "reppass",
+      "role": "rep",
+      "course": "IT10"
+    }
+  ],
+  "slides": []
+}

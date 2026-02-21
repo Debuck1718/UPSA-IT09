@@ -1,0 +1,4 @@
+studentId,username,full_name,email,course,role,password
+S1101,s1101,Alpha One,alpha.one@example.edu,IT09,student,pass1234
+S1102,s1102,Beta Two,beta.two@example.edu,IT09,student,pass1234
+R3201,r3201,Rep Three,rep.three@example.edu,IT09,course_rep,reppass
