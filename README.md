@@ -60,13 +60,16 @@
 Deploy this app as a Web Service on Render:
 
 - Create a new Web Service on Render and connect this repository.
-- Build command: npm install
+- Build command: npm ci && npm rebuild better-sqlite3 --build-from-source
 - Start command: npm start (the app should listen on process.env.PORT provided by Render)
 - Environment:
   - NODE_ENV=production
+  - Node version: 20.x (pin via "engines" in package.json or an .nvmrc). If you change Node, rebuild native modules.
+- Native modules (better-sqlite3):
+  - Render: the build command above compiles better-sqlite3 for the target environment.
+  - Local: use Node 20.x (nvm use 20) and run npm install. If you switch Node versions, run: npm rebuild better-sqlite3 --build-from-source
 - Persistent disk (recommended): add a Disk and mount it at /opt/render/project/src/uploads to persist uploaded slide files. You may also store data.db on a persistent Disk if you want the SQLite database to survive deploys.
 - After deploy, open: https://<your-service>.onrender.com/public/index.html
-
 Production/Security notes:
 - Set app.set('trust proxy', 1) on Render so secure cookies work behind the proxy.
 - Set cookies with secure: true when NODE_ENV=production and SameSite=Lax (or Strict if appropriate).

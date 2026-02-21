@@ -5,10 +5,11 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "build": "echo \"No build step required\""
+    "build": "echo \"No build step required\"",
+    "postinstall": "npm rebuild sqlite3 --build-from-source || true"
   },
   "engines": {
-    "node": ">=18.x"
+    "node": "20.x"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
