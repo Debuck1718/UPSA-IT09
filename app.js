@@ -86,18 +86,27 @@ app.use(cors({
 app.options('*', cors());
 
 const isProd = process.env.NODE_ENV === 'production';
+const SQLiteStore = require('connect-sqlite3')(session);
+const SESSION_SECRET = process.env.SESSION_SECRET || 'your_secret_key';
+const sessionDir = path.join(__dirname, 'data');
+if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
+
 app.use(session({
+  store: new SQLiteStore({
+    dir: sessionDir,
+    db: 'sessions.sqlite'
+  }),
   name: 'sid',
-  secret: process.env.SESSION_SECRET || 'your_secret_key',
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
     sameSite: 'lax',
-    secure: isProd
+    secure: isProd,
+    maxAge: 7 * 24 * 60 * 60 * 1000
   }
-}));// --- Static pages ---
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+}));// --- Static pages ---app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/dashboard', (req, res) => {
   if (!req.session.user) return res.redirect('/');
   return res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));

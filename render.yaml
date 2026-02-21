@@ -12,8 +12,13 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: SESSION_SECRET
+        generateValue: true
     healthCheckPath: /healthz
     disk:
-      name: uploads
-      mountPath: /opt/render/project/src/uploads
-      sizeGB: 1
+      - name: uploads
+        mountPath: /opt/render/project/src/uploads
+        sizeGB: 1
+      - name: data
+        mountPath: /opt/render/project/src/data
+        sizeGB: 0.1

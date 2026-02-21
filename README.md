@@ -72,11 +72,11 @@ Deploy this app as a Web Service on Render:
 - After deploy, open: https://<your-service>.onrender.com/public/index.html
 Production/Security notes:
 - Set app.set('trust proxy', 1) on Render so secure cookies work behind the proxy.
+- Sessions: use a persistent SQLite-backed store (connect-sqlite3) on disk. Set environment variables SESSION_SECRET (strong random) and optionally COOKIE_NAME. Cookies should be httpOnly, sameSite=Lax, and secure in production.
 - Set cookies with secure: true when NODE_ENV=production and SameSite=Lax (or Strict if appropriate).
-- Consider using helmet to add standard security headers.
+- Use helmet to add standard security headers.
 - Validate and limit uploads (PDF/PPT/PPTX only) and cap size (e.g., 15MB).
 - Serve /public with caching for static assets but avoid caching HTML; serve /uploads read-only.
 - Prefer same-origin access; keep CORS disabled in production unless explicitly needed.
-
 Troubleshooting:
 - If login returns 403 when opened from a different origin, open the app from the same origin as the API (the Render URL), or enable CORS on the backend.
