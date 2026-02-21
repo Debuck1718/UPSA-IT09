@@ -26,7 +26,7 @@ const API_BASE = (IS_FILE || IS_LIVE_SERVER) ? 'http://localhost:3000' : '';
       }
       res = await fetch(API_BASE + '/api/login', {
         method: 'POST',
-        mode: 'cors',
+        mode: (IS_FILE || IS_LIVE_SERVER) ? 'cors' : 'same-origin',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ studentId, password })
@@ -92,7 +92,7 @@ const API_BASE = (IS_FILE || IS_LIVE_SERVER) ? 'http://localhost:3000' : '';
             try {
               const res = await fetch(API_BASE + '/api/resend-verification', {
                 method: 'POST',
-                mode: 'cors',
+                mode: (IS_FILE || IS_LIVE_SERVER) ? 'cors' : 'same-origin',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({ studentId })

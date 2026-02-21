@@ -54,3 +54,26 @@
 - Uploaded files are stored in the `uploads` folder.
 - Users and slides are now persisted in an SQLite database (`data.db`) using `better-sqlite3`.
 - To add users modify the `db.js` seeding or add them via SQL. For production, use a secure secret key and hashed passwords (bcrypt).
+
+## Deploy to Render
+
+Deploy this app as a Web Service on Render:
+
+- Create a new Web Service on Render and connect this repository.
+- Build command: npm install
+- Start command: npm start (the app should listen on process.env.PORT provided by Render)
+- Environment:
+  - NODE_ENV=production
+- Persistent disk (recommended): add a Disk and mount it at /opt/render/project/src/uploads to persist uploaded slide files. You may also store data.db on a persistent Disk if you want the SQLite database to survive deploys.
+- After deploy, open: https://<your-service>.onrender.com/public/index.html
+
+Production/Security notes:
+- Set app.set('trust proxy', 1) on Render so secure cookies work behind the proxy.
+- Set cookies with secure: true when NODE_ENV=production and SameSite=Lax (or Strict if appropriate).
+- Consider using helmet to add standard security headers.
+- Validate and limit uploads (PDF/PPT/PPTX only) and cap size (e.g., 15MB).
+- Serve /public with caching for static assets but avoid caching HTML; serve /uploads read-only.
+- Prefer same-origin access; keep CORS disabled in production unless explicitly needed.
+
+Troubleshooting:
+- If login returns 403 when opened from a different origin, open the app from the same origin as the API (the Render URL), or enable CORS on the backend.

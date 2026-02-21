@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: upsa-course-slides
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: node app.js
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /healthz
+    disk:
+      name: uploads
+      mountPath: /opt/render/project/src/uploads
+      sizeGB: 1

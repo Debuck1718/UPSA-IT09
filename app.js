@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
+const helmet = require('helmet');
 
 const app = express();
 // Force server port to 3000 so frontend (Live Server) can communicate reliably
@@ -16,7 +17,7 @@ const { v4: uuidv4 } = require('uuid');
 const { parse } = require('csv-parse/sync');
 
 
-// Multer setup for file uploads
+// Multer setup for file uploads (limits + basic filtering)
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, 'uploads/');
@@ -25,13 +26,44 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + '-' + file.originalname);
   }
 });
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB per file
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = new Set([
+      'application/pdf',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'text/csv',
+      'application/csv',
+      'application/vnd.ms-excel'
+    ]);
+    if (allowedMimes.has(file.mimetype)) return cb(null, true);
+    return cb(new Error('Invalid file type'));
+  }
+});
 
-// Serve static frontend
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use('/public', express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Security and parsers
+app.set('trust proxy', 1);
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Serve static frontend with cache hints
+app.use('/public', express.static(path.join(__dirname, 'public'), {
+  etag: true,
+  lastModified: true,
+  maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0,
+  setHeaders: function (res, filePath) {
+    if (/\.(html)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  }
+}));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  immutable: false,
+  maxAge: process.env.NODE_ENV === 'production' ? '7d' : 0
+}));
 
 // Enable CORS for Live Server origins to allow cross-origin login during development
 const allowedOrigins = new Set([
@@ -52,12 +84,19 @@ app.use(cors({
   exposedHeaders: ['Set-Cookie']
 }));
 app.options('*', cors());
+
+const isProd = process.env.NODE_ENV === 'production';
 app.use(session({
-  secret: 'your_secret_key',
+  name: 'sid',
+  secret: process.env.SESSION_SECRET || 'your_secret_key',
   resave: false,
-  saveUninitialized: true
-}));
-// --- Static pages ---
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isProd
+  }
+}));// --- Static pages ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/dashboard', (req, res) => {
   if (!req.session.user) return res.redirect('/');
