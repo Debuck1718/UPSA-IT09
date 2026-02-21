@@ -76,12 +76,12 @@ function setUserRole(id, role) {
   return u;
 }
 
-function createUser(username, password, role, course) {
+function createUser(username, password, role, course, classGroup) {
   const db = load();
-  db.users.push({ username, password, role, course });
+  const cg = typeof classGroup === 'string' ? classGroup.trim() : null;
+  db.users.push({ username, password, role, course, classGroup: (cg && cg.length) ? cg : null });
   save(db);
 }
-
 function addUser(user) {
   const db = load();
   db.users.push(user);
@@ -121,7 +121,30 @@ function normalizeCourse(course) {
   return c.length ? c : null;
 }
 
-function addSlide(filename, originalname, uploaded_by, course) {
+// Normalize class/group codes: uppercase, trim, collapse spaces, and strip leading zeroes in numeric suffix
+function normalizeClassGroup(input) {
+  if (!input || typeof input !== 'string') return null;
+  let s = input.trim().toUpperCase().replace(/\s+/g, '');
+  if (!s.length) return null;
+  const m = s.match(/^([A-Z]+)(\d+)$/);
+  if (m) {
+    const prefix = m[1];
+    let num = m[2];
+    if (num.length > 1 && num.startsWith('0')) {
+      num = String(parseInt(num, 10));
+    }
+    return `${prefix}${num}`;
+  }
+  return s;
+}
+
+function normalizeProgram(program) {
+  if (!program || typeof program !== 'string') return null;
+  const p = program.trim();
+  return p.length ? p : null;
+}
+
+function addSlide(filename, originalname, uploaded_by, course, classGroup, program) {
   const db = load();
   db.slides = db.slides || [];
   let finalCourse = normalizeCourse(course);
@@ -129,7 +152,16 @@ function addSlide(filename, originalname, uploaded_by, course) {
     const uploader = (db.users || []).find(u => u.id === uploaded_by || u.username === uploaded_by);
     if (uploader && uploader.course) finalCourse = normalizeCourse(uploader.course);
   }
-  const slide = { id: Date.now(), filename, originalname, uploaded_by, course: finalCourse, created_at: new Date().toISOString() };
+  const slide = {
+    id: Date.now(),
+    filename,
+    originalname,
+    uploaded_by,
+    course: finalCourse,
+    classGroup: normalizeClassGroup(classGroup),
+    program: normalizeProgram(program),
+    created_at: new Date().toISOString()
+  };
   db.slides.push(slide);
   save(db);
   return slide;
@@ -143,7 +175,17 @@ function getSlidesByCourse(course) {
     .sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
 }
 
-function listCourses() {
+function getSlidesFiltered({ course, classGroup, program } = {}) {
+  const db = load();
+  const targetCourse = normalizeCourse(course);
+  const cg = normalizeClassGroup(classGroup);
+  const prog = normalizeProgram(program);
+  return (db.slides || [])
+    .filter(s => (targetCourse ? normalizeCourse(s.course) === targetCourse : true))
+    .filter(s => (cg ? (normalizeClassGroup(s.classGroup) === cg) : true))
+    .filter(s => (prog ? (normalizeProgram(s.program) === prog) : true))
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+}function listCourses() {
   const db = load();
   const set = new Set();
   for (const s of (db.slides || [])) {
@@ -163,4 +205,24 @@ function getAllSlides() {
   return db.slides || [];
 }
 
-module.exports = { getUser, createUser, addUser, findUserByEmail, setEmailToken, activateUserByToken, addSlide, getSlidesByCourse, getSlideByFilename, getAllSlides, getUserById, setUserRole, listCourses };
+module.exports = {
+  getUser,
+  createUser,
+  addUser,
+  findUserByEmail,
+  setEmailToken,
+  activateUserByToken,
+  addSlide,
+  getSlidesByCourse,
+  getSlidesFiltered,
+  getSlideByFilename,
+  getAllSlides,
+  getUserById,
+  setUserRole,
+  listCourses,
+  normalizeClassGroup: function (classGroup) {
+    if (!classGroup || typeof classGroup !== 'string') return null;
+    const g = classGroup.trim();
+    return g.length ? g : null;
+  }
+};

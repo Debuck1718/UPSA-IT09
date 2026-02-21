@@ -14,6 +14,10 @@
   }
 
   async function uploadSlide(fd) {
+    // Ensure classGroup is present
+    if (!fd.get('classGroup')) {
+      throw new Error('Please provide Class/Group.');
+    }
     const data = await window.api.fetch('/api/upload', { method: 'POST', body: fd });
     return data;
   }

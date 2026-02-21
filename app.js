@@ -106,7 +106,11 @@ app.use(session({
     secure: isProd,
     maxAge: 7 * 24 * 60 * 60 * 1000
   }
-}));// --- Static pages ---app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+}));
+
+// --- Static pages ---
+app.get('/', (req, res) => res.redirect(302, '/public/index.html'));
+
 app.get('/dashboard', (req, res) => {
   if (!req.session.user) return res.redirect('/');
   return res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
@@ -114,27 +118,41 @@ app.get('/dashboard', (req, res) => {
 
 // --- API: authentication & session ---
 app.post('/api/login', async (req, res) => {
-  const { username, password, studentId } = req.body;
+  const { username, password, studentId, redirect: requestedRedirect } = req.body;
   const identifier = studentId || username;
   const user = await db.getUser(identifier);
   // Removed email verification enforcement: login proceeds regardless of email verification status
   if (user && user.password && bcrypt.compareSync(password, user.password)) {
     req.session.user = { id: user.id, username: user.username, name: user.full_name || user.username, role: user.role, course: user.course };
+
+    // Coerce any requested redirect to a safe relative path only
+    let redirect = null;
+    const candidate = typeof requestedRedirect === 'string' ? requestedRedirect : (typeof req.query.redirect === 'string' ? req.query.redirect : null);
+    if (candidate && candidate.startsWith('/') && !candidate.startsWith('//')) {
+      const safe = path.posix.normalize(candidate);
+      redirect = safe.startsWith('/') ? safe : `/${safe}`;
+    }
+
+    if (redirect) return res.json({ ok: true, redirect });
     return res.json({ ok: true });
   }
   return res.status(401).json({ ok: false, message: 'Invalid credentials' });
-});// signup
+});
+
+// signup
 app.post('/api/signup', async (req, res) => {
-  const { studentId, full_name, email, password, course, inviteToken } = req.body;
+  const { studentId, full_name, email, password, course, program, classGroup, inviteToken } = req.body;
   if (!studentId || !full_name || !email || !password || !course) return res.status(400).json({ ok: false, message: 'Missing fields' });
   // uniqueness
   if (await db.getUser(studentId) || await db.findUserByEmail(email)) return res.status(409).json({ ok: false, message: 'Student ID or email already exists' });
   // default role: student (admin must promote to elevated roles)
   const role = 'student';
   const hashed = bcrypt.hashSync(password, 10);
-  const user = { id: studentId, username: studentId.toLowerCase(), full_name, email, password: hashed, role, course, is_active: false, created_at: new Date().toISOString() };
-  await db.addUser(user);
-  // create email token
+  const normalizedClassGroup = (typeof db.normalizeClassGroup === 'function'
+    ? db.normalizeClassGroup(classGroup)
+    : (typeof classGroup === 'string' ? classGroup.trim().toLowerCase() : null));
+  const user = { id: studentId, username: studentId.toLowerCase(), full_name, email, password: hashed, role, course, program: program || null, classGroup: normalizedClassGroup, is_active: false, created_at: new Date().toISOString() };
+  await db.addUser(user);  // create email token
   const token = uuidv4();
   await db.setEmailToken(studentId, token);
   // send verification email (console for now)
@@ -142,7 +160,6 @@ app.post('/api/signup', async (req, res) => {
   console.log('SEND EMAIL:', { to: email, subject: 'Verify your account', body: `Click to verify: ${verifyUrl}` });
   return res.json({ ok: true, message: 'Registered. Please check your email to verify your account.' });
 });
-
 app.get('/api/verify-email', async (req, res) => {
   const { token } = req.query;
   if (!token) return res.status(400).send('Missing token');
@@ -215,29 +232,67 @@ app.post('/api/admin/import', requireAdmin, upload.single('file'), async (req, r
 // --- API: slides ---
 app.get('/api/slides', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ ok: false });
-  const { course } = req.session.user;
-  const slides = await db.getSlidesByCourse(course);
-  return res.json({ ok: true, slides });
-});
-
-app.post('/upload', upload.single('file'), async (req, res) => {
+  const { course, role, classGroup } = req.session.user;
+  const normalize = (v) => {
+    if (typeof db.normalizeClassGroup === 'function') return db.normalizeClassGroup(v);
+    return (typeof v === 'string' ? v.trim().toLowerCase() : '');
+  };
+  try {
+    let slides = await db.getSlidesByCourse(course);
+    if (role !== 'admin' && Array.isArray(slides)) {
+      const userGroup = normalize(classGroup);
+      if (userGroup) {
+        slides = slides.filter(s => {
+          const hasProp = s && Object.prototype.hasOwnProperty.call(s, 'classGroup');
+          if (!hasProp) return true;
+          const slideGroup = normalize(s.classGroup);
+          return slideGroup ? slideGroup === userGroup : true;
+        });
+      }
+    }
+    return res.json({ ok: true, slides });
+  } catch (e) {
+    console.error('Slides list error', e);
+    return res.status(500).json({ ok: false, message: 'Failed to load slides' });
+  }
+});app.post('/upload', upload.single('file'), async (req, res) => {
   if (!req.session.user || !['course_rep','rep_assistant','course_secretary','admin'].includes(req.session.user.role)) {
     return res.status(403).send('Unauthorized');
   }
   if (!req.file) return res.status(400).send('No file');
-  await db.addSlide(req.file.filename, req.file.originalname, req.session.user.name, req.session.user.course);
-  return res.redirect('/dashboard');
-});
 
-app.get('/download/:filename', async (req, res) => {
+  const rawClassGroup = (req.body && typeof req.body.classGroup === 'string') ? req.body.classGroup.trim() : '';
+  const classGroup = (typeof db.normalizeClassGroup === 'function') ? db.normalizeClassGroup(rawClassGroup) : (rawClassGroup || '').trim().toLowerCase();
+  const program = (req.body && typeof req.body.program === 'string') ? req.body.program.trim() : null;
+
+  if (!classGroup) {
+    return res.status(400).send('classGroup is required');
+  }
+
+  try {
+    await db.addSlide(
+      req.file.filename,
+      req.file.originalname,
+      req.session.user.name,
+      req.session.user.course,
+      classGroup,
+      program
+    );
+  } catch (e) {
+    console.error('Upload save error', e);
+  }
+  return res.redirect('/dashboard');
+});app.get('/download/:filename', async (req, res) => {
   if (!req.session.user) return res.redirect('/');
-  const { role, course } = req.session.user;
+  const { role, course, classGroup: userClassGroup } = req.session.user;
   const slide = await db.getSlideByFilename(req.params.filename);
   if (!slide) return res.status(404).send('File not found');
-  if (role === 'student' && slide.course !== course) return res.status(403).send('Not allowed');
+  if (role === 'student') {
+    if (slide.course !== course) return res.status(403).send('Not allowed');
+    if (slide.classGroup && userClassGroup && slide.classGroup !== userClassGroup) return res.status(403).send('Not allowed');
+  }
   return res.download(path.join(__dirname, 'uploads', req.params.filename), slide.originalname);
 });
-
 // start
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

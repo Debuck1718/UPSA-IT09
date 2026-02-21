@@ -51,7 +51,7 @@
               <label for="csvfile" class="form-label">Select a CSV file</label>
               <input type="file" id="csvfile" name="file" accept=".csv" class="form-control" required>
               <div class="form-text">
-                Columns: studentId, username, full_name, email, course, role, password(optional)
+                Columns: studentId, username, full_name, email, program, classGroup, course(optional), role, password(optional)
               </div>
             </div>
             <div class="col-12 col-md-auto">
@@ -102,6 +102,8 @@
               <th scope="col">ID</th>
               <th scope="col">Name</th>
               <th scope="col" class="d-none d-md-table-cell">Email</th>
+              <th scope="col" class="d-none d-md-table-cell">Program</th>
+              <th scope="col" class="d-none d-md-table-cell">Class</th>
               <th scope="col">Course</th>
               <th scope="col">Role</th>
               <th scope="col" class="text-end">Actions</th>

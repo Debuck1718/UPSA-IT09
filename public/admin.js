@@ -42,7 +42,7 @@ async function safeFetch(input, init) {
     tbody.innerHTML = '';
     json.users.forEach(u => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${u.id}</td><td>${u.full_name || ''}</td><td>${u.email || ''}</td><td>${u.course || ''}</td><td id="role-${u.id}">${u.role}</td>
+      tr.innerHTML = `<td>${u.id}</td><td>${u.full_name || ''}</td><td>${u.email || ''}</td><td>${u.program || ''}</td><td>${u.classGroup || ''}</td><td>${u.course || ''}</td><td id="role-${u.id}">${u.role}</td>
         <td>
           <select id="select-${u.id}" class="form-select form-select-sm d-inline-block" style="width:160px;">
             <option value="student">student</option>
@@ -52,8 +52,7 @@ async function safeFetch(input, init) {
             <option value="admin">admin</option>
           </select>
           <button class="btn btn-sm btn-primary ms-2" onclick="promote('${u.id}')">Promote</button>
-        </td>`;
-      tbody.appendChild(tr);
+        </td>`;      tbody.appendChild(tr);
       const sel = document.getElementById(`select-${u.id}`);
       sel.value = u.role || 'student';
     });

@@ -51,12 +51,30 @@ const API_BASE = (window.api && typeof window.api.base === 'function')
 
       try {
         const data = await login(studentId, password);
-        let redirect = data && data.redirect ? data.redirect : ((data && data.user && data.user.role === 'rep') ? '/rep-dashboard' : '/dashboard');
-        if (!/^https?:\/\//i.test(redirect)) {
+        const role = (data && data.user && data.user.role) ? data.user.role : '';
+        const fallback = role === 'rep' ? '/rep-dashboard' : '/dashboard';
+        let redirect = (data && typeof data.redirect === 'string') ? data.redirect : '';
+
+        try {
+          if (/^https?:\/\//i.test(redirect)) {
+            const u = new URL(redirect);
+            if (u.origin === window.location.origin) {
+              redirect = u.pathname + u.search + u.hash;
+            } else {
+              redirect = '';
+            }
+          }
+        } catch (_) {
+          redirect = '';
+        }
+
+        if (!redirect || redirect.startsWith('//') || /^javascript:/i.test(redirect)) {
+          redirect = fallback;
+        } else {
           redirect = '/' + redirect.replace(/^\/+/, '');
         }
-        window.location = redirect;      } catch (err) {
-        const msg = (err && err.message) ? err.message : 'Unable to reach the server. Make sure the backend is running on http://localhost:3000';
+
+        window.location.assign(redirect);      } catch (err) {        const msg = (err && err.message) ? err.message : 'Unable to reach the server. Make sure the backend is running on http://localhost:3000';
         const needsVerification = /verify.*email/i.test(msg) || /email.*verify/i.test(msg);
         if (needsVerification && alertEl) {
           alertEl.innerHTML = '';

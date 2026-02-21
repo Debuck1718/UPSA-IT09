@@ -34,6 +34,15 @@
               <div id="alert" class="alert d-none" role="alert"></div>
               <form id="repUploadForm" class="row gy-3 gx-2 align-items-end" enctype="multipart/form-data">
                 <div class="col-12">
+                  <label for="repProgram" class="form-label">Program (optional)</label>
+                  <input type="text" id="repProgram" name="program" class="form-control" placeholder="e.g., Information Technology">
+                </div>
+                <div class="col-12">
+                  <label for="repClassGroup" class="form-label">Class/Group</label>
+                  <input type="text" id="repClassGroup" name="classGroup" class="form-control" placeholder="e.g., IT1, IT2" required>
+                  <div class="form-text">Students in this class/group will see these slides.</div>
+                </div>
+                <div class="col-12">
                   <label for="repCourse" class="form-label">Course</label>
                   <input type="text" id="repCourse" name="course" class="form-control" placeholder="e.g., Introduction to Information Technology" required>
                   <div class="form-text">Enter the exact course name students will browse.</div>
