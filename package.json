@@ -23,7 +23,9 @@
     "multer": "^1.4.5-lts.1",
     "sqlite": "^4.1.2",
     "sqlite3": "^5.1.6",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "@supabase/supabase-js": "^2.45.4",
+    "pg": "^8.11.5"
   },  "devDependencies": {
     "cors": "^2.8.6"
   },  "overrides": {

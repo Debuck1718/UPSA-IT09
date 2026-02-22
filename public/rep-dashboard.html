@@ -82,6 +82,9 @@
         <div class="col-12 col-lg-5">
           <div class="card shadow-sm">
             <div class="card-header bg-white fw-semibold">Upload slides</div>
+            <div class="px-3 pt-2 text-muted small">
+              <span id="cohortBanner">Your class uploads are scoped to your cohort and class group.</span>
+            </div>
             <div class="card-body">
               <div id="alert" class="alert d-none" role="alert"></div>
               <form id="repDashUploadForm" class="row gy-3 gx-2 align-items-end" enctype="multipart/form-data">
@@ -95,9 +98,16 @@
                   <div class="form-text">Only students in this class/group will see these slides.</div>
                 </div>
                 <div class="col-12">
-                  <label for="repDashCourse" class="form-label">Course</label>
-                  <input type="text" id="repDashCourse" name="course" class="form-control" placeholder="e.g., Environmental Studies" required>
-                  <div class="form-text">Use the exact course name for grouping.</div>
+                  <label for="repDashCourseTitle" class="form-label">Course Title</label>
+                  <div class="input-group">
+                    <select id="repDashCourseTitle" name="courseTitle" class="form-select" required></select>
+                    <button class="btn btn-outline-secondary" type="button" id="repDashAddTitleBtn">Add new</button>
+                  </div>
+                  <input type="text" id="repDashNewTitle" class="form-control mt-2 d-none" placeholder="New course title (e.g., Environmental Studies)">
+                </div>
+                <div class="col-12">
+                  <label for="repDashSlideTitle" class="form-label">Slide Title</label>
+                  <input type="text" id="repDashSlideTitle" name="slideTitle" class="form-control" placeholder="e.g., Week 1 - Introduction" required>
                 </div>
                 <div class="col-12">
                   <label for="repDashFile" class="form-label">Slide file</label>

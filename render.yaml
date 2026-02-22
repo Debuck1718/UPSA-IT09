@@ -1,7 +1,7 @@
 services:
   - type: web
     name: upsa-course-slides
-    env: node
+    runtime: node
     plan: free
     region: oregon
     buildCommand: |
@@ -14,11 +14,15 @@ services:
         value: production
       - key: SESSION_SECRET
         generateValue: true
+      - key: KEEPALIVE
+        value: "true"
+      - key: KEEPALIVE_INTERVAL_MS
+        value: "60000"
     healthCheckPath: /healthz
-    disk:
+    disks:
       - name: uploads
         mountPath: /opt/render/project/src/uploads
         sizeGB: 1
       - name: data
         mountPath: /opt/render/project/src/data
-        sizeGB: 0.1
+        sizeGB: 1

@@ -18,14 +18,35 @@
       li.className = 'list-group-item d-flex justify-content-between align-items-center';
       li.innerHTML = `
         <div class="me-2">
-          <div class="fw-semibold">${s.originalName || s.filename}</div>
-          <small class="text-muted">${new Date(s.createdAt).toLocaleString()}</small>
+          <div class="fw-semibold">${s.originalName || s.original_name || s.slideTitle || s.slide_title || s.filename}</div>
+          <small class="text-muted">${new Date(s.createdAt || s.created_at || Date.now()).toLocaleString()}</small>
         </div>
         <div class="btn-group">
-          <a class="btn btn-sm btn-outline-primary" href="../uploads/${encodeURIComponent(s.filename)}" download>Download</a>
-          <a class="btn btn-sm btn-outline-secondary" href="../uploads/${encodeURIComponent(s.filename)}" target="_blank">View</a>
+          <button class="btn btn-sm btn-outline-primary" data-action="download" data-id="${s.id}">Download</button>
+          <button class="btn btn-sm btn-outline-secondary" data-action="view" data-id="${s.id}">View</button>
         </div>
       `;
+      li.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          try {
+            const resp = await window.api.fetch(`/api/slides/${encodeURIComponent(id)}/url`);
+            const url = resp.url;
+            if (btn.getAttribute('data-action') === 'view') {
+              window.open(url, '_blank');
+            } else {
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = '';
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+            }
+          } catch (e) {
+            alert('Could not generate link. Please try again.');
+          }
+        });
+      });
       slidesList.appendChild(li);
     }
   }
@@ -46,14 +67,14 @@
 
   async function selectCourse(course) {
     courseTitle.textContent = course;
-    const data = await window.api.fetch(`/api/slides?course=${encodeURIComponent(course)}`);
+    const data = await window.api.fetch(`/api/slides?courseTitle=${encodeURIComponent(course)}`);
     if (!data.ok) {
       setSlides([]);
       return;
     }
+    if (courseTitle.textContent !== course) return;
     setSlides(data.slides);
   }
-
   try {
     await loadCourses();
   } catch (e) {

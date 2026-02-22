@@ -43,9 +43,17 @@
                   <div class="form-text">Students in this class/group will see these slides.</div>
                 </div>
                 <div class="col-12">
-                  <label for="repCourse" class="form-label">Course</label>
-                  <input type="text" id="repCourse" name="course" class="form-control" placeholder="e.g., Introduction to Information Technology" required>
-                  <div class="form-text">Enter the exact course name students will browse.</div>
+                  <label for="repCourseTitle" class="form-label">Course Title</label>
+                  <div class="input-group">
+                    <select id="repCourseTitle" name="courseTitle" class="form-select" required></select>
+                    <button class="btn btn-outline-secondary" type="button" id="repAddTitleBtn">Add new</button>
+                  </div>
+                  <input type="text" id="repNewTitle" class="form-control mt-2 d-none" placeholder="New course title (e.g., Environmental Studies)">
+                  <div class="form-text">Select a course title you’ve used before or add a new one.</div>
+                </div>
+                <div class="col-12">
+                  <label for="repSlideTitle" class="form-label">Slide Title</label>
+                  <input type="text" id="repSlideTitle" name="slideTitle" class="form-control" placeholder="e.g., Week 1 - Introduction" required>
                 </div>
                 <div class="col-12">
                   <label for="repFile" class="form-label">Slide file</label>
@@ -56,6 +64,21 @@
                   <button type="submit" class="btn btn-primary w-100">Upload slide</button>
                 </div>
               </form>
+
+              <hr class="my-4">
+
+              <div>
+                <h6 class="fw-semibold mb-2">Manage semester courses (titles)</h6>
+                <form id="repManageCourses" class="row gy-2 gx-2">
+                  <div class="col-12 col-md-8">
+                    <input type="text" id="repManageTitle" class="form-control" placeholder="Add course title (e.g., Environmental Studies)">
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <button class="btn btn-outline-primary w-100" type="submit">Add title</button>
+                  </div>
+                </form>
+                <div id="repTitlesCards" class="row g-2 mt-2"></div>
+              </div>
             </div>
           </div>
         </div>

@@ -53,29 +53,33 @@ const API_BASE = (window.api && typeof window.api.base === 'function')
         const data = await login(studentId, password);
         const role = (data && data.user && data.user.role) ? data.user.role : '';
         const fallback = role === 'rep' ? '/rep-dashboard' : '/dashboard';
-        let redirect = (data && typeof data.redirect === 'string') ? data.redirect : '';
+        let redirect = (data && typeof data.redirect === 'string') ? data.redirect.trim() : '';
 
         try {
-          if (/^https?:\/\//i.test(redirect)) {
+          // Reject dangerous or cross-origin redirects and anything pointing to localhost
+          if (!redirect || redirect.startsWith('//') || /^javascript:/i.test(redirect)) {
+            redirect = '';
+          } else if (/^https?:\/\//i.test(redirect)) {
             const u = new URL(redirect);
-            if (u.origin === window.location.origin) {
+            const isLocalhost = /^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(u.host);
+            const sameOrigin = u.origin === window.location.origin;
+            if (sameOrigin && !isLocalhost) {
               redirect = u.pathname + u.search + u.hash;
             } else {
               redirect = '';
             }
+          } else {
+            redirect = '/' + redirect.replace(/^\/+/, '');
           }
         } catch (_) {
           redirect = '';
         }
 
-        if (!redirect || redirect.startsWith('//') || /^javascript:/i.test(redirect)) {
+        if (!redirect) {
           redirect = fallback;
-        } else {
-          redirect = '/' + redirect.replace(/^\/+/, '');
         }
 
-        window.location.assign(redirect);      } catch (err) {        const msg = (err && err.message) ? err.message : 'Unable to reach the server. Make sure the backend is running on http://localhost:3000';
-        const needsVerification = /verify.*email/i.test(msg) || /email.*verify/i.test(msg);
+        window.location.assign(redirect);      } catch (err) {        const msg = (err && err.message) ? err.message : 'Unable to reach the server. Make sure the backend is running on http://localhost:3000';        const needsVerification = /verify.*email/i.test(msg) || /email.*verify/i.test(msg);
         if (needsVerification && alertEl) {
           alertEl.innerHTML = '';
           const span = document.createElement('span');

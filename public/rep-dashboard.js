@@ -17,9 +17,69 @@
     alertBox.classList.remove('d-none');
   }
 
+  // Course titles management
+  const selTitle = document.getElementById('repDashCourseTitle');
+  const addTitleBtn = document.getElementById('repDashAddTitleBtn');
+  const newTitleInput = document.getElementById('repDashNewTitle');
+
+  function renderTitlesSelect(titles) {
+    if (!selTitle) return;
+    selTitle.innerHTML = '';
+    const optPlaceholder = document.createElement('option');
+    optPlaceholder.value = '';
+    optPlaceholder.textContent = 'Select a course title';
+    selTitle.appendChild(optPlaceholder);
+    (titles || []).forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = t;
+      selTitle.appendChild(opt);
+    });
+  }
+
+  async function loadMyTitles() {
+    try {
+      const data = await window.api.fetch('/api/courses/mine');
+      const titles = Array.isArray(data.titles) ? data.titles : [];
+      renderTitlesSelect(titles);
+    } catch (e) {
+      renderTitlesSelect([]);
+      const alert = document.getElementById('alert');
+      if (alert) {
+        alert.className = 'alert alert-warning';
+        alert.textContent = 'Could not load your course titles. You can still add a new one.';
+        alert.classList.remove('d-none');
+      }
+    }
+  }
+
+  addTitleBtn?.addEventListener('click', () => {
+    newTitleInput.classList.toggle('d-none');
+    if (!newTitleInput.classList.contains('d-none')) newTitleInput.focus();
+  });
+
   async function uploadSlide(fd) {
+    const nt = newTitleInput?.value.trim();
+    if (nt) {
+      fd.set('courseTitle', nt);
+    } else if (selTitle && selTitle.value) {
+      fd.set('courseTitle', selTitle.value);
+    }
+    const ct = fd.get('courseTitle');
+    if (!ct || String(ct).trim() === '') throw new Error('Please select or add a Course Title.');
+    const st = document.getElementById('repDashSlideTitle')?.value.trim();
+    if (!st) throw new Error('Please provide a Slide Title.');
+    fd.set('slideTitle', st);
+    // Backward compat: set 'course' so legacy list buckets align with courseTitle
+    if (!fd.get('course')) {
+      fd.set('course', String(ct));
+    }
+
     return window.api.fetch('/api/upload', { method: 'POST', body: fd });
   }
+
+  // Initialize titles on load
+  loadMyTitles();
 
   function setSlides(items) {
     slidesList.innerHTML = '';
@@ -35,14 +95,35 @@
       li.className = 'list-group-item d-flex justify-content-between align-items-center';
       li.innerHTML = `
         <div class="me-2">
-          <div class="fw-semibold">${s.originalName || s.filename}</div>
-          <small class="text-muted">${new Date(s.createdAt).toLocaleString()}</small>
+          <div class="fw-semibold">${s.originalName || s.original_name || s.slideTitle || s.slide_title || s.filename}</div>
+          <small class="text-muted">${new Date(s.createdAt || s.created_at || Date.now()).toLocaleString()}</small>
         </div>
         <div class="btn-group">
-          <a class="btn btn-sm btn-outline-primary" href="../uploads/${encodeURIComponent(s.filename)}" download>Download</a>
-          <a class="btn btn-sm btn-outline-secondary" href="../uploads/${encodeURIComponent(s.filename)}" target="_blank">View</a>
+          <button class="btn btn-sm btn-outline-primary" data-action="download" data-id="${s.id}">Download</button>
+          <button class="btn btn-sm btn-outline-secondary" data-action="view" data-id="${s.id}">View</button>
         </div>
       `;
+      li.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          try {
+            const resp = await window.api.fetch(`/api/slides/${encodeURIComponent(id)}/url`);
+            const url = resp.url;
+            if (btn.getAttribute('data-action') === 'view') {
+              window.open(url, '_blank');
+            } else {
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = '';
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+            }
+          } catch (e) {
+            showAlert('danger', 'Could not generate link. Please try again.');
+          }
+        });
+      });
       slidesList.appendChild(li);
     }
   }

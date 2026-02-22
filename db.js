@@ -6,13 +6,14 @@ const DATA_FILE = path.join(__dirname, 'data.json');
 
 function load() {
   if (!fs.existsSync(DATA_FILE)) {
-    const initial = { users: [], slides: [] };
+    const initial = { users: [], slides: [], courseTitles: {} };
     fs.writeFileSync(DATA_FILE, JSON.stringify(initial, null, 2));
   }
   const raw = fs.readFileSync(DATA_FILE, 'utf8');
-  return JSON.parse(raw || '{}');
+  const data = JSON.parse(raw || '{}');
+  if (!data.courseTitles || typeof data.courseTitles !== 'object') data.courseTitles = {};
+  return data;
 }
-
 function save(db) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
 }
@@ -144,7 +145,7 @@ function normalizeProgram(program) {
   return p.length ? p : null;
 }
 
-function addSlide(filename, originalname, uploaded_by, course, classGroup, program) {
+function addSlide(filename, originalname, uploaded_by, course, classGroup, program, slideTitle, courseTitle) {
   const db = load();
   db.slides = db.slides || [];
   let finalCourse = normalizeCourse(course);
@@ -152,22 +153,33 @@ function addSlide(filename, originalname, uploaded_by, course, classGroup, progr
     const uploader = (db.users || []).find(u => u.id === uploaded_by || u.username === uploaded_by);
     if (uploader && uploader.course) finalCourse = normalizeCourse(uploader.course);
   }
+  const normClassGroup = normalizeClassGroup(classGroup);
+  const programName = normalizeProgram(program);
+  const programId = programName ? programIdFromName(programName) : null;
+  const institutionId = 'upsa';
+  const cohortId = null;
+  const classGroupId = makeClassGroupId(cohortId, normClassGroup);
+
   const slide = {
     id: Date.now(),
     filename,
     originalname,
     uploaded_by,
     course: finalCourse,
-    classGroup: normalizeClassGroup(classGroup),
-    program: normalizeProgram(program),
+    courseTitle: courseTitle || null,
+    slideTitle: slideTitle || null,
+    classGroup: normClassGroup,
+    program: programName,
+    programId,
+    institutionId,
+    cohortId,
+    classGroupId,
     created_at: new Date().toISOString()
   };
   db.slides.push(slide);
   save(db);
   return slide;
-}
-
-function getSlidesByCourse(course) {
+}function getSlidesByCourse(course) {
   const db = load();
   const target = normalizeCourse(course);
   return (db.slides || [])
@@ -205,6 +217,85 @@ function getAllSlides() {
   return db.slides || [];
 }
 
+function ensureCourseTitles(db) {
+  if (!db.courseTitles || typeof db.courseTitles !== 'object') {
+    db.courseTitles = {};
+  }
+}
+
+function addCourseTitleForClass(classGroup, title) {
+  const db = load();
+  ensureCourseTitles(db);
+  const cg = normalizeClassGroup(classGroup);
+  const t = (title == null ? '' : String(title)).trim();
+  if (!cg || !t) return false;
+  db.courseTitles[cg] = Array.isArray(db.courseTitles[cg]) ? db.courseTitles[cg] : [];
+  if (!db.courseTitles[cg].includes(t)) {
+    db.courseTitles[cg].push(t);
+    db.courseTitles[cg].sort((a, b) => a.localeCompare(b));
+    save(db);
+  }
+  return true;
+}
+
+function listCourseTitlesForClass(classGroup) {
+  const db = load();
+  ensureCourseTitles(db);
+  const cg = normalizeClassGroup(classGroup);
+  if (!cg) return [];
+  return Array.isArray(db.courseTitles[cg]) ? db.courseTitles[cg] : [];
+}
+
+// ID builders and course title helpers keyed by classGroupId
+function slugify(s) {
+  return String(s || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+function programIdFromName(name) {
+  return slugify(name).replace(/-/g, '');
+}
+function institutionIdFromName(name) {
+  return slugify(name).replace(/-/g, '');
+}
+function makeCohortId(institutionId, programId, academicYearStart) {
+  const inst = institutionIdFromName(institutionId || '');
+  const prog = programIdFromName(programId || '');
+  const year = String(academicYearStart || '').trim();
+  return [inst, prog, year].filter(Boolean).join('|');
+}
+function makeClassGroupId(cohortId, classGroupCode) {
+  const cg = normalizeClassGroup(classGroupCode);
+  const co = String(cohortId || '').trim();
+  if (!cg && !co) return null;
+  if (!co) return cg;
+  if (!cg) return co;
+  return `${co}|${cg}`;
+}
+function addCourseTitleForClassGroupId(classGroupId, title) {
+  const db = load();
+  ensureCourseTitles(db);
+  const id = (classGroupId == null ? '' : String(classGroupId)).trim();
+  const t = (title == null ? '' : String(title)).trim();
+  if (!id || !t) return false;
+  db.courseTitles[id] = Array.isArray(db.courseTitles[id]) ? db.courseTitles[id] : [];
+  if (!db.courseTitles[id].includes(t)) {
+    db.courseTitles[id].push(t);
+    db.courseTitles[id].sort((a, b) => a.localeCompare(b));
+    save(db);
+  }
+  return true;
+}
+function listCourseTitlesForClassGroupId(classGroupId) {
+  const db = load();
+  ensureCourseTitles(db);
+  const id = (classGroupId == null ? '' : String(classGroupId)).trim();
+  if (!id) return [];
+  return Array.isArray(db.courseTitles[id]) ? db.courseTitles[id] : [];
+}
+
 module.exports = {
   getUser,
   createUser,
@@ -220,9 +311,14 @@ module.exports = {
   getUserById,
   setUserRole,
   listCourses,
-  normalizeClassGroup: function (classGroup) {
-    if (!classGroup || typeof classGroup !== 'string') return null;
-    const g = classGroup.trim();
-    return g.length ? g : null;
-  }
+  addCourseTitleForClass,
+  listCourseTitlesForClass,
+  addCourseTitleForClassGroupId,
+  listCourseTitlesForClassGroupId,
+  normalizeClassGroup,
+  slugify,
+  programIdFromName,
+  institutionIdFromName,
+  makeCohortId,
+  makeClassGroupId
 };
