@@ -1,6 +1,6 @@
 const express = require('express');
 const session = require('express-session');
-const multer = require('multer');
+let multer; try { multer = require('multer'); } catch (_) { multer = null; }
 const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
@@ -44,31 +44,37 @@ const { v4: uuidv4 } = require('uuid');
 const { parse } = require('csv-parse/sync');
 
 // Multer setup for file uploads (limits + basic filtering)
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/');
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
-});
-const upload = multer({
-  storage,
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB per file
-  fileFilter: (req, file, cb) => {
-    const allowedMimes = new Set([
-      'application/pdf',
-      'application/vnd.ms-powerpoint',
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      'text/csv',
-      'application/csv',
-      'application/vnd.ms-excel'
-    ]);
-    if (allowedMimes.has(file.mimetype)) return cb(null, true);
-    return cb(new Error('Invalid file type'));
-  }
-});
-
+let upload;
+if (multer) {
+  const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, 'uploads/');
+    },
+    filename: function (req, file, cb) {
+      cb(null, Date.now() + '-' + file.originalname);
+    }
+  });
+  upload = multer({
+    storage,
+    limits: { fileSize: 20 * 1024 * 1024 }, // 20MB per file
+    fileFilter: (req, file, cb) => {
+      const allowedMimes = new Set([
+        'application/pdf',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'text/csv',
+        'application/csv',
+        'application/vnd.ms-excel'
+      ]);
+      if (allowedMimes.has(file.mimetype)) return cb(null, true);
+      return cb(new Error('Invalid file type'));
+    }
+  });
+} else {
+  upload = {
+    single: () => (req, res, next) => res.status(503).send('File upload is not available on this server')
+  };
+}
 // Security and parsers
 app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false }));
