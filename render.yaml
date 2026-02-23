@@ -4,9 +4,7 @@ services:
     runtime: node
     plan: free
     region: oregon
-    buildCommand: |
-      npm ci
-      npm rebuild sqlite3 --build-from-source || true
+    buildCommand: npm ci
     startCommand: node app.js
     autoDeploy: true
     envVars:
@@ -14,15 +12,12 @@ services:
         value: production
       - key: SESSION_SECRET
         generateValue: true
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
       - key: KEEPALIVE
         value: "true"
       - key: KEEPALIVE_INTERVAL_MS
         value: "60000"
     healthCheckPath: /healthz
-    disks:
-      - name: uploads
-        mountPath: /opt/render/project/src/uploads
-        sizeGB: 1
-      - name: data
-        mountPath: /opt/render/project/src/data
-        sizeGB: 1
