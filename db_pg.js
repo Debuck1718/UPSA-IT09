@@ -1,11 +1,35 @@
 const { Pool } = require('pg');
 
-// Singleton Pool to avoid "Cannot redeclare block-scoped variable 'pool'" on hot reloads or multiple imports
+// Singleton Pool with SSL handling based on DATABASE_URL
 function getPool() {
   if (!globalThis.__PG_POOL) {
+    const connectionString = process.env.DATABASE_URL || '';
+
+    let host = '';
+    try {
+      const u = new URL(connectionString);
+      host = u.hostname;
+    } catch (_) {
+      // leave host empty if URL parsing fails
+    }
+
+    let ssl = { rejectUnauthorized: false };
+    try {
+      const idx = connectionString.indexOf('?');
+      if (idx !== -1) {
+        const qs = new URLSearchParams(connectionString.slice(idx + 1));
+        const mode = (qs.get('sslmode') || '').toLowerCase();
+        if (mode === 'verify-full') {
+          ssl = { rejectUnauthorized: true, servername: host || undefined };
+        }
+      }
+    } catch (_) {
+      // keep default ssl config if parsing fails
+    }
+
     globalThis.__PG_POOL = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
+      connectionString,
+      ssl,
       max: 10
     });
   }
