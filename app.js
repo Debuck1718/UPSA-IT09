@@ -117,10 +117,16 @@ app.use(cors({
 }));
 app.options('*', cors());
 
+const pgSession = require('connect-pg-simple')(session);
 const isProd = process.env.NODE_ENV === 'production';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'your_secret_key';
 
 app.use(session({
+  store: new pgSession({
+    conString: process.env.DATABASE_URL,
+    createTableIfMissing: true,
+    tableName: 'user_sessions'
+  }),
   name: 'sid',
   secret: SESSION_SECRET,
   resave: false,
@@ -131,8 +137,7 @@ app.use(session({
     secure: isProd,
     maxAge: 7 * 24 * 60 * 60 * 1000
   }
-}));
-// --- Static pages ---
+}))// --- Static pages ---
 app.get('/', (req, res) => {
   res.redirect(302, '/public/index.html');
 });
@@ -174,15 +179,19 @@ app.get('/dashboard', (req, res) => {
 
 // --- API: authentication & session ---
 app.post('/api/login', async (req, res) => {
-  const { username, password, studentId, redirect: requestedRedirect } = req.body;
-  const identifier = studentId || username;
-  const user = await db.getUser(identifier);
+  const { studentId, password, redirect: requestedRedirect } = req.body;
+
+  if (!studentId || !password) {
+    return res.status(400).json({ ok: false, message: 'Student ID and password are required' });
+  }
+
+  const user = await db.findUserByStudentId(studentId);
   // Removed email verification enforcement: login proceeds regardless of email verification status
   if (user && user.password && bcrypt.compareSync(password, user.password)) {
     req.session.user = {
       id: user.id,
-      username: user.username || identifier,
-      name: user.full_name || user.username || identifier,
+      username: user.username || studentId,
+      name: user.full_name || user.username || studentId,
       role: user.role || 'student',
       course: user.course || null,
       program: user.program || null,
@@ -191,7 +200,8 @@ app.post('/api/login', async (req, res) => {
 
     // Coerce any requested redirect to a safe relative path only
     let redirect = null;
-    const candidate = typeof requestedRedirect === 'string' ? requestedRedirect : (typeof req.query.redirect === 'string' ? req.query.redirect : null);    if (candidate && candidate.startsWith('/') && !candidate.startsWith('//')) {
+    const candidate = typeof requestedRedirect === 'string' ? requestedRedirect : (typeof req.query.redirect === 'string' ? req.query.redirect : null);
+    if (candidate && candidate.startsWith('/') && !candidate.startsWith('//')) {
       const safe = path.posix.normalize(candidate);
       redirect = safe.startsWith('/') ? safe : `/${safe}`;
     }
@@ -201,7 +211,6 @@ app.post('/api/login', async (req, res) => {
   }
   return res.status(401).json({ ok: false, message: 'Invalid credentials' });
 });
-
 // signup
 app.post('/api/signup', async (req, res) => {
   const { studentId, full_name, email, password, course, program, classGroup, inviteToken } = req.body;

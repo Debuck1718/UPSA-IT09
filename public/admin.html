@@ -90,6 +90,76 @@
         </div>
       </div>
 
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">Admin Tools</span>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12 col-lg-6">
+              <h6 class="fw-semibold">Promote Cohort</h6>
+              <form id="formPromoteCohort" class="row gy-2 gx-2">
+                <div class="col-12">
+                  <label class="form-label">Institution ID</label>
+                  <input type="text" class="form-control" id="promoteInstitutionId" placeholder="e.g., upsa" value="upsa">
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Program</label>
+                  <input type="text" class="form-control" id="promoteProgram" placeholder="e.g., Information Technology">
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Academic Year Start</label>
+                  <input type="number" class="form-control" id="promoteYear" placeholder="e.g., 2026">
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Next Level (optional)</label>
+                  <input type="number" class="form-control" id="promoteNextLevel" placeholder="e.g., 200">
+                </div>
+                <div class="col-12">
+                  <button class="btn btn-outline-primary" type="submit">Promote</button>
+                </div>
+              </form>
+              <div id="promoteResult" class="small mt-2"></div>
+            </div>
+            <div class="col-12 col-lg-6">
+              <h6 class="fw-semibold">Update User</h6>
+              <form id="formUpdateUser" class="row gy-2 gx-2">
+                <div class="col-12">
+                  <label class="form-label">Student ID</label>
+                  <input type="text" class="form-control" id="updStudentId" placeholder="e.g., S1001" required>
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Role</label>
+                  <select class="form-select" id="updRole">
+                    <option value="">(no change)</option>
+                    <option value="student">student</option>
+                    <option value="rep">rep</option>
+                    <option value="teacher">teacher</option>
+                    <option value="admin">admin</option>
+                  </select>
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Program (optional)</label>
+                  <input type="text" class="form-control" id="updProgram" placeholder="e.g., Information Technology">
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Academic Year Start (optional)</label>
+                  <input type="number" class="form-control" id="updYear" placeholder="e.g., 2026">
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Class/Group (optional)</label>
+                  <input type="text" class="form-control" id="updClassGroup" placeholder="e.g., IT1">
+                </div>
+                <div class="col-12">
+                  <button class="btn btn-outline-secondary" type="submit">Update</button>
+                </div>
+              </form>
+              <div id="updateResult" class="small mt-2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="d-flex align-items-center justify-content-between mb-2">
         <h2 class="h5 mb-0">All users</h2>
         <button class="btn btn-outline-primary btn-sm d-inline-flex d-md-none" type="button" id="refreshBtnMobile" title="Refresh list">Refresh</button>
