@@ -49,55 +49,64 @@ function makeClassGroupId(cohortId, classGroupCode) {
 async function initSchema() {
   const client = await pool.connect();
   try {
-    await client.query('begin');
-    await client.query(`
-      create table if not exists users_app (
-        id serial primary key,
-        student_id text unique not null,
-        full_name text not null,
-        email text unique not null,
-        role text not null default 'student',
-        institution_id text not null,
-        program text,
-        program_id text not null,
-        cohort_id text not null,
-        class_group text,
-        class_group_id text not null,
-        password_hash text not null,
-        email_verified boolean not null default false,
-        created_at timestamptz not null default now()
-      );
-    `);
-    await client.query(`
-      create table if not exists course_titles (
-        id serial primary key,
-        class_group_id text not null,
-        title text not null,
-        created_at timestamptz not null default now(),
-        unique(class_group_id, title)
-      );
-    `);
-    await client.query(`
-      create table if not exists slides (
-        id uuid primary key,
-        class_group_id text not null,
-        course_title text not null,
-        slide_title text not null,
-        object_path text not null,
-        original_name text not null,
-        content_type text,
-        size_bytes int,
-        uploader_id int,
-        institution_id text,
-        program_id text,
-        cohort_id text,
-        created_at timestamptz not null default now()
-      );
-    `);
-    await client.query('commit');
-  } catch (e) {
-    await client.query('rollback');
-    throw e;
+    // Users table
+    const u = await client.query(`select to_regclass('public.users_app') as exists`);
+    if (!u.rows[0].exists) {
+      await client.query(`
+        create table if not exists users_app (
+          id serial primary key,
+          student_id text unique not null,
+          full_name text not null,
+          email text unique not null,
+          role text not null default 'student',
+          institution_id text not null,
+          program text,
+          program_id text not null,
+          cohort_id text not null,
+          class_group text,
+          class_group_id text not null,
+          password_hash text not null,
+          email_verified boolean not null default false,
+          created_at timestamptz not null default now()
+        );
+      `);
+    }
+
+    // Course titles table
+    const c = await client.query(`select to_regclass('public.course_titles') as exists`);
+    if (!c.rows[0].exists) {
+      await client.query(`
+        create table if not exists course_titles (
+          id serial primary key,
+          class_group_id text not null,
+          title text not null,
+          created_at timestamptz not null default now(),
+          unique(class_group_id, title)
+        );
+      `);
+    }
+
+    // Slides table
+    const s = await client.query(`select to_regclass('public.slides') as exists`);
+    if (!s.rows[0].exists) {
+      await client.query(`
+        create table if not exists slides (
+          id uuid primary key,
+          class_group_id text not null,
+          course_title text not null,
+          slide_title text not null,
+          object_path text not null,
+          original_name text not null,
+          content_type text,
+          size_bytes int,
+          uploader_id int,
+          institution_id text,
+          program_id text,
+          cohort_id text,
+          created_at timestamptz not null default now()
+        );
+      `);
+    }
   } finally {
     client.release();
   }
