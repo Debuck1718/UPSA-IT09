@@ -266,12 +266,11 @@ app.post('/api/admin/promote', requireAdmin, async (req, res) => {
   const allowed = ['student', 'course_rep', 'rep_assistant', 'course_secretary', 'admin'];
   if (!studentId || !role) return res.status(400).json({ ok: false, message: 'Missing fields' });
   if (!allowed.includes(role)) return res.status(400).json({ ok: false, message: 'Invalid role' });
-  const u = await db.getUser(studentId) || await db.getUserById(studentId);
+  const u = await db.findUserByStudentId(studentId) || await db.getUserById(studentId);
   if (!u) return res.status(404).json({ ok: false, message: 'User not found' });
   const updated = await db.setUserRole(u.id, role);
   return res.json({ ok: true, user: { id: updated.id, role: updated.role } });
 });
-
 app.post('/api/admin/import', requireAdmin, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ ok: false, message: 'No file' });
   try {
