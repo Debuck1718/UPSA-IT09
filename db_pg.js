@@ -1,35 +1,13 @@
 const { Pool } = require('pg');
 
-// Singleton Pool with SSL handling based on DATABASE_URL
+// Singleton Pool forcing relaxed TLS (Supabase Session Pooler compatible)
 function getPool() {
   if (!globalThis.__PG_POOL) {
     const connectionString = process.env.DATABASE_URL || '';
-
-    let host = '';
-    try {
-      const u = new URL(connectionString);
-      host = u.hostname;
-    } catch (_) {
-      // leave host empty if URL parsing fails
-    }
-
-    let ssl = { rejectUnauthorized: false };
-    try {
-      const idx = connectionString.indexOf('?');
-      if (idx !== -1) {
-        const qs = new URLSearchParams(connectionString.slice(idx + 1));
-        const mode = (qs.get('sslmode') || '').toLowerCase();
-        if (mode === 'verify-full') {
-          ssl = { rejectUnauthorized: true, servername: host || undefined };
-        }
-      }
-    } catch (_) {
-      // keep default ssl config if parsing fails
-    }
-
+    // Force rejectUnauthorized: false to avoid SELF_SIGNED_CERT_IN_CHAIN
     globalThis.__PG_POOL = new Pool({
       connectionString,
-      ssl,
+      ssl: { rejectUnauthorized: false },
       max: 10
     });
   }
