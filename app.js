@@ -1,5 +1,6 @@
 const express = require('express');
 const session = require('express-session');
+const fileUpload = require('express-fileupload');
 const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
@@ -11,6 +12,12 @@ const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const PORT = 3000;
+
+// Enable file upload parsing for CSV admin import and (optionally) other uploads
+app.use(fileUpload({
+  limits: { fileSize: Number(process.env.MAX_UPLOAD_MB || 25) * 1024 * 1024 },
+  abortOnLimit: true
+}));
 
 // Database (Postgres via Supabase)
 const db = require('./db_pg');
@@ -326,35 +333,101 @@ app.post('/api/admin/promote', requireAdmin, async (req, res) => {
   const updated = await db.setUserRole(u.id, role);
   return res.json({ ok: true, user: { id: updated.id, role: updated.role } });
 });
-app.post('/api/admin/import', requireAdmin, upload.single('file'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ ok: false, message: 'No file' });
+app.post('/api/admin/import', requireAdmin, async (req, res) => {
   try {
-    const content = fs.readFileSync(req.file.path);
-    const records = parse(content, { columns: true, skip_empty_lines: true });
-    let imported = 0, skipped = 0;
-    for (const r of records) {
-      const studentId = (r.studentId || r.id || '').trim();
-      const username = (r.username || studentId).trim();
-      const full_name = (r.full_name || r.name || '').trim();
-      const email = (r.email || '').trim() || null;
-      const course = (r.course || '').trim() || null;
-      const role = (r.role || 'student').trim();
-      let password = (r.password || '').trim();
-      if (!studentId) { skipped++; continue; }
-      if (await db.getUser(studentId) || (email && await db.findUserByEmail(email))) { skipped++; continue; }
-      if (!password) password = Math.random().toString(36).slice(2,10) + 'A1!';
-      const hashed = require('bcryptjs').hashSync(password, 10);
-      const user = { id: studentId, username, full_name, email, password: hashed, role, course, is_active: 1, created_at: new Date().toISOString() };
-      await db.addUser(user);
-      imported++;
+    if (!req.files || !req.files.file) {
+      return res.status(400).json({ ok: false, message: 'No file uploaded' });
     }
-    return res.json({ ok: true, imported, skipped });
-  } catch (err) {
-    console.error('Import error', err);
-    return res.status(500).json({ ok: false, message: 'Import failed' });
+
+    const file = req.files.file;
+    const name = String(file.name || '').toLowerCase();
+    if (!name.endsWith('.csv')) {
+      return res.status(400).json({ ok: false, message: 'Please upload a CSV file' });
+    }
+
+    const data = file.data || (file.tempFilePath ? fs.readFileSync(file.tempFilePath) : null);
+    if (!data || !data.length) {
+      return res.status(400).json({ ok: false, message: 'Empty file' });
+    }
+
+    let records = [];
+    try {
+      records = parse(data, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true
+      });
+    } catch (e) {
+      console.error('CSV parse error:', e);
+      return res.status(400).json({ ok: false, message: 'Invalid CSV format' });
+    }
+
+    if (!Array.isArray(records) || !records.length) {
+      return res.status(400).json({ ok: false, message: 'No rows found in CSV' });
+    }
+
+    const results = { ok: true, imported: 0, skipped: 0, errors: [] };
+    const currentYear = new Date().getFullYear();
+
+    for (let i = 0; i < records.length; i++) {
+      const row = records[i];
+      try {
+        const studentId = (row.studentId || row.student_id || '').toString().trim();
+        const full_name = (row.full_name || row.name || '').toString().trim();
+        const email = (row.email || '').toString().trim();
+        const program = (row.program || '').toString().trim();
+        const classGroupRaw = (row.classGroup || row.class_group || '').toString().trim();
+        const classGroup = db.normalizeClassGroup ? db.normalizeClassGroup(classGroupRaw) : classGroupRaw;
+        const academicYearStart = Number(row.academicYearStart || row.academic_year_start || currentYear);
+        const role = ((row.role || '').toString().trim() || 'student');
+        const password = (row.password || '').toString();
+
+        if (!studentId || !full_name || !email || !program || !classGroup) {
+          results.skipped++;
+          results.errors.push({ row: i + 1, error: 'Missing required fields (studentId, full_name, email, program, classGroup)' });
+          continue;
+        }
+
+        const byId = await db.findUserByStudentId(studentId);
+        const byEmail = email ? await db.findUserByEmail(email) : null;
+        if (byId || byEmail) {
+          results.skipped++;
+          results.errors.push({ row: i + 1, studentId, error: 'Duplicate studentId or email' });
+          continue;
+        }
+
+        const created = await db.createUser({
+          studentId,
+          full_name,
+          email,
+          program,
+          classGroup,
+          password: password || uuidv4().slice(0, 10),
+          role,
+          institutionId: 'upsa',
+          academicYearStart
+        });
+
+        if (!created) {
+          results.skipped++;
+          results.errors.push({ row: i + 1, studentId, error: 'Failed to insert' });
+          continue;
+        }
+
+        results.imported++;
+      } catch (e) {
+        console.error('Row import error:', e);
+        results.skipped++;
+        results.errors.push({ row: i + 1, error: e.message || 'Unknown error' });
+      }
+    }
+
+    return res.json(results);
+  } catch (e) {
+    console.error('Admin import error:', e);
+    return res.status(500).json({ ok: false, message: 'Server error' });
   }
 });
-
 // --- API: slides ---
 app.get('/api/slides', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ ok: false });
