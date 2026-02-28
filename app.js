@@ -486,8 +486,6 @@ app.get('/api/slides', async (req, res) => {
 });
 
 // Remove duplicate slide URL handlers and legacy local upload/download endpoints in favor of Supabase Storage signed URLs.
-// (Routes intentionally omitted here as they are replaced by the single /api/slides/:id/url handler above.)// start
-if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 
 // health endpoint for keepalive
 app.get('/healthz', (req, res) => res.status(200).send('ok'));
@@ -502,19 +500,15 @@ app.get('/healthz', (req, res) => res.status(200).send('ok'));
   }
 
   app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    // Self-ping keepalive (optional)
+    console.log(`Server listening on port ${PORT}`);
+    // Self-ping keepalive (optional) using relative path to avoid localhost construction
     if (process.env.KEEPALIVE === 'true') {
-      const origin = process.env.KEEPALIVE_URL || `http://localhost:${PORT}`;
-      const url = `${origin.replace(/\/+$/, '')}/healthz`;
+      const urlPath = '/healthz';
       const intervalMs = Number(process.env.KEEPALIVE_INTERVAL_MS || 60000);
-      console.log(`[keepalive] enabled; pinging ${url} every ${intervalMs}ms`);
-      const mod = url.startsWith('https') ? require('https') : require('http');
+      console.log(`[keepalive] enabled; pinging ${urlPath} every ${intervalMs}ms`);
       setInterval(() => {
-        try {
-          const req = mod.get(url, (res) => { res.resume(); });
-          req.on('error', () => {});
-        } catch (_) {}
+        // Use fetch relative to current origin (Node 18+ has global fetch)
+        fetch(urlPath).catch(() => {});
       }, intervalMs);
     }
   });
