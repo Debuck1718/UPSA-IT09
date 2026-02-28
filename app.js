@@ -431,53 +431,22 @@ app.post('/api/admin/import', requireAdmin, async (req, res) => {
 // --- API: slides ---
 app.get('/api/slides', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ ok: false });
-  const { course, role, classGroup } = req.session.user;
-  const normalize = (v) => {
-    if (typeof db.normalizeClassGroup === 'function') return db.normalizeClassGroup(v);
-    return (typeof v === 'string' ? v.trim().toLowerCase() : '');
-  };
   try {
-    let slides = await db.getSlidesByCourse(course);
-
+    const user = req.session.user;
     const qCourseTitle = typeof req.query.courseTitle === 'string' ? req.query.courseTitle.trim() : '';
-    const qClassGroup = normalize(typeof req.query.classGroup === 'string' ? req.query.classGroup : '');
-
-    if (Array.isArray(slides)) {
-      if (role !== 'admin') {
-        const userGroup = normalize(classGroup);
-        if (userGroup) {
-          slides = slides.filter(s => {
-            const slideGroupRaw = s && (s.classGroup ?? s.class_group ?? s.classgroup ?? s.class_group_id ?? s.classGroupId);
-            const slideGroup = normalize(slideGroupRaw);
-            return slideGroup ? slideGroup === userGroup : true;
-          });
-        }
-      }
-      if (qClassGroup) {
-        slides = slides.filter(s => {
-          const slideGroupRaw = s && (s.classGroup ?? s.class_group ?? s.classgroup ?? s.class_group_id ?? s.classGroupId);
-          const slideGroup = normalize(slideGroupRaw);
-          return slideGroup === qClassGroup;
-        });
-      }
-      if (qCourseTitle) {
-        slides = slides.filter(s => {
-          const ct = (s.courseTitle ?? s.course_title ?? s.course ?? '').toString().trim();
-          return ct === qCourseTitle;
-        });
-      }
-      slides = slides.map(s => ({
-        id: String(s.id ?? s.slide_id ?? s.uuid ?? s.object_id ?? s.filename),
-        classGroup: s.classGroup ?? s.class_group ?? s.classgroup ?? s.class_group_id ?? s.classGroupId ?? null,
-        course: s.course ?? s.course_title ?? s.courseTitle ?? null,
-        courseTitle: s.courseTitle ?? s.course_title ?? s.course ?? null,
-        slideTitle: s.slideTitle ?? s.slide_title ?? s.title ?? null,
-        filename: s.filename ?? s.object_path ?? s.file ?? s.path ?? s.name,
-        originalName: s.originalName ?? s.original_name ?? s.originalname ?? null,
-        createdAt: s.createdAt ?? s.created_at ?? null
-      }));
+    let rows = await db.listSlidesByClassGroupId(user.classGroupId);
+    if (qCourseTitle) {
+      rows = rows.filter(s => (s.course_title || '').trim() === qCourseTitle);
     }
-
+    const slides = rows.map(s => ({
+      id: s.id,
+      classGroup: s.class_group_id,
+      courseTitle: s.course_title,
+      slideTitle: s.slide_title,
+      filename: s.object_path,
+      originalName: s.original_name,
+      createdAt: s.created_at
+    }));
     return res.json({ ok: true, slides });
   } catch (e) {
     console.error('Slides list error', e);
