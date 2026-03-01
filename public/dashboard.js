@@ -1,7 +1,7 @@
 (async function () {
   async function init() {
     try {
-      const data = await window.api.fetch('/api/session');
+      const data = await window.api.fetch('/api/whoami');
       if (!data || !data.user) {
         window.location.assign('/public/index.html');
         return;
