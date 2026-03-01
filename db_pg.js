@@ -164,6 +164,16 @@ async function getSlideById(id) {
   return rows[0] || null;
 }
 
+// Admin: list all users (basic fields)
+async function getAllUsers() {
+  const { rows } = await pool.query(`
+    select id, student_id, full_name, email, role, program, class_group, program_id, cohort_id, class_group_id, institution_id, created_at
+    from users_app
+    order by created_at desc
+  `);
+  return rows;
+}
+
 module.exports = {
   pool,
   initSchema,
@@ -177,6 +187,7 @@ module.exports = {
   // users
   findUserByStudentId,
   createUser,
+  getAllUsers,
   // titles
   listCourseTitlesForClassGroupId,
   addCourseTitleForClassGroupId,

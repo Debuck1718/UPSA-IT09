@@ -171,6 +171,25 @@ app.get('/api/whoami', (req, res) => {
   return res.json({ ok: true, user: req.session.user });
 });
 
+// Admin guard
+function requireAdmin(req, res, next) {
+  const u = req.session?.user;
+  if (!u) return res.status(401).json({ ok: false, message: 'Unauthorized' });
+  if (u.role !== 'admin') return res.status(403).json({ ok: false, message: 'Forbidden' });
+  next();
+}
+
+// List users for admin
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
+  try {
+    const users = await db.getAllUsers();
+    res.json({ ok: true, users });
+  } catch (e) {
+    console.error('List users error:', e);
+    res.status(500).json({ ok: false, message: 'Failed to load users' });
+  }
+});
+
 // --- API: authentication & session ---
 app.post('/api/login', async (req, res) => {
   try {
