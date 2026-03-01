@@ -97,7 +97,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 const pgSession = require('connect-pg-simple')(session);
-const isProd = process.env.NODE_ENV === 'production';
+const isProd = process.env.RENDER || process.env.NODE_ENV === 'production';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'your_secret_key';
 
 app.use(session({
@@ -110,6 +110,7 @@ app.use(session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
+  proxy: true,
   cookie: {
     httpOnly: true,
     sameSite: 'lax',
@@ -134,12 +135,16 @@ app.use((req, res, next) => {
     if (typeof url === 'string') {
       const isAbsolute = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(url);
       if (isAbsolute) {
+        // Never allow absolute localhost or mismatched host redirects
         try {
           const u = new URL(url);
-          if (process.env.NODE_ENV === 'production' || /^localhost$/i.test(u.hostname)) {
+          if (/^localhost$/i.test(u.hostname) || /^127\.0\.0\.1$/i.test(u.hostname)) {
             url = '/public/index.html';
+          } else {
+            // Convert any absolute URL to a relative path to stay same-origin
+            url = u.pathname + (u.search || '') + (u.hash || '');
           }
-        } catch (_) {
+        } catch {
           url = '/public/index.html';
         }
       } else {
@@ -153,7 +158,17 @@ app.use((req, res, next) => {
 });
 app.get('/dashboard', (req, res) => {
   if (!req.session.user) return res.redirect('/');
+  // If admin, send to admin page instead of student dashboard
+  if (req.session.user.role === 'admin') {
+    return res.redirect('/public/admin.html');
+  }
   return res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+// Who am I (quick role check)
+app.get('/api/whoami', (req, res) => {
+  if (!req.session.user) return res.status(401).json({ ok: false });
+  return res.json({ ok: true, user: req.session.user });
 });
 
 // --- API: authentication & session ---
