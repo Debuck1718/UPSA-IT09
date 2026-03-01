@@ -157,12 +157,25 @@ app.use((req, res, next) => {
   next();
 });
 app.get('/dashboard', (req, res) => {
-  if (!req.session.user) return res.redirect('/');
-  // If admin, send to admin page instead of student dashboard
-  if (req.session.user.role === 'admin') {
+  if (!req.session.user) return res.redirect('/public/index.html');
+  const role = req.session.user.role;
+  if (role === 'admin') {
     return res.redirect('/public/admin.html');
   }
+  if (role === 'rep') {
+    return res.redirect('/rep-dashboard');
+  }
+  // student (default)
   return res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+// Rep dashboard route
+app.get('/rep-dashboard', (req, res) => {
+  if (!req.session.user) return res.redirect('/public/index.html');
+  const role = req.session.user.role;
+  if (role === 'admin') return res.redirect('/public/admin.html');
+  if (role !== 'rep') return res.redirect('/dashboard');
+  return res.sendFile(path.join(__dirname, 'public', 'rep-dashboard.html'));
 });
 
 // Who am I (quick role check)
@@ -187,6 +200,32 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
   } catch (e) {
     console.error('List users error:', e);
     res.status(500).json({ ok: false, message: 'Failed to load users' });
+  }
+});
+
+// Update user role (admin only)
+app.post('/api/admin/users/:studentId', requireAdmin, async (req, res) => {
+  try {
+    const sid = String(req.params.studentId || '').trim();
+    const role = String(req.body?.role || '').trim();
+    if (!sid || !role) {
+      return res.status(400).json({ ok: false, message: 'Student ID and role are required' });
+    }
+    const allowed = new Set(['student','rep','teacher','admin']);
+    if (!allowed.has(role)) {
+      return res.status(400).json({ ok: false, message: 'Invalid role' });
+    }
+    const r = await db.pool.query(
+      'update users_app set role=$1 where student_id=$2 returning id, student_id, role',
+      [role, sid]
+    );
+    if (!r.rowCount) {
+      return res.status(404).json({ ok: false, message: 'User not found' });
+    }
+    return res.json({ ok: true, user: r.rows[0] });
+  } catch (e) {
+    console.error('Update role error:', e);
+    return res.status(500).json({ ok: false, message: 'Server error' });
   }
 });
 
@@ -220,7 +259,13 @@ app.post('/api/login', async (req, res) => {
     };
     req.session.user = sessionUser;
     res.cookie('sid', req.sessionID, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
-    return res.json({ ok: true, user: sessionUser });
+
+    // Role-based redirect hint for the client
+    let redirect = '/dashboard';
+    if (sessionUser.role === 'admin') redirect = '/public/admin.html';
+    else if (sessionUser.role === 'rep') redirect = '/rep-dashboard';
+
+    return res.json({ ok: true, user: sessionUser, redirect });
   } catch (e) {
     console.error('Login error:', e);
     return res.status(500).json({ ok: false, message: 'Server error' });
@@ -259,8 +304,23 @@ app.post('/api/signup', async (req, res) => {
       institutionId: institution || 'upsa',
       academicYearStart: Number(academicYearStart)
     });
-    // Provide a redirect hint; client will navigate to /dashboard by default
-    return res.json({ ok: true, user: { id: user.id, role: user.role }, redirect: '/dashboard' });
+
+    // Auto-login: set session so the user can access /dashboard immediately after signup
+    const sessionUser = {
+      id: user.id,
+      role: user.role,
+      studentId: user.student_id || studentId,
+      institutionId: user.institution_id || (institution || 'upsa'),
+      program: user.program || program || null,
+      programId: user.program_id,
+      cohortId: user.cohort_id,
+      classGroup: user.class_group || db.normalizeClassGroup(classGroup),
+      classGroupId: user.class_group_id
+    };
+    req.session.user = sessionUser;
+
+    // Provide a redirect hint to the client
+    return res.json({ ok: true, user: sessionUser, redirect: '/dashboard' });
   } catch (e) {
     // Handle unique constraint gracefully if it still happens (race)
     if (e && e.code === '23505') {
