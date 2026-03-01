@@ -117,6 +117,11 @@ async function findUserByStudentId(studentId) {
   const { rows } = await pool.query('select * from users_app where student_id=$1', [studentId]);
   return rows[0] || null;
 }
+
+async function findUserByEmail(email) {
+  const { rows } = await pool.query('select * from users_app where email=$1', [email]);
+  return rows[0] || null;
+}
 async function createUser({ studentId, full_name, email, program, classGroup, password, role, institutionId, academicYearStart }) {
   const programId = programIdFromName(program || 'General');
   const instId = institutionIdFromName(institutionId || 'upsa');
@@ -186,6 +191,7 @@ module.exports = {
   makeClassGroupId,
   // users
   findUserByStudentId,
+  findUserByEmail,
   createUser,
   getAllUsers,
   // titles

@@ -39,6 +39,10 @@
     if (!studentId || !full_name || !email || !program || !classGroup || !academicYearStartStr || !password || !confirm) {
       return showError('Please complete all required fields.');
     }
+    // Accept UPSA 8-digit IDs and allow other schools with varying lengths (ensure all digits)
+    if (!/^\d{6,12}$/.test(studentId)) {
+      return showError('Please enter a valid Student ID (digits only).');
+    }
     if (password !== confirm) {
       return showError('Passwords do not match.');
     }
@@ -58,8 +62,9 @@
         body: JSON.stringify(payload)
       });
       if (resp && resp.ok) {
-        showSuccess('Account created. Redirecting to login...');
-        setTimeout(() => (window.location.href = '/public/index.html'), 800);
+        showSuccess('Account created. Redirecting to your dashboard...');
+        // Redirect directly to dashboard so users see it's successful
+        setTimeout(() => (window.location.assign('/dashboard')), 800);
       } else {
         showError((resp && resp.message) || 'Signup failed');
       }

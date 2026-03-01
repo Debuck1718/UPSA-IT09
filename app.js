@@ -233,8 +233,20 @@ app.post('/api/signup', async (req, res) => {
     if (!studentId || !full_name || !email || !password || !program || !classGroup || !academicYearStart) {
       return res.status(400).json({ ok: false, message: 'Missing fields' });
     }
-    const existing = await db.findUserByStudentId(studentId);
-    if (existing) return res.status(409).json({ ok: false, message: 'Student ID already exists' });
+
+    // Enforce Student ID 6–12 digits to support different schools (UPSA is 8)
+    const idOk = /^\d{6,12}$/.test(String(studentId).trim());
+    if (!idOk) {
+      return res.status(400).json({ ok: false, message: 'Please enter a valid Student ID (6–12 digits).' });
+    }
+
+    // Uniqueness checks
+    const [byId, byEmail] = await Promise.all([
+      db.findUserByStudentId(studentId),
+      db.findUserByEmail(email)
+    ]);
+    if (byId) return res.status(409).json({ ok: false, message: 'Student ID already exists.' });
+    if (byEmail) return res.status(409).json({ ok: false, message: 'Email already registered.' });
 
     const user = await db.createUser({
       studentId,
@@ -247,9 +259,39 @@ app.post('/api/signup', async (req, res) => {
       institutionId: institution || 'upsa',
       academicYearStart: Number(academicYearStart)
     });
-    return res.json({ ok: true, user: { id: user.id, role: user.role } });
+    // Provide a redirect hint; client will navigate to /dashboard by default
+    return res.json({ ok: true, user: { id: user.id, role: user.role }, redirect: '/dashboard' });
   } catch (e) {
+    // Handle unique constraint gracefully if it still happens (race)
+    if (e && e.code === '23505') {
+      const msg = (e.detail && /Key \(email\)/.test(e.detail)) ? 'Email already registered.' : 'Student ID already exists.';
+      return res.status(409).json({ ok: false, message: msg });
+    }
     console.error('Signup error:', e);
+    return res.status(500).json({ ok: false, message: 'Server error' });
+  }
+});
+
+// Availability check for signup
+// GET /api/check-availability?studentId=&email=
+app.get('/api/check-availability', async (req, res) => {
+  try {
+    const sid = (req.query.studentId || '').toString().trim();
+    const email = (req.query.email || '').toString().trim().toLowerCase();
+    let studentIdAvailable = true;
+    let emailAvailable = true;
+
+    if (sid) {
+      const u = await db.findUserByStudentId(sid);
+      studentIdAvailable = !u;
+    }
+    if (email) {
+      const e = await db.findUserByEmail(email);
+      emailAvailable = !e;
+    }
+    return res.json({ ok: true, studentIdAvailable, emailAvailable });
+  } catch (err) {
+    console.error('Availability check error:', err);
     return res.status(500).json({ ok: false, message: 'Server error' });
   }
 });
@@ -264,8 +306,7 @@ app.get('/api/session', (req, res) => {
   return res.json({ ok: true, user: req.session.user });
 });
 
-// Bootstrap: create admin (protected by ADMIN_SETUP_SECRET)
-// Body: { studentId, full_name, email, password }
+
 app.post('/api/admin/create', async (req, res) => {
   try {
     const setupSecret = process.env.ADMIN_SETUP_SECRET;
@@ -285,7 +326,7 @@ app.post('/api/admin/create', async (req, res) => {
       return res.status(409).json({ ok: false, message: 'Student ID already exists' });
     }
 
-    // Use sensible defaults for admin cohort/class
+    
     const currentYear = new Date().getFullYear();
     const institutionId = 'upsa';
     const program = 'Administration';
@@ -322,7 +363,7 @@ app.post('/api/admin/create', async (req, res) => {
         } catch (_) {}
       }
     } else if (db.pool) {
-      // Fallback: direct SQL insert
+      
       const { rows } = await db.pool.query(
         `insert into users_app (student_id, full_name, email, role, institution_id, program, program_id, cohort_id, class_group, class_group_id, password_hash)
          values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
@@ -487,8 +528,6 @@ app.get('/api/slides', async (req, res) => {
     return res.status(500).json({ ok: false, message: 'Failed to load slides' });
   }
 });
-
-// Remove duplicate slide URL handlers and legacy local upload/download endpoints in favor of Supabase Storage signed URLs.
 
 // health endpoint for keepalive
 app.get('/healthz', (req, res) => res.status(200).send('ok'));
