@@ -234,17 +234,40 @@ app.post('/api/login', async (req, res) => {
   try {
     const sid = (req.body?.studentId || '').trim();
     const password = req.body?.password || '';
-    if (!sid || !password) {
-      return res.status(400).json({ ok: false, message: 'Student ID and password are required' });
-    }
-    const user = await db.findUserByStudentId(sid);
-    if (!user) return res.status(401).json({ ok: false, message: 'Invalid credentials' });
 
-    // Current users created via signup use SHA-256; admin bootstrap uses bcrypt.
+    if (!sid || !password) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Student ID and password are required'
+      });
+    }
+
+    const user = await db.findUserByStudentId(sid);
+    if (!user) {
+      return res.status(401).json({
+        ok: false,
+        message: 'Invalid credentials'
+      });
+    }
+
     const crypto = require('crypto');
-    const shaValid = (user.password_hash && user.password_hash.length === 64 && user.password_hash === crypto.createHash('sha256').update(String(password)).digest('hex'));
-    const bcryptValid = (user.password_hash && user.password_hash.startsWith('$2') && bcrypt.compareSync(password, user.password_hash));
-    if (!shaValid && !bcryptValid) return res.status(401).json({ ok: false, message: 'Invalid credentials' });
+    const shaValid =
+      user.password_hash &&
+      user.password_hash.length === 64 &&
+      user.password_hash ===
+        crypto.createHash('sha256').update(String(password)).digest('hex');
+
+    const bcryptValid =
+      user.password_hash &&
+      user.password_hash.startsWith('$2') &&
+      bcrypt.compareSync(password, user.password_hash);
+
+    if (!shaValid && !bcryptValid) {
+      return res.status(401).json({
+        ok: false,
+        message: 'Invalid credentials'
+      });
+    }
 
     const sessionUser = {
       id: user.id,
@@ -257,18 +280,36 @@ app.post('/api/login', async (req, res) => {
       classGroup: user.class_group,
       classGroupId: user.class_group_id
     };
-    req.session.user = sessionUser;
-    res.cookie('sid', req.sessionID, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
 
-    // Role-based redirect hint for the client
+    // Role-based redirect hint
     let redirect = '/dashboard';
     if (sessionUser.role === 'admin') redirect = '/public/admin.html';
     else if (sessionUser.role === 'rep') redirect = '/rep-dashboard';
 
-    return res.json({ ok: true, user: sessionUser, redirect });
-  } catch (e) {
-    console.error('Login error:', e);
-    return res.status(500).json({ ok: false, message: 'Server error' });
+    req.session.user = sessionUser;
+
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.status(500).json({
+          ok: false,
+          message: 'Session error'
+        });
+      }
+
+      return res.json({
+        ok: true,
+        user: sessionUser,
+        redirect
+      });
+    });
+
+  } catch (err) {
+    console.error('Login error:', err);
+    return res.status(500).json({
+      ok: false,
+      message: 'Server error'
+    });
   }
 });
 
