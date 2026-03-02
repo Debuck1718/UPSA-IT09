@@ -207,9 +207,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Initial load
+  // Personalize Admin header with firstName and local avatar, then initialize
   try {
-    await requireAdminSession();
+    const user = await requireAdminSession();
+    if (user) {
+      const raw = user.full_name || user.fullName || user.name || user.username || user.student_id || user.studentId || 'Admin';
+      const first = user.firstName || (String(raw).trim().split(/\s+/)[0] || 'Admin');
+      const nm = document.getElementById('adminWelcomeName');
+      if (nm) nm.textContent = first;
+      const av = document.getElementById('adminAvatar');
+      if (av) av.src = '/public/images/avatar.png';
+    }
     allUsers = await fetchUsers();
     renderUsersTable(filterUsers(''));
   } catch (e) {
