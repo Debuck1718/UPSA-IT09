@@ -82,13 +82,19 @@
   async function init() {
     try {
       const user = await ensureStudentSession();
-      const name = user.name || user.username || user.studentId || user.id || 'User';
+      const nameRaw = user.fullName || user.name || user.username || user.studentId || user.id || 'User';
+      const firstName = user.firstName || nameRaw.trim().split(/\s+/)[0] || 'User';
       const role = user.role || '';
-      document.getElementById('user-name')?.append(name);
-      document.getElementById('user-role')?.append(role);
-      document.getElementById('user-course')?.append(user.program || '');
+
+      const nameEl = document.getElementById('user-name');
+      const roleEl = document.getElementById('user-role');
+      const courseEl = document.getElementById('user-course');
+      if (nameEl) nameEl.textContent = firstName;
+      if (roleEl) roleEl.textContent = role;
+      if (courseEl) courseEl.textContent = user.program || '';
+
       const avatar = document.getElementById('avatar');
-      if (avatar) avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff&size=96`;
+      if (avatar) avatar.src = '/public/images/avatar.png';
 
       await loadSlides();
       wireUpload();

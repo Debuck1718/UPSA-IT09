@@ -269,6 +269,9 @@ app.post('/api/login', async (req, res) => {
       });
     }
 
+    const fullName = user.full_name || '';
+    const firstName = fullName.trim().split(/\s+/)[0] || (user.student_id || 'User');
+
     const sessionUser = {
       id: user.id,
       role: user.role,
@@ -278,7 +281,9 @@ app.post('/api/login', async (req, res) => {
       programId: user.program_id,
       cohortId: user.cohort_id,
       classGroup: user.class_group,
-      classGroupId: user.class_group_id
+      classGroupId: user.class_group_id,
+      fullName,
+      firstName
     };
 
     // Role-based redirect hint
@@ -347,6 +352,9 @@ app.post('/api/signup', async (req, res) => {
     });
 
     // Auto-login: set session so the user can access /dashboard immediately after signup
+    const fullName = user.full_name || full_name || '';
+    const firstName = fullName.trim().split(/\s+/)[0] || (user.student_id || studentId || 'User');
+
     const sessionUser = {
       id: user.id,
       role: user.role,
@@ -356,7 +364,9 @@ app.post('/api/signup', async (req, res) => {
       programId: user.program_id,
       cohortId: user.cohort_id,
       classGroup: user.class_group || db.normalizeClassGroup(classGroup),
-      classGroupId: user.class_group_id
+      classGroupId: user.class_group_id,
+      fullName,
+      firstName
     };
     req.session.user = sessionUser;
 

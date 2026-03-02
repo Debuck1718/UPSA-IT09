@@ -17,6 +17,23 @@
     alertBox.classList.remove('d-none');
   }
 
+  // Personalize header with firstName and local avatar image
+  (async function personalizeHeader() {
+    try {
+      const data = await window.api.fetch('/api/session');
+      const user = data && data.user ? data.user : null;
+      if (!user) return;
+      const raw = user.fullName || user.name || user.username || user.studentId || 'Rep';
+      const firstName = user.firstName || (String(raw).trim().split(/\s+/)[0] || 'Rep');
+      const nameEl = document.getElementById('repWelcomeName');
+      if (nameEl) nameEl.textContent = firstName;
+      const av = document.getElementById('repAvatar');
+      if (av) av.src = '/public/images/avatar.png';
+    } catch (_) {
+      // ignore personalization errors
+    }
+  })();
+
   // Course titles management
   const selTitle = document.getElementById('repDashCourseTitle');
   const addTitleBtn = document.getElementById('repDashAddTitleBtn');
@@ -141,10 +158,14 @@
     });
     // stats
     statCourses.textContent = String((data.courses || []).length);
-    const allSlides = await api('./api/slides');
+    const allSlides = await window.api.fetch('/api/slides');
     statSlides.textContent = String((allSlides.slides || []).length);
     const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-    const recent = (allSlides.slides || []).filter(s => Date.parse(s.createdAt) >= sevenDaysAgo).length;
+    const recent = (allSlides.slides || []).filter(s => {
+      const ts = s.createdAt || s.created_at;
+      const t = ts ? Date.parse(ts) : NaN;
+      return !Number.isNaN(t) && t >= sevenDaysAgo;
+    }).length;
     statRecent.textContent = String(recent);
   }
 
