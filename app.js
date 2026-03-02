@@ -229,6 +229,57 @@ app.post('/api/admin/users/:studentId', requireAdmin, async (req, res) => {
   }
 });
 
+// Update program / academicYearStart / classGroup (admin only)
+app.post('/api/admin/users/:studentId/update-cohort', requireAdmin, async (req, res) => {
+  try {
+    const sid = String(req.params.studentId || '').trim();
+    if (!sid) return res.status(400).json({ ok: false, message: 'Student ID is required' });
+
+    // Accept partial updates
+    const program = (req.body?.program || '').toString().trim();
+    const yearRaw = req.body?.academicYearStart;
+    const classGroupRaw = (req.body?.classGroup || '').toString().trim();
+
+    // Fetch existing user
+    const userRes = await db.pool.query('select * from users_app where student_id=$1', [sid]);
+    if (!userRes.rowCount) return res.status(404).json({ ok: false, message: 'User not found' });
+    const u = userRes.rows[0];
+
+    // Determine new values (falling back to existing ones)
+    const newProgram = program || u.program || '';
+    const newProgramId = newProgram ? db.programIdFromName(newProgram) : (u.program_id || '');
+    const newYear = (typeof yearRaw === 'number' && !Number.isNaN(yearRaw)) ? yearRaw : (() => {
+      const m = String(u.cohort_id || '').split('|'); // upsa|programId|year
+      const yr = m[2] ? Number(m[2]) : undefined;
+      return Number.isFinite(yr) ? yr : new Date().getFullYear();
+    })();
+    const classGroup = classGroupRaw ? db.normalizeClassGroup(classGroupRaw) : (u.class_group || '');
+
+    // Recompute cohort and classGroup IDs
+    const institutionId = u.institution_id || 'upsa';
+    const cohortId = db.makeCohortId(institutionId, newProgramId, newYear);
+    const classGroupId = classGroup ? db.makeClassGroupId(cohortId, classGroup) : u.class_group_id;
+
+    // Apply update
+    const q = `
+      update users_app
+         set program = $1,
+             program_id = $2,
+             cohort_id = $3,
+             class_group = $4,
+             class_group_id = $5
+       where student_id = $6
+       returning id, student_id, role, program, class_group, cohort_id, class_group_id
+    `;
+    const vals = [newProgram || null, newProgramId || null, cohortId || null, classGroup || null, classGroupId || null, sid];
+    const upd = await db.pool.query(q, vals);
+    return res.json({ ok: true, user: upd.rows[0] });
+  } catch (e) {
+    console.error('Update cohort error:', e);
+    return res.status(500).json({ ok: false, message: 'Server error' });
+  }
+});
+
 // --- API: authentication & session ---
 app.post('/api/login', async (req, res) => {
   try {

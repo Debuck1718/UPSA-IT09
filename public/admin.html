@@ -190,39 +190,54 @@
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-              <form id="editUserForm" class="row g-2">
-                <div class="col-12">
-                  <label class="form-label">Student ID</label>
-                  <input type="text" id="editStudentId" class="form-control" readonly>
+              <div class="mb-3">
+                <label class="form-label">Student ID</label>
+                <input type="text" id="editStudentId" class="form-control" readonly>
+              </div>
+
+              <!-- Role section -->
+              <div class="border rounded p-3 mb-3">
+                <h6 class="fw-semibold mb-2">Role</h6>
+                <div class="row g-2 align-items-end">
+                  <div class="col-12 col-md-8">
+                    <label class="form-label">Select role</label>
+                    <select id="editRole" class="form-select">
+                      <option value="">(no change)</option>
+                      <option value="student">student</option>
+                      <option value="rep">rep</option>
+                      <option value="teacher">teacher</option>
+                      <option value="admin">admin</option>
+                    </select>
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <button type="button" id="saveRoleBtn" class="btn btn-primary w-100">Save role</button>
+                  </div>
                 </div>
-                <div class="col-12">
-                  <label class="form-label">Role</label>
-                  <select id="editRole" class="form-select">
-                    <option value="">(no change)</option>
-                    <option value="student">student</option>
-                    <option value="rep">rep</option>
-                    <option value="teacher">teacher</option>
-                    <option value="admin">admin</option>
-                  </select>
+                <div id="editUserRoleResult" class="small mt-1"></div>
+              </div>
+
+              <!-- Cohort section -->
+              <div class="border rounded p-3">
+                <h6 class="fw-semibold mb-2">Cohort / Class</h6>
+                <div class="row g-2">
+                  <div class="col-12">
+                    <label class="form-label">Program (optional)</label>
+                    <input type="text" id="editProgram" class="form-control" placeholder="e.g., Information Technology">
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Academic Year Start (optional)</label>
+                    <input type="number" id="editYear" class="form-control" placeholder="e.g., 2026">
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Class/Group (optional)</label>
+                    <input type="text" id="editClassGroup" class="form-control" placeholder="e.g., IT1">
+                  </div>
+                  <div class="col-12">
+                    <button type="button" id="saveCohortBtn" class="btn btn-outline-secondary w-100">Save cohort</button>
+                  </div>
                 </div>
-                <div class="col-12">
-                  <label class="form-label">Program</label>
-                  <input type="text" id="editProgram" class="form-control" placeholder="e.g., Information Technology">
-                </div>
-                <div class="col-12">
-                  <label class="form-label">Academic Year Start</label>
-                  <input type="number" id="editYear" class="form-control" placeholder="e.g., 2026">
-                </div>
-                <div class="col-12">
-                  <label class="form-label">Class/Group</label>
-                  <input type="text" id="editClassGroup" class="form-control" placeholder="e.g., IT1">
-                </div>
-              </form>
-              <div id="editUserResult" class="small mt-1"></div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" id="saveUserBtn" class="btn btn-primary">Save changes</button>
+                <div id="editUserCohortResult" class="small mt-1"></div>
+              </div>
             </div>
           </div>
         </div>

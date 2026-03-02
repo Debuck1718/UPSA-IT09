@@ -33,8 +33,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const editProgram = document.getElementById('editProgram');
   const editYear = document.getElementById('editYear');
   const editClassGroup = document.getElementById('editClassGroup');
-  const editUserResult = document.getElementById('editUserResult');
-  const saveUserBtn = document.getElementById('saveUserBtn');
+  const editUserRoleResult = document.getElementById('editUserRoleResult');
+  const editUserCohortResult = document.getElementById('editUserCohortResult');
+  const saveRoleBtn = document.getElementById('saveRoleBtn');
+  const saveCohortBtn = document.getElementById('saveCohortBtn');
 
   let allUsers = [];
 
@@ -106,52 +108,66 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderUsersTable(filtered);
   });
 
-  saveUserBtn?.addEventListener('click', async () => {
+  // Save role only
+  saveRoleBtn?.addEventListener('click', async () => {
     if (!editStudentId?.value) return;
     const sid = editStudentId.value;
-    if (editUserResult) {
-      editUserResult.textContent = '';
-      editUserResult.className = 'small';
+    if (editUserRoleResult) {
+      editUserRoleResult.textContent = '';
+      editUserRoleResult.className = 'small';
     }
-
     try {
-      // Update role if provided
       const role = (editRole?.value || '').trim();
-      if (role) {
-        await window.api.fetch(`/api/admin/users/${encodeURIComponent(sid)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ role })
-        });
+      if (!role) {
+        editUserRoleResult.textContent = 'Choose a role to save.';
+        editUserRoleResult.className = 'small text-danger';
+        return;
       }
-      // Update cohort/class if provided
+      await window.api.fetch(`/api/admin/users/${encodeURIComponent(sid)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role })
+      });
+      editUserRoleResult.textContent = 'Role saved.';
+      editUserRoleResult.className = 'small text-success';
+      allUsers = await fetchUsers();
+      renderUsersTable(filterUsers(userSearch?.value || ''));
+    } catch (e) {
+      editUserRoleResult.textContent = e.message || 'Role update failed.';
+      editUserRoleResult.className = 'small text-danger';
+    }
+  });
+
+  // Save cohort/class only
+  saveCohortBtn?.addEventListener('click', async () => {
+    if (!editStudentId?.value) return;
+    const sid = editStudentId.value;
+    if (editUserCohortResult) {
+      editUserCohortResult.textContent = '';
+      editUserCohortResult.className = 'small';
+    }
+    try {
       const payload = {};
       if (editProgram?.value) payload.program = editProgram.value.trim();
       if (editYear?.value) payload.academicYearStart = Number(editYear.value);
       if (editClassGroup?.value) payload.classGroup = editClassGroup.value.trim();
-
-      if (Object.keys(payload).length) {
-        await window.api.fetch(`/api/admin/users/${encodeURIComponent(sid)}/update-cohort`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
+      if (!Object.keys(payload).length) {
+        editUserCohortResult.textContent = 'Nothing to update.';
+        editUserCohortResult.className = 'small text-danger';
+        return;
       }
-
-      if (editUserResult) {
-        editUserResult.textContent = 'Saved.';
-        editUserResult.className = 'small text-success';
-      }
-
-      // Refresh table
+      await window.api.fetch(`/api/admin/users/${encodeURIComponent(sid)}/update-cohort`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      editUserCohortResult.textContent = 'Cohort updated.';
+      editUserCohortResult.className = 'small text-success';
       allUsers = await fetchUsers();
       renderUsersTable(filterUsers(userSearch?.value || ''));
-      setTimeout(() => editModal?.hide(), 700);
     } catch (e) {
-      if (editUserResult) {
-        editUserResult.textContent = e.message || 'Update failed.';
-        editUserResult.className = 'small text-danger';
-      }
+      editUserCohortResult.textContent = e.message || 'Cohort update failed.';
+      editUserCohortResult.className = 'small text-danger';
     }
   });
 
