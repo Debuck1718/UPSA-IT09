@@ -457,6 +457,68 @@ app.get('/api/check-availability', async (req, res) => {
     return res.status(500).json({ ok: false, message: 'Server error' });
   }
 });
+
+// Courses endpoints
+// List distinct legacy/global course names across all slides
+app.get('/api/courses', async (req, res) => {
+  try {
+    if (!db.listCourses) {
+      return res.json({ ok: true, courses: [] });
+    }
+    const courses = await db.listCourses();
+    return res.json({ ok: true, courses });
+  } catch (e) {
+    console.error('List courses error:', e);
+    return res.status(500).json({ ok: false, message: 'Failed to load courses' });
+  }
+});
+
+// List course titles for current user's classGroupId (rep/student)
+app.get('/api/courses/mine', async (req, res) => {
+  try {
+    const u = req.session?.user;
+    if (!u) return res.status(401).json({ ok: false, message: 'Unauthorized' });
+    if (!db.listCourseTitlesForClassGroupId) {
+      return res.json({ ok: true, titles: [] });
+    }
+    const titles = await db.listCourseTitlesForClassGroupId(u.classGroupId);
+    return res.json({ ok: true, titles });
+  } catch (e) {
+    console.error('List my course titles error:', e);
+    return res.status(500).json({ ok: false, message: 'Failed to load titles' });
+  }
+});
+
+// Courses endpoints
+// List distinct course names across all slides (legacy/global)
+app.get('/api/courses', async (req, res) => {
+  try {
+    if (!db.listCourses) {
+      return res.json({ ok: true, courses: [] });
+    }
+    const courses = await db.listCourses();
+    return res.json({ ok: true, courses });
+  } catch (e) {
+    console.error('List courses error:', e);
+    return res.status(500).json({ ok: false, message: 'Failed to load courses' });
+  }
+});
+
+// List course titles for current user's classGroupId (rep/student)
+app.get('/api/courses/mine', async (req, res) => {
+  try {
+    const u = req.session?.user;
+    if (!u) return res.status(401).json({ ok: false, message: 'Unauthorized' });
+    if (!db.listCourseTitlesForClassGroupId) {
+      return res.json({ ok: true, titles: [] });
+    }
+    const titles = await db.listCourseTitlesForClassGroupId(u.classGroupId);
+    return res.json({ ok: true, titles });
+  } catch (e) {
+    console.error('List my course titles error:', e);
+    return res.status(500).json({ ok: false, message: 'Failed to load titles' });
+  }
+});
 // Email verification flow not used in current production path (skipped)
 
 app.post('/api/logout', (req, res) => {

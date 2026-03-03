@@ -103,6 +103,12 @@
     if (!items || !items.length) {
       slidesList.classList.add('d-none');
       slidesEmpty.classList.remove('d-none');
+      slidesEmpty.innerHTML = `
+        <div class="text-center py-4">
+          <i class="bi bi-folder2-open" style="font-size:2rem;color:#6366f1;"></i>
+          <div class="mt-2 fw-semibold">No slides for this course</div>
+          <div class="text-muted small">Use “Upload slides” on the left to add the first slide for this course title.</div>
+        </div>`;
       return;
     }
     slidesEmpty.classList.add('d-none');

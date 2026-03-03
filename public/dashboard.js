@@ -25,7 +25,14 @@
     if (!list) return;
     list.innerHTML = '';
     if (!slides.length) {
-      list.innerHTML = '<li class="list-group-item">No slides uploaded yet for your class.</li>';
+      list.innerHTML = `
+        <li class="list-group-item bg-light border-0">
+          <div class="text-center py-4">
+            <i class="bi bi-folder2-open" style="font-size:2rem;color:#6366f1;"></i>
+            <div class="mt-2 fw-semibold">No course slides yet</div>
+            <div class="text-muted small">Your course rep hasn’t uploaded slides for this class group. Please check back soon.</div>
+          </div>
+        </li>`;
       return;
     }
     slides.forEach(s => {

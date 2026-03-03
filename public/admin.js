@@ -234,6 +234,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       const av = document.getElementById('adminAvatar');
       if (av) av.src = '/public/images/avatar.png';
     }
+    // Wire Admin Logout button
+    const adminLogoutBtn = document.getElementById('adminLogoutBtn');
+    adminLogoutBtn?.addEventListener('click', async () => {
+      try { await window.api.fetch('/api/logout', { method: 'POST' }); } catch (err) {}
+      window.location.href = '/public/index.html';
+    });
+
     allUsers = await fetchUsers();
     renderUsersTable(filterUsers(''));
   } catch (e) {
