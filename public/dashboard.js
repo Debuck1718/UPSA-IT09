@@ -1,8 +1,18 @@
+console.log('dashboard.js loaded');
+
+function debugLog(msg, ...args) {
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    console.log(msg, ...args);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('dashboard.js loaded');
+  debugLog('DOM fully loaded');
 
   async function ensureStudentSession() {
+    debugLog('Checking session...');
     const data = await window.api.fetch('/api/session');
+    debugLog('Session data:', data);
     if (!data || !data.user) {
       window.location.assign('/public/index.html');
       throw new Error('No session');
@@ -21,7 +31,9 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   async function loadSlides() {
+    debugLog('Fetching slides...');
     const data = await window.api.fetch('/api/slides');
+    debugLog('Slides data:', data);
     const slides = Array.isArray(data.slides) ? data.slides : [];
     const list = document.getElementById('slidesList');
     if (!list) return;
@@ -53,9 +65,12 @@ document.addEventListener('DOMContentLoaded', function() {
       `;
       li.querySelectorAll('button').forEach(btn => {
         btn.addEventListener('click', async () => {
+          debugLog('Button clicked:', btn.getAttribute('data-action'), id);
           try {
             const slideId = btn.getAttribute('data-id');
+            debugLog('Fetching slide URL for:', slideId);
             const resp = await window.api.fetch(`/api/slides/${encodeURIComponent(slideId)}/url`);
+            debugLog('Slide URL response:', resp);
             const url = resp.url;
             if (btn.getAttribute('data-action') === 'view') {
               window.open(url, '_blank');
@@ -67,7 +82,9 @@ document.addEventListener('DOMContentLoaded', function() {
               a.click();
               a.remove();
             }
-          } catch {}
+          } catch (err) {
+            debugLog('Error fetching slide URL:', err);
+          }
         });
       });
       list.appendChild(li);
@@ -81,10 +98,13 @@ document.addEventListener('DOMContentLoaded', function() {
       e.preventDefault();
       const fd = new FormData(form);
       try {
+        debugLog('Uploading slide...');
         await window.api.fetch('/api/upload', { method: 'POST', body: fd });
         await loadSlides();
         form.reset();
-      } catch {}
+      } catch (err) {
+        debugLog('Upload error:', err);
+      }
     });
   }
 
@@ -92,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
       const user = await ensureStudentSession();
       const nameRaw = user.fullName || user.name || user.username || user.studentId || user.id || 'User';
-      const firstName = user.firstName || nameRaw.trim().split(/\s+/)[0] || 'User';
+      const firstName = user.firstName || (String(nameRaw).trim().split(/\s+/)[0] || 'User');
       const role = user.role || '';
 
       const nameEl = document.getElementById('user-name');
@@ -105,17 +125,26 @@ document.addEventListener('DOMContentLoaded', function() {
       const avatar = document.getElementById('avatar');
       if (avatar) avatar.src = '/public/images/avatar.png';
 
+      debugLog('User loaded:', user);
       await loadSlides();
       wireUpload();
-    } catch {
+    } catch (err) {
+      debugLog('Init error:', err);
       // redirected or no session; nothing else to do
     }
   }
 
   document.getElementById('logoutBtn')?.addEventListener('click', async (e) => {
     e.preventDefault();
-    try { await window.api.fetch('/api/logout', { method: 'POST' }); } catch {}
+    try { await window.api.fetch('/api/logout', { method: 'POST' }); } catch (err) { debugLog('Logout error:', err); }
     window.location.assign('/public/index.html');
+  });
+
+  // Add listeners for nav links to force reload
+  document.querySelectorAll('a.nav-link, button.btn').forEach(el => {
+    el.addEventListener('click', (e) => {
+      debugLog('Nav/button clicked:', el.textContent);
+    });
   });
 
   init();
