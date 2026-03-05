@@ -1,3 +1,5 @@
+console.log('dashboard.js loaded');
+
 (function () {
   async function ensureStudentSession() {
     const data = await window.api.fetch('/api/session');
