@@ -1,4 +1,63 @@
   let selectedCourse = null;
+
+  async function loadSlides() {
+    const slidesList = document.getElementById('slidesList');
+    const slidesEmpty = document.getElementById('slidesEmpty');
+    slidesList.innerHTML = '';
+    slidesEmpty.classList.add('d-none');
+    if (!selectedCourse) {
+      slidesEmpty.textContent = 'Select a course to view slides.';
+      slidesEmpty.classList.remove('d-none');
+      return;
+    }
+    try {
+      const data = await window.api.fetch(`/api/slides?courseTitle=${encodeURIComponent(selectedCourse)}`);
+      const slides = Array.isArray(data.slides) ? data.slides : [];
+      if (!slides.length) {
+        slidesEmpty.classList.remove('d-none');
+        return;
+      }
+      slides.forEach(s => {
+        const id = s.id;
+        const title = s.originalName || s.original_name || s.slideTitle || s.slide_title || s.filename || 'Slide';
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+        li.innerHTML = `
+          <div><i class="bi bi-file-earmark-text" style="color:#6366f1;font-size:1.3rem;"></i>
+            <span class="fw-semibold">${title}</span>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-success btn-sm px-3" data-action="download" data-id="${id}">Download</button>
+            <button class="btn btn-outline-secondary btn-sm px-3" data-action="view" data-id="${id}">View</button>
+          </div>
+        `;
+        li.querySelectorAll('button').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            try {
+              const slideId = btn.getAttribute('data-id');
+              const resp = await window.api.fetch(`/api/slides/${encodeURIComponent(slideId)}/url`);
+              const url = resp.url;
+              if (btn.getAttribute('data-action') === 'view') {
+                window.open(url, '_blank');
+              } else {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = '';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+              }
+            } catch {}
+          });
+        });
+        slidesList.appendChild(li);
+      });
+    } catch {
+      slidesEmpty.textContent = 'Failed to load slides.';
+      slidesEmpty.classList.remove('d-none');
+    }
+  }
+
   async function loadCourses() {
     const coursesList = document.getElementById('coursesList');
     const coursesEmpty = document.getElementById('coursesEmpty');
