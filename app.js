@@ -556,7 +556,12 @@ app.get("/api/courses", async (req, res) => {
     if (!db.listCourses) {
       return res.json({ ok: true, courses: [] });
     }
-    const courses = await db.listCourses();
+    // If user is logged in, filter by their classGroupId
+    let classGroupId = null;
+    if (req.session && req.session.user && req.session.user.classGroupId) {
+      classGroupId = req.session.user.classGroupId;
+    }
+    const courses = await db.listCourses(classGroupId);
     return res.json({ ok: true, courses });
   } catch (e) {
     console.error("List courses error:", e);

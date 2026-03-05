@@ -1,3 +1,15 @@
+// List all unique course titles from slides (optionally by classGroupId)
+async function listCourses(classGroupId = null) {
+  let query = 'select distinct course_title from slides';
+  let params = [];
+  if (classGroupId) {
+    query += ' where class_group_id = $1';
+    params = [classGroupId];
+  }
+  query += ' order by course_title asc';
+  const { rows } = await pool.query(query, params);
+  return rows.map(r => r.course_title);
+}
 const { Pool } = require('pg');
 
 // Singleton Pool forcing relaxed TLS (Supabase Session Pooler compatible)
@@ -200,5 +212,6 @@ module.exports = {
   // slides
   insertSlide,
   listSlidesByClassGroupId,
-  getSlideById
+  getSlideById,
+  listCourses
 };
