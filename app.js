@@ -489,6 +489,117 @@ app.get('/api/courses/mine', async (req, res) => {
   }
 });
 
+// Add course title for current rep/teacher/admin (for this classGroupId)
+app.post('/api/courses/manage', async (req, res) => {
+  try {
+    const u = req.session?.user;
+    if (!u) return res.status(401).json({ ok: false, message: 'Unauthorized' });
+    const allowed = new Set(['rep', 'admin', 'teacher']);
+    if (!allowed.has(u.role)) return res.status(403).json({ ok: false, message: 'Forbidden' });
+
+    const title = (req.body?.title || '').toString().trim();
+    if (!title) return res.status(400).json({ ok: false, message: 'Title is required' });
+
+    if (!db.addCourseTitleForClassGroupId) {
+      return res.status(500).json({ ok: false, message: 'Course title storage not available' });
+    }
+    await db.addCourseTitleForClassGroupId(u.classGroupId, title);
+    return res.json({ ok: true, message: 'Added', title });
+  } catch (e) {
+    console.error('Add course title error:', e);
+    return res.status(500).json({ ok: false, message: 'Server error' });
+  }
+});
+
+// Upload slide (rep/admin/teacher) to Supabase Storage and save metadata
+app.post('/api/upload', async (req, res) => {
+  try {
+    const u = req.session?.user;
+    if (!u) return res.status(401).json({ ok: false, message: 'Unauthorized' });
+
+    if (!req.files || !req.files.file) {
+      return res.status(400).json({ ok: false, message: 'No file uploaded' });
+    }
+    const file = req.files.file;
+    const maxMb = Number(process.env.MAX_UPLOAD_MB || 25);
+    if (file.size > maxMb * 1024 * 1024) {
+      return res.status(413).json({ ok: false, message: `File too large. Max ${maxMb}MB` });
+    }
+    if (!/\.(pdf|ppt|pptx)$/i.test(file.name)) {
+      return res.status(400).json({ ok: false, message: 'Only PDF, PPT, or PPTX files are allowed.' });
+    }
+
+    const slideTitle = (req.body?.slideTitle || '').toString().trim();
+    const courseTitle = (req.body?.courseTitle || '').toString().trim();
+    if (!slideTitle) return res.status(400).json({ ok: false, message: 'Slide Title is required.' });
+    if (!courseTitle) return res.status(400).json({ ok: false, message: 'Course Title is required.' });
+
+    if (!supabase) {
+      return res.status(500).json({ ok: false, message: 'Storage not configured' });
+    }
+
+    const { v4: uuidv4 } = require('uuid');
+    const id = uuidv4();
+    const safeName = (function safeFileName(base, id) {
+      const p = require('path');
+      const ext = p.extname(base);
+      const nm = p.basename(base, ext).replace(/[^a-zA-Z0-9._-]/g, '_');
+      return `${id}-${nm}${ext}`;
+    })(file.name, id);
+
+    // Build object path: institution/program/cohort/classGroup/courseTitle/filename
+    const prefix = [
+      u.institutionId || 'upsa',
+      u.programId || 'general',
+      u.cohortId || 'cohort',
+      u.classGroupId || 'class',
+      encodeURIComponent(courseTitle)
+    ].join('/');
+    const objectPath = `${prefix}/${safeName}`;
+
+    // Upload to Supabase Storage
+    const { error: upErr } = await supabase
+      .storage
+      .from(SUPABASE_BUCKET)
+      .upload(objectPath, file.data, {
+        contentType: file.mimetype,
+        upsert: false
+      });
+
+    if (upErr) {
+      console.error('Supabase upload error:', upErr);
+      return res.status(500).json({ ok: false, message: 'Upload failed (storage)' });
+    }
+
+    // Save metadata in Postgres
+    await db.insertSlide({
+      id,
+      classGroupId: u.classGroupId,
+      courseTitle,
+      slideTitle,
+      objectPath,
+      originalName: file.name,
+      contentType: file.mimetype,
+      sizeBytes: file.size,
+      uploaderId: u.id,
+      institutionId: u.institutionId,
+      programId: u.programId,
+      cohortId: u.cohortId
+    });
+
+    // Remember course title for future
+    if (db.addCourseTitleForClassGroupId) {
+      try { await db.addCourseTitleForClassGroupId(u.classGroupId, courseTitle); } catch (_) {}
+    }
+
+    return res.json({ ok: true, message: 'Uploaded', id, filename: objectPath });
+  } catch (e) {
+    console.error('Upload error:', e);
+    const status = e?.code === 'LIMIT_FILE_SIZE' ? 413 : 500;
+    return res.status(status).json({ ok: false, message: status === 413 ? 'File too large' : 'Upload failed' });
+  }
+});
+
 // Courses endpoints
 // List distinct course names across all slides (legacy/global)
 app.get('/api/courses', async (req, res) => {
