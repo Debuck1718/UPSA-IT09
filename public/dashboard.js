@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
   console.log('dashboard.js loaded');
+
   async function ensureStudentSession() {
     const data = await window.api.fetch('/api/session');
     if (!data || !data.user) {
@@ -118,4 +119,4 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   init();
-})();
+});
