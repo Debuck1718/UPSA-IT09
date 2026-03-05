@@ -383,6 +383,11 @@ app.post("/api/login", async (req, res) => {
     const firstName =
       fullName.trim().split(/\s+/)[0] || user.student_id || "User";
 
+    // Always normalize classGroupId for session
+    let classGroupId = user.class_group_id;
+    if (db.makeClassGroupId && user.cohort_id && user.class_group) {
+      classGroupId = db.makeClassGroupId(user.cohort_id, user.class_group);
+    }
     const sessionUser = {
       id: user.id,
       role: user.role,
@@ -392,7 +397,7 @@ app.post("/api/login", async (req, res) => {
       programId: user.program_id,
       cohortId: user.cohort_id,
       classGroup: user.class_group,
-      classGroupId: user.class_group_id,
+      classGroupId,
       fullName,
       firstName,
     };
@@ -494,6 +499,11 @@ app.post("/api/signup", async (req, res) => {
     const firstName =
       fullName.trim().split(/\s+/)[0] || user.student_id || studentId || "User";
 
+    // Always normalize classGroupId for session
+    let classGroupId = user.class_group_id;
+    if (db.makeClassGroupId && user.cohort_id && user.class_group) {
+      classGroupId = db.makeClassGroupId(user.cohort_id, user.class_group);
+    }
     const sessionUser = {
       id: user.id,
       role: user.role,
@@ -503,7 +513,7 @@ app.post("/api/signup", async (req, res) => {
       programId: user.program_id,
       cohortId: user.cohort_id,
       classGroup: user.class_group || db.normalizeClassGroup(classGroup),
-      classGroupId: user.class_group_id,
+      classGroupId,
       fullName,
       firstName,
     };
