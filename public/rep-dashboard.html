@@ -129,21 +129,12 @@
         <div class="col-12 col-lg-7">
           <div class="card shadow-sm mb-3">
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
-              <span class="fw-semibold">Courses</span>
+              <span class="fw-semibold">Courses & Slides</span>
               <button id="repDashRefreshCourses" class="btn btn-sm btn-outline-primary">Refresh</button>
             </div>
             <div class="card-body p-0">
-              <ul id="repDashCoursesList" class="list-group list-group-flush"></ul>
-            </div>
-          </div>
-
-          <div class="card shadow-sm">
-            <div class="card-header bg-white">
-              <span id="repDashCourseTitle" class="fw-semibold">Select a course to see slides</span>
-            </div>
-            <div class="card-body">
-              <div id="repDashSlidesEmpty" class="text-muted">No course selected.</div>
-              <ul id="repDashSlidesList" class="list-group d-none"></ul>
+              <div id="repDashCoursesSlides" class="accordion"></div>
+              <div id="repDashCoursesEmpty" class="text-muted text-center py-4 d-none">No courses or slides found for your class group.</div>
             </div>
           </div>
         </div>

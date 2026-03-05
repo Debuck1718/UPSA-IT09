@@ -1,3 +1,4 @@
+  let selectedCourse = null;
   async function loadCourses() {
     const coursesList = document.getElementById('coursesList');
     const coursesEmpty = document.getElementById('coursesEmpty');
@@ -12,13 +13,26 @@
       }
       courses.forEach(title => {
         const li = document.createElement('li');
-        li.className = 'list-group-item d-flex align-items-center';
+        li.className = 'list-group-item list-group-item-action d-flex align-items-center';
         li.innerHTML = `<i class="bi bi-bookmark-star me-2" style="color:#06b6d4;font-size:1.2rem;"></i> <span class="fw-semibold">${title}</span>`;
+        li.style.cursor = 'pointer';
+        li.addEventListener('click', () => {
+          selectedCourse = title;
+          setSlidesCourseTitle(title);
+          loadSlides();
+        });
         coursesList.appendChild(li);
       });
     } catch {
       coursesEmpty.textContent = 'Failed to load courses.';
       coursesEmpty.classList.remove('d-none');
+    }
+  }
+
+  function setSlidesCourseTitle(title) {
+    const el = document.getElementById('slidesCourseTitle');
+    if (el) {
+      el.innerHTML = `<i class="bi bi-folder2-open me-2" style="color:#6366f1;font-size:1.5rem;"></i> ${title ? title : 'Select a course to view slides'}`;
     }
   }
 document.addEventListener('DOMContentLoaded', function() {
@@ -48,8 +62,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const slidesEmpty = document.getElementById('slidesEmpty');
     slidesList.innerHTML = '';
     slidesEmpty.classList.add('d-none');
+    if (!selectedCourse) {
+      slidesEmpty.textContent = 'Select a course to view slides.';
+      slidesEmpty.classList.remove('d-none');
+      return;
+    }
     try {
-      const data = await window.api.fetch('/api/slides');
+      const data = await window.api.fetch(`/api/slides?courseTitle=${encodeURIComponent(selectedCourse)}`);
       const slides = Array.isArray(data.slides) ? data.slides : [];
       if (!slides.length) {
         slidesEmpty.classList.remove('d-none');
@@ -109,6 +128,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const user = await fetchSession();
     setUserInfo(user);
     await loadCourses();
-    await loadSlides();
+    setSlidesCourseTitle(null);
+    selectedCourse = null;
+    loadSlides();
   })();
 });

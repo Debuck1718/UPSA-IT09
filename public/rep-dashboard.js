@@ -1,10 +1,8 @@
 (function () {
   const form = document.getElementById('repDashUploadForm');
   const alertBox = document.getElementById('alert');
-  const coursesList = document.getElementById('repDashCoursesList');
-  const slidesList = document.getElementById('repDashSlidesList');
-  const slidesEmpty = document.getElementById('repDashSlidesEmpty');
-  const courseTitle = document.getElementById('repDashCourseTitle');
+  const coursesSlides = document.getElementById('repDashCoursesSlides');
+  const coursesEmpty = document.getElementById('repDashCoursesEmpty');
 
   const statCourses = document.getElementById('statCourses');
   const statSlides = document.getElementById('statSlides');
@@ -163,27 +161,93 @@
   }
 
   async function loadCourses() {
-    const data = await window.api.fetch('/api/courses');
-    coursesList.innerHTML = '';
-    (data.courses || []).forEach(c => {
-      const li = document.createElement('li');
-      li.className = 'list-group-item list-group-item-action';
-      li.role = 'button';
-      li.textContent = c;
-      li.addEventListener('click', () => selectCourse(c));
-      coursesList.appendChild(li);
-    });
-    // stats
-    statCourses.textContent = String((data.courses || []).length);
-    const allSlides = await window.api.fetch('/api/slides');
-    statSlides.textContent = String((allSlides.slides || []).length);
-    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-    const recent = (allSlides.slides || []).filter(s => {
-      const ts = s.createdAt || s.created_at;
-      const t = ts ? Date.parse(ts) : NaN;
-      return !Number.isNaN(t) && t >= sevenDaysAgo;
-    }).length;
-    statRecent.textContent = String(recent);
+    coursesSlides.innerHTML = '';
+    coursesEmpty.classList.add('d-none');
+    try {
+      const data = await window.api.fetch('/api/courses');
+      const courses = Array.isArray(data.courses) ? data.courses : [];
+      if (!courses.length) {
+        coursesEmpty.classList.remove('d-none');
+        return;
+      }
+      // For each course, fetch slides and render as accordion
+      for (let i = 0; i < courses.length; i++) {
+        const course = courses[i];
+        const slidesResp = await window.api.fetch(`/api/slides?courseTitle=${encodeURIComponent(course)}`);
+        const slides = Array.isArray(slidesResp.slides) ? slidesResp.slides : [];
+        const card = document.createElement('div');
+        card.className = 'accordion-item';
+        card.innerHTML = `
+          <h2 class="accordion-header" id="heading${i}">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${i}" aria-expanded="false" aria-controls="collapse${i}">
+              <span class="fw-semibold">${course}</span> <span class="badge bg-info ms-2">${slides.length}</span>
+            </button>
+          </h2>
+          <div id="collapse${i}" class="accordion-collapse collapse" aria-labelledby="heading${i}" data-bs-parent="#repDashCoursesSlides">
+            <div class="accordion-body p-0">
+              <ul class="list-group list-group-flush mb-0">
+                ${slides.length === 0 ? `<li class='list-group-item text-muted'>No slides for this course.</li>` : slides.map(s => `
+                  <li class='list-group-item d-flex justify-content-between align-items-center'>
+                    <div>
+                      <span class='fw-semibold'>${s.originalName || s.original_name || s.slideTitle || s.slide_title || s.filename}</span>
+                      <small class='text-muted ms-2'>${new Date(s.createdAt || s.created_at || Date.now()).toLocaleString()}</small>
+                    </div>
+                    <div class='btn-group'>
+                      <button class='btn btn-sm btn-outline-primary' data-action='download' data-id='${s.id}'>Download</button>
+                      <button class='btn btn-sm btn-outline-secondary' data-action='view' data-id='${s.id}'>View</button>
+                    </div>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+          </div>
+        `;
+        coursesSlides.appendChild(card);
+      }
+      // stats
+      statCourses.textContent = String(courses.length);
+      let allSlidesCount = 0;
+      let recent = 0;
+      const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+      for (let i = 0; i < courses.length; i++) {
+        const slidesResp = await window.api.fetch(`/api/slides?courseTitle=${encodeURIComponent(courses[i])}`);
+        const slides = Array.isArray(slidesResp.slides) ? slidesResp.slides : [];
+        allSlidesCount += slides.length;
+        recent += slides.filter(s => {
+          const ts = s.createdAt || s.created_at;
+          const t = ts ? Date.parse(ts) : NaN;
+          return !Number.isNaN(t) && t >= sevenDaysAgo;
+        }).length;
+      }
+      statSlides.textContent = String(allSlidesCount);
+      statRecent.textContent = String(recent);
+      // Attach download/view handlers
+      coursesSlides.querySelectorAll('button[data-action]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = btn.getAttribute('data-id');
+          const action = btn.getAttribute('data-action');
+          try {
+            const resp = await window.api.fetch(`/api/slides/${encodeURIComponent(id)}/url`);
+            const url = resp.url;
+            if (action === 'view') {
+              window.open(url, '_blank');
+            } else {
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = '';
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+            }
+          } catch (e) {
+            showAlert('danger', 'Could not generate link. Please try again.');
+          }
+        });
+      });
+    } catch (e) {
+      coursesEmpty.textContent = 'Failed to load courses.';
+      coursesEmpty.classList.remove('d-none');
+    }
   }
 
   async function selectCourse(course) {
@@ -258,6 +322,6 @@
 
   // init
   loadCourses().catch(err => {
-    coursesList.innerHTML = '<li class="list-group-item text-danger">Failed to load courses.</li>';
+    coursesSlides.innerHTML = '<div class="text-danger p-3">Failed to load courses.</div>';
   });
 })();
