@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Student Dashboard - Course Slides</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/public/style.css">
+    <link rel="stylesheet" href="/public/dashboard-ultra.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+      .dashboard-header {
+        background: linear-gradient(90deg, #6366f1 0%, #06b6d4 100%);
+        color: #fff;
+        border-radius: 1.2rem;
+        margin-bottom: 2rem;
+        padding: 2rem 1.5rem 1.5rem 1.5rem;
+      }
+      .dashboard-header .avatar {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #fff;
+        margin-right: 1.5rem;
+      }
+      @media (max-width: 600px) {
+        .dashboard-header { padding: 1rem; }
+        .dashboard-header .avatar { width: 48px; height: 48px; margin-right: 1rem; }
+      }
+    </style>
+  </head>
+  <body class="bg-light">
+    <div class="container py-3">
+      <div class="dashboard-header d-flex align-items-center gap-3 flex-wrap">
+        <img id="avatar" class="avatar" alt="avatar" src="/public/images/avatar.png">
+        <div>
+          <h2 class="h5 mb-1">Welcome, <span id="user-firstname">Student</span> 👋</h2>
+          <div class="text-white-50 small">Your personalized course slides dashboard</div>
+        </div>
+        <div class="ms-auto d-flex gap-2 align-items-center">
+          <span id="user-role" class="badge bg-light text-dark text-uppercase"></span>
+          <span class="badge bg-info text-white" id="user-course"></span>
+          <button id="logoutBtn" class="btn btn-outline-light btn-sm ms-2">Logout</button>
+        </div>
+      </div>
+      <div id="courses-section" class="mb-4">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white fw-semibold d-flex align-items-center justify-content-between">
+            <span><i class="bi bi-journal-bookmark me-2" style="color:#06b6d4;font-size:1.5rem;"></i> My Courses</span>
+            <button id="refreshCourses" class="btn btn-outline-primary btn-sm">Refresh</button>
+          </div>
+          <div class="card-body p-0">
+            <ul id="coursesList" class="list-group list-group-flush course-list"></ul>
+            <div id="coursesEmpty" class="text-muted text-center py-4 d-none">No courses found for your class group.</div>
+          </div>
+        </div>
+      </div>
+      <div id="slides-section" class="mb-4">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white fw-semibold d-flex align-items-center justify-content-between">
+            <span><i class="bi bi-folder2-open me-2" style="color:#6366f1;font-size:1.5rem;"></i> My Course Slides</span>
+            <button id="refreshSlides" class="btn btn-outline-primary btn-sm">Refresh</button>
+          </div>
+          <div class="card-body p-0">
+            <ul id="slidesList" class="list-group list-group-flush slide-list"></ul>
+            <div id="slidesEmpty" class="text-muted text-center py-4 d-none">No slides found for your class group.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="/public/api.js"></script>
+    <script src="/public/dashboard-modern.js"></script>
+  </body>
+</html>

@@ -195,7 +195,7 @@ app.get("/dashboard", (req, res) => {
     return res.redirect("/rep-dashboard");
   }
   // student (default)
-  return res.sendFile(path.join(__dirname, "public", "dashboard.html"));
+  return res.sendFile(path.join(__dirname, "public", "dashboard-modern.html"));
 });
 
 // Rep dashboard route
@@ -406,6 +406,7 @@ app.post("/api/login", async (req, res) => {
     let redirect = "/dashboard";
     if (sessionUser.role === "admin") redirect = "/public/admin.html";
     else if (sessionUser.role === "rep") redirect = "/rep-dashboard";
+    else if (sessionUser.role === "student") redirect = "/dashboard";
 
     req.session.user = sessionUser;
 
