@@ -72,7 +72,18 @@
 
   addTitleBtn?.addEventListener('click', () => {
     newTitleInput.classList.toggle('d-none');
-    if (!newTitleInput.classList.contains('d-none')) newTitleInput.focus();
+    const addingNew = !newTitleInput.classList.contains('d-none');
+    if (addingNew) {
+      // When adding a new title, clear and disable the select to avoid native validation prompts
+      if (selTitle) {
+        selTitle.value = '';
+        selTitle.setAttribute('disabled', 'disabled');
+      }
+      newTitleInput.focus();
+    } else {
+      // When hiding new-title input, re-enable the select
+      selTitle?.removeAttribute('disabled');
+    }
   });
 
   async function uploadSlide(fd) {
