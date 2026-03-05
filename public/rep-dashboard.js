@@ -183,20 +183,67 @@
 
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    // Determine course title from select or "Add new" input
+    const selectEl = document.getElementById('repDashCourseTitle');
+    const newTitleEl = document.getElementById('repDashNewTitle');
+    const slideTitleEl = document.getElementById('repDashSlideTitle');
+
+    const selectedTitle = (selectEl && selectEl.value) ? String(selectEl.value).trim() : '';
+    const newTitle = (newTitleEl && !newTitleEl.classList.contains('d-none') && newTitleEl.value) ? String(newTitleEl.value).trim() : '';
+    const finalCourseTitle = newTitle || selectedTitle;
+
+    if (!finalCourseTitle) {
+      showAlert('danger', 'Please select a Course Title or click "Add new" and enter one.');
+      return;
+    }
+
+    if (!slideTitleEl || !slideTitleEl.value.trim()) {
+      showAlert('danger', 'Please provide a Slide Title.');
+      return;
+    }
+
     const fd = new FormData(form);
+    // Ensure courseTitle and slideTitle are explicitly set for the API
+    fd.set('courseTitle', finalCourseTitle);
+    fd.set('slideTitle', slideTitleEl.value.trim());
+
     try {
+      // If using a brand-new title, optionally add it so it appears in the list immediately
+      if (newTitle) {
+        try {
+          await window.api.fetch('/api/courses/manage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: newTitle })
+          });
+        } catch (_) {
+          // It's okay if this fails; the backend will remember titles from the upload too
+        }
+      }
+
       await uploadSlide(fd);
       showAlert('success', 'Slide uploaded successfully.');
       form.reset();
+
+      // Refresh available titles and auto-select the one just used
       await loadCourses();
-      const c = fd.get('course');
-      if (c) selectCourse(String(c));
+      if (finalCourseTitle) {
+        selectCourse(finalCourseTitle);
+      }
     } catch (err) {
       showAlert('danger', err.message || 'Upload failed.');
     }
   });
 
   document.getElementById('repDashRefreshCourses')?.addEventListener('click', loadCourses);
+
+  // Logout button for rep dashboard
+  const repLogoutBtn = document.getElementById('repLogoutBtn');
+  repLogoutBtn?.addEventListener('click', async () => {
+    try { await window.api.fetch('/api/logout', { method: 'POST' }); } catch {}
+    window.location.assign('/public/index.html');
+  });
 
   // init
   loadCourses().catch(err => {
