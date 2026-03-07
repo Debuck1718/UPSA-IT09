@@ -35,6 +35,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const editClassGroup = document.getElementById('editClassGroup');
   const editUserRoleResult = document.getElementById('editUserRoleResult');
   const editUserCohortResult = document.getElementById('editUserCohortResult');
+  // For legacy compatibility in edit button handler
+  const editUserResult = editUserRoleResult;
   const saveRoleBtn = document.getElementById('saveRoleBtn');
   const saveCohortBtn = document.getElementById('saveCohortBtn');
 
