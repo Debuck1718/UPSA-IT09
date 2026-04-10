@@ -9,6 +9,7 @@
   padding: 2rem 1rem;
   z-index: 1000;
   display: flex;
+  overflow-y: auto;
   flex-direction: column;
   transition: all 0.3s ease;
 }

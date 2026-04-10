@@ -266,14 +266,21 @@
     ?.addEventListener("click", loadCourses);
 
   const repLogoutBtn = document.getElementById("repLogoutBtn");
-  repLogoutBtn?.addEventListener("click", async () => {
-    if (confirm("Sign out of the Rep Dashboard?")) {
-      try {
-        await window.api.fetch("/api/logout", { method: "POST" });
-      } catch {}
-      window.location.assign("/public/index.html");
-    }
-  });
+  if (repLogoutBtn) {
+    repLogoutBtn.addEventListener("click", async (e) => {
+      e.preventDefault(); // Stop default button behavior
+      if (confirm("Sign out of the Rep Dashboard?")) {
+        try {
+          // Note: Changed to /api/auth/logout if that's your backend route
+          await window.api.fetch("/api/logout", { method: "POST" });
+        } catch (err) {
+          console.error("Logout error", err);
+        }
+        // Force redirect to login page
+        window.location.href = "/public/index.html";
+      }
+    });
+  }
 
   // Initial Boot
   loadMyTitles();
