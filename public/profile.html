@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile • Campus Hub</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body { background: #f8f9fa; }
+        .profile-header { background: linear-gradient(135deg, #0d6efd 0%, #003d99 100%); color: white; border-radius: 0 0 25px 25px; }
+        .profile-img { width: 120px; height: 120px; border-radius: 50%; border: 5px solid white; background: #fff; object-fit: cover; }
+        .badge-verified { background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 20px; padding: 5px 15px; font-size: 0.8rem; }
+        .stat-card { border: none; border-radius: 15px; text-align: center; padding: 20px; }
+        .activity-card { border: none; border-radius: 12px; margin-bottom: 10px; background: white; }
+    </style>
+</head>
+<body>
+
+    <div class="profile-header pb-5 pt-4">
+        <div class="container text-center">
+            <div class="mb-3 position-relative d-inline-block">
+                <div class="profile-img d-flex align-items-center justify-content-center mx-auto">
+                    <i class="bi bi-person-fill text-primary display-4" id="profilePlaceholder"></i>
+                </div>
+            </div>
+            <h3 class="fw-bold mb-1" id="userName">Student Name</h3>
+            <p class="mb-3 opacity-75" id="userProgram">Program Name • Year 1</p>
+            
+            <div class="d-flex justify-content-center gap-2" id="badgeContainer">
+                </div>
+        </div>
+    </div>
+
+    <div class="container mt-n4">
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="card shadow-sm border-0 mb-4 rounded-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold mb-0">About Me</h6>
+                            <button class="btn btn-sm btn-light rounded-circle" data-bs-toggle="modal" data-bs-target="#editBioModal">
+                                <i class="bi bi-pencil-fill text-primary"></i>
+                            </button>
+                        </div>
+                        <p class="text-muted small" id="userBio">No bio added yet. Tell the campus community about yourself!</p>
+                        <hr>
+                        <div class="small">
+                            <div class="mb-2"><i class="bi bi-building me-2"></i> <span id="userInstitution">UPSA</span></div>
+                            <div class="mb-2"><i class="bi bi-envelope me-2"></i> <span id="userEmail">email@example.com</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="card stat-card shadow-sm bg-white">
+                            <h4 class="fw-bold text-primary mb-0" id="postCount">0</h4>
+                            <small class="text-muted">Posts</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card stat-card shadow-sm bg-white">
+                            <h4 class="fw-bold text-success mb-0" id="resourceCount">0</h4>
+                            <small class="text-muted">Uploads</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8">
+                <ul class="nav nav-pills mb-4 bg-white p-2 rounded-3 shadow-sm d-inline-flex">
+                    <li class="nav-item">
+                        <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#myPosts">My Discussions</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#myResources">My Resources</button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="myPosts">
+                        <div id="postsList">
+                            <div class="text-center py-5 opacity-50"><i class="bi bi-chat-dots fs-1"></i><p>No posts yet.</p></div>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="myResources">
+                        <div id="resourcesList">
+                            <div class="text-center py-5 opacity-50"><i class="bi bi-file-earmark-text fs-1"></i><p>No resources shared.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editBioModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold">Update Bio</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <textarea id="bioInput" class="form-control" rows="4" maxlength="250" placeholder="I'm interested in cybersecurity and AI..."></textarea>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-primary px-4" id="saveBioBtn">Save Bio</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./api.js"></script>
+    <script src="./profile.js"></script>
+</body>
+</html>

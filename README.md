@@ -1,82 +1,93 @@
-# UPSA-IT09 Course Slides Web App (Node.js)
+🎓 Academic Resource & Course Slide Hub (Production)
+🚀 Overview
+A scalable, multi-institution digital hub designed to bridge the gap between classroom slides and universal academic resources. The platform supports private class-level access for course slides while providing a global "Resource Center" for program-specific materials, community discussions, and targeted announcements.
 
-## Features
-- User authentication (students, course reps)
-- Course reps can upload slides (PDF, PPT, PPTX)
-- Students can download slides for their course only
-- Modern, personalized dashboard (EJS + Bootstrap)
+🛠️ Tech Stack
+Backend: Node.js (Express)
 
-## Demo Users
-- student1 / studentpass (IT09)
-- student2 / studentpass (IT10)
-- (removed teachers) 
-- rep1 / reppass (IT09)
-- rep2 / reppass (IT10)
+Database: Supabase (PostgreSQL)
 
-## Setup Instructions
+Storage: Supabase Storage (Buckets for PDFs/PPTs)
 
-1. **Install dependencies**
+Frontend: EJS, Bootstrap 5, Custom CSS
 
-   Open a terminal in this folder and run:
-   
-   ```bash
-   npm install
-   ```
+Hosting: Render
 
-2. **Run the backend server**
+✨ Key Features
+Multi-Tier Permissions:
 
-   Start the Node.js backend which serves the API and the dashboard pages:
+Class Reps: Manage private course slides for their specific class groups.
 
-   ```bash
-   npm start
-   ```
+Content Creators: Contribute approved videos, tools, and past papers to the Global Hub.
 
-3. **Open in browser (same-origin recommended)**
+Student Leaders: Post targeted announcements (School or Program specific).
 
-   - Recommended: open the app served by the backend at http://localhost:3000 so the frontend and API share the same origin. This avoids CORS/403 errors during login.
-   - If you open the static files via a different origin (e.g., Live Server on 127.0.0.1:5500 or file://), login requests will be cross-origin and may be blocked unless CORS is enabled on the backend.
+Students: Access private slides and explore shared resources.
 
-   Troubleshooting 403 on login:
-   - Symptom: 403 Forbidden on POST /api/login when opening from a different origin (e.g., Live Server or file://).
-   - Fix A (preferred): open the app via http://localhost:3000 so it is same-origin with the API.
-   - Fix B: enable CORS on the backend (add cors middleware and restart the server).
-   - Ensure your browser allows cookies for localhost and no extensions are blocking requests.
+Universal Resource Center: Curated videos (YouTube embedded), tools, and articles filtered by program (e.g., IT, Business).
 
-4. **Login**
-   Use one of the demo users above.
+Community Forum: Threaded, context-aware discussions linked to resources and classes.
 
-5. **Upload/Download**
+In-App Media: Direct YouTube playback via Iframe API to keep students on-platform.
 
-   - Teachers and reps can upload slides.
-   - Students can download slides for their course only.
+⚙️ Setup Instructions
+1. Environment Configuration
+Create a .env file in the root directory and add your Supabase credentials:
 
-## Notes
-- Uploaded files are stored in the `uploads` folder.
-- Users and slides are now persisted in an SQLite database (`data.db`) using `better-sqlite3`.
-- To add users modify the `db.js` seeding or add them via SQL. For production, use a secure secret key and hashed passwords (bcrypt).
+Code snippet
+PORT=3000
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_anon_key
+SESSION_SECRET=your_strong_random_secret
+NODE_ENV=production
+2. Install Dependencies
+Bash
+npm install
+3. Database Migration
+Run the SQL scripts provided in the documentation via the Supabase SQL Editor to set up the following tables:
 
-## Deploy to Render
+users_app (with boolean permission flags)
 
-Deploy this app as a Web Service on Render:
+resource_categories
 
-- Create a new Web Service on Render and connect this repository.
-- Build command: npm ci && npm rebuild better-sqlite3 --build-from-source
-- Start command: npm start (the app should listen on process.env.PORT provided by Render)
-- Environment:
-  - NODE_ENV=production
-  - Node version: 20.x (pin via "engines" in package.json or an .nvmrc). If you change Node, rebuild native modules.
-- Native modules (better-sqlite3):
-  - Render: the build command above compiles better-sqlite3 for the target environment.
-  - Local: use Node 20.x (nvm use 20) and run npm install. If you switch Node versions, run: npm rebuild better-sqlite3 --build-from-source
-- Persistent disk (recommended): add a Disk and mount it at /opt/render/project/src/uploads to persist uploaded slide files. You may also store data.db on a persistent Disk if you want the SQLite database to survive deploys.
-- After deploy, open: https://<your-service>.onrender.com/public/index.html
-Production/Security notes:
-- Set app.set('trust proxy', 1) on Render so secure cookies work behind the proxy.
-- Sessions: use a persistent SQLite-backed store (connect-sqlite3) on disk. Set environment variables SESSION_SECRET (strong random) and optionally COOKIE_NAME. Cookies should be httpOnly, sameSite=Lax, and secure in production.
-- Set cookies with secure: true when NODE_ENV=production and SameSite=Lax (or Strict if appropriate).
-- Use helmet to add standard security headers.
-- Validate and limit uploads (PDF/PPT/PPTX only) and cap size (e.g., 15MB).
-- Serve /public with caching for static assets but avoid caching HTML; serve /uploads read-only.
-- Prefer same-origin access; keep CORS disabled in production unless explicitly needed.
-Troubleshooting:
-- If login returns 403 when opened from a different origin, open the app from the same origin as the API (the Render URL), or enable CORS on the backend.
+resources
+
+announcements
+
+forum_posts
+
+4. Run the Server
+Bash
+npm start
+Access the app at http://localhost:3000.
+
+🌐 Deployment (Render)
+This application is optimized for Render Web Services.
+
+Build Command: npm install
+
+Start Command: npm start
+
+Environment Variables: Copy all values from your .env to the Render "Environment" tab.
+
+Health Check: Ensure the app is listening on 0.0.0.0 via process.env.PORT.
+
+🔒 Security & Production Notes
+Data Integrity: All resources uploaded by "Creators" enter a pending state for Admin approval.
+
+Session Management: Uses express-session with a persistent store. Ensure trust proxy is enabled on Render for secure cookie handling.
+
+Privacy: Course slides are strictly filtered by class_group_id and institution_id to ensure school-level privacy.
+
+Security Headers: Powered by helmet to mitigate common web vulnerabilities.
+
+Same-Origin Policy: The frontend and API share the same origin to avoid CORS issues and enhance security.
+
+📁 File Management
+Slides: Stored in Supabase Storage buckets.
+
+External Content: YouTube videos are embedded via ID to reduce server bandwidth.
+
+Articles: Content is stored directly in the PostgreSQL database for fast indexing and search.
+
+Developed for UPSA and the wider academic community.

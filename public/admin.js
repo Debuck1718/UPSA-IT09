@@ -1,251 +1,195 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const alertBox = document.getElementById('alert');
-
-  function showAlert(msg, type = 'danger') {
-    if (!alertBox) return;
-    alertBox.className = `alert alert-${type}`;
-    alertBox.style.display = 'block';
-    alertBox.textContent = msg;
-  }
-
-  async function requireAdminSession() {
-    try {
-      const data = await window.api.fetch('/api/session');
-      if (!data || !data.user || data.user.role !== 'admin') {
-        document.body.innerHTML = '<div class="container mt-5 alert alert-danger">Access denied</div>';
-        throw new Error('Not admin');
-      }
-      return data.user;
-    } catch (e) {
-      window.location.href = '/public/index.html';
-      throw e;
-    }
-  }
-
-  // --- Users search/edit feature ---
   const usersBody = document.getElementById('usersBody');
   const userSearch = document.getElementById('userSearch');
-  const editModalEl = document.getElementById('editUserModal');
-  const editModal = (editModalEl && window.bootstrap) ? new bootstrap.Modal(editModalEl) : null;
-
-  const editStudentId = document.getElementById('editStudentId');
-  const editRole = document.getElementById('editRole');
-  const editProgram = document.getElementById('editProgram');
-  const editYear = document.getElementById('editYear');
-  const editClassGroup = document.getElementById('editClassGroup');
-  const editUserRoleResult = document.getElementById('editUserRoleResult');
-  const editUserCohortResult = document.getElementById('editUserCohortResult');
-  // For legacy compatibility in edit button handler
-  const editUserResult = editUserRoleResult;
-  const saveRoleBtn = document.getElementById('saveRoleBtn');
-  const saveCohortBtn = document.getElementById('saveCohortBtn');
-
+  const editModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+  
   let allUsers = [];
 
-  async function fetchUsers() {
-    try {
-      const res = await window.api.fetch('/api/admin/users', { method: 'GET' });
-      return Array.isArray(res) ? res : (Array.isArray(res.users) ? res.users : []);
-    } catch (e) {
-      console.warn('Failed to fetch users', e);
-      return [];
-    }
+  // --- Initial Load ---
+  async function init() {
+    const session = await checkAdmin();
+    if (!session) return;
+    document.getElementById('adminHeaderName').textContent = session.fullName;
+    await Promise.all([loadUsers(), loadCategories(), loadAnnouncements(), loadForumModeration()]);
   }
 
-  function renderUsersTable(items) {
+  async function checkAdmin() {
+    const data = await window.api.fetch('/api/session');
+    if (!data?.user || data.user.role !== 'admin') {
+      window.location.assign('/public/index.html');
+      return null;
+    }
+    return data.user;
+  }
+
+  // --- User Management (Permissions & Booleans) ---
+  async function loadUsers() {
+    const res = await window.api.fetch('/api/admin/users');
+    allUsers = Array.isArray(res) ? res : (res.users || []);
+    renderUsers(allUsers);
+  }
+
+  function renderUsers(items) {
     if (!usersBody) return;
-    usersBody.innerHTML = '';
-    items.forEach(u => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${u.student_id || u.studentId || u.id || ''}</td>
-        <td>${u.full_name || u.name || ''}</td>
-        <td class="d-none d-md-table-cell">${u.email || ''}</td>
-        <td class="d-none d-md-table-cell">${u.program || ''}</td>
-        <td class="d-none d-md-table-cell">${u.class_group || u.classGroup || ''}</td>
-        <td>${u.role || ''}</td>
-        <td class="text-end">
-          <button class="btn btn-sm btn-outline-secondary" data-action="edit" data-id="${u.student_id || u.studentId}">Edit</button>
+    usersBody.innerHTML = items.map(u => `
+      <tr>
+        <td>
+          <div class="fw-bold">${u.fullName || u.full_name}</div>
+          <div class="text-muted small">${u.studentId || u.student_id}</div>
         </td>
-      `;
-      usersBody.appendChild(tr);
-    });
-
-    usersBody.querySelectorAll('button[data-action="edit"]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const sid = btn.getAttribute('data-id');
-        const u = allUsers.find(x => (x.student_id || x.studentId) === sid);
-        if (!u || !editModal) return;
-        editStudentId.value = u.student_id || u.studentId || '';
-        editRole.value = u.role || '';
-        editProgram.value = u.program || '';
-        editYear.value = '';
-        editClassGroup.value = u.class_group || u.classGroup || '';
-        if (editUserResult) {
-          editUserResult.textContent = '';
-          editUserResult.className = 'small';
-        }
-        editModal.show();
-      });
-    });
+        <td>
+          <div class="small">${u.program || 'N/A'}</div>
+          <span class="badge bg-light text-dark border" style="font-size:10px">${u.classGroup || 'No Group'}</span>
+        </td>
+        <td>
+          <div class="d-flex gap-1 flex-wrap">
+            ${u.is_rep ? '<span class="badge bg-success">REP</span>' : ''}
+            ${u.is_leader ? '<span class="badge bg-info">LEADER</span>' : ''}
+            ${u.is_creator ? '<span class="badge bg-warning text-dark">CREATOR</span>' : ''}
+            ${u.role === 'admin' ? '<span class="badge bg-danger">ADMIN</span>' : ''}
+          </div>
+        </td>
+        <td class="text-end px-3">
+          <button class="btn btn-sm btn-outline-primary" onclick="openUserModal('${u.studentId || u.student_id}')">Manage</button>
+        </td>
+      </tr>
+    `).join('');
   }
 
-  function filterUsers(q) {
-    const term = (q || '').toString().toLowerCase();
-    if (!term) return allUsers;
-    return allUsers.filter(u => {
-      const fields = [
-        u.student_id || u.studentId || '',
-        u.full_name || u.name || '',
-        u.email || '',
-        u.program || '',
-        u.class_group || u.classGroup || ''
-      ].map(x => (x || '').toString().toLowerCase());
-      return fields.some(f => f.includes(term));
-    });
-  }
+  window.openUserModal = (sid) => {
+    const u = allUsers.find(x => (x.studentId || x.student_id) == sid);
+    if (!u) return;
+    document.getElementById('editStudentId').value = sid;
+    document.getElementById('modalUserName').textContent = u.fullName;
+    document.getElementById('editBio').value = u.bio || '';
+    document.getElementById('checkIsRep').checked = !!u.is_rep;
+    document.getElementById('checkIsLeader').checked = !!u.is_leader;
+    document.getElementById('checkIsCreator').checked = !!u.is_creator;
+    document.getElementById('checkIsAdmin').checked = u.role === 'admin';
+    editModal.show();
+  };
 
-  userSearch?.addEventListener('input', () => {
-    const filtered = filterUsers(userSearch.value);
-    renderUsersTable(filtered);
-  });
-
-  // Save role only
-  saveRoleBtn?.addEventListener('click', async () => {
-    if (!editStudentId?.value) return;
-    const sid = editStudentId.value;
-    if (editUserRoleResult) {
-      editUserRoleResult.textContent = '';
-      editUserRoleResult.className = 'small';
-    }
+  document.getElementById('editUserPermissionsForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const sid = document.getElementById('editStudentId').value;
+    const payload = {
+      bio: document.getElementById('editBio').value,
+      is_rep: document.getElementById('checkIsRep').checked,
+      is_leader: document.getElementById('checkIsLeader').checked,
+      is_creator: document.getElementById('checkIsCreator').checked,
+      role: document.getElementById('checkIsAdmin').checked ? 'admin' : 'student'
+    };
     try {
-      const role = (editRole?.value || '').trim();
-      if (!role) {
-        editUserRoleResult.textContent = 'Choose a role to save.';
-        editUserRoleResult.className = 'small text-danger';
-        return;
-      }
-      await window.api.fetch(`/api/admin/users/${encodeURIComponent(sid)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role })
-      });
-      editUserRoleResult.textContent = 'Role saved.';
-      editUserRoleResult.className = 'small text-success';
-      allUsers = await fetchUsers();
-      renderUsersTable(filterUsers(userSearch?.value || ''));
-    } catch (e) {
-      editUserRoleResult.textContent = e.message || 'Role update failed.';
-      editUserRoleResult.className = 'small text-danger';
-    }
-  });
-
-  // Save cohort/class only
-  saveCohortBtn?.addEventListener('click', async () => {
-    if (!editStudentId?.value) return;
-    const sid = editStudentId.value;
-    if (editUserCohortResult) {
-      editUserCohortResult.textContent = '';
-      editUserCohortResult.className = 'small';
-    }
-    try {
-      const payload = {};
-      if (editProgram?.value) payload.program = editProgram.value.trim();
-      if (editYear?.value) payload.academicYearStart = Number(editYear.value);
-      if (editClassGroup?.value) payload.classGroup = editClassGroup.value.trim();
-      if (!Object.keys(payload).length) {
-        editUserCohortResult.textContent = 'Nothing to update.';
-        editUserCohortResult.className = 'small text-danger';
-        return;
-      }
-      await window.api.fetch(`/api/admin/users/${encodeURIComponent(sid)}/update-cohort`, {
+      await window.api.fetch(`/api/admin/users/${sid}/permissions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      editUserCohortResult.textContent = 'Cohort updated.';
-      editUserCohortResult.className = 'small text-success';
-      allUsers = await fetchUsers();
-      renderUsersTable(filterUsers(userSearch?.value || ''));
-    } catch (e) {
-      editUserCohortResult.textContent = e.message || 'Cohort update failed.';
-      editUserCohortResult.className = 'small text-danger';
-    }
+      editModal.hide();
+      showAlert('Permissions updated!', 'success');
+      loadUsers();
+    } catch (err) { showAlert(err.message); }
+  };
+
+  // --- Forum Moderation (FORUM_POSTS table) ---
+  async function loadForumModeration() {
+    const list = document.getElementById('forumModerationList');
+    try {
+      const posts = await window.api.fetch('/api/admin/forum/posts');
+      if (!posts.length) {
+        list.innerHTML = '<div class="p-5 text-center text-muted">No posts found.</div>';
+        return;
+      }
+      list.innerHTML = posts.map(p => `
+        <div class="list-group-item p-3">
+          <div class="d-flex justify-content-between">
+            <span class="fw-bold small text-primary">${p.user_name || 'Anonymous'}</span>
+            <span class="badge bg-light text-dark">${p.target_type}</span>
+          </div>
+          <p class="mb-2 mt-1 small">${p.content}</p>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteForumPost('${p.id}')">Delete Post</button>
+        </div>
+      `).join('');
+    } catch (e) { list.innerHTML = '<div class="p-3 text-danger">Failed to load forum.</div>'; }
+  }
+
+  window.deleteForumPost = async (postId) => {
+    if (!confirm('Permanently delete this post and its replies?')) return;
+    try {
+      await window.api.fetch(`/api/admin/forum/posts/${postId}`, { method: 'DELETE' });
+      loadForumModeration();
+    } catch (e) { showAlert(e.message); }
+  };
+
+  // --- Announcements & Categories (Identical to previous logic but updated for new UI) ---
+  async function loadAnnouncements() {
+    const container = document.getElementById('announcementList');
+    const anns = await window.api.fetch('/api/announcements');
+    container.innerHTML = anns.map(a => `
+      <div class="card card-body shadow-sm border-0">
+        <h6 class="fw-bold mb-1">${a.title}</h6>
+        <p class="small text-muted mb-2">${a.content}</p>
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="badge bg-light text-dark small">${a.is_global ? 'Global' : 'Targeted'}</span>
+          <button class="btn btn-link btn-sm text-danger" onclick="deleteAnn('${a.id}')">Remove</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('announcementForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const payload = {
+      title: document.getElementById('annTitle').value,
+      content: document.getElementById('annContent').value,
+      is_global: document.getElementById('annTarget').value === 'global'
+    };
+    await window.api.fetch('/api/admin/announcements', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    e.target.reset();
+    loadAnnouncements();
+    showAlert('Announcement posted!', 'success');
+  };
+
+  async function loadCategories() {
+    const cats = await window.api.fetch('/api/categories');
+    document.getElementById('categoryList').innerHTML = cats.map(c => `
+      <div class="list-group-item d-flex justify-content-between align-items-center">
+        <span><i class="${c.icon_class || 'bi-tag'} me-2"></i>${c.name}</span>
+        <button class="btn btn-link btn-sm text-danger" onclick="deleteCategory(${c.id})"><i class="bi bi-trash"></i></button>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('addCatBtn').onclick = async () => {
+    const name = document.getElementById('newCatName').value;
+    if (!name) return;
+    await window.api.fetch('/api/admin/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    document.getElementById('newCatName').value = '';
+    loadCategories();
+  };
+
+  // --- Global Helpers ---
+  function showAlert(msg, type = 'danger') {
+    alertBox.className = `alert alert-${type} shadow-sm d-block`;
+    alertBox.textContent = msg;
+    setTimeout(() => alertBox.classList.replace('d-block', 'd-none'), 3000);
+  }
+
+  userSearch?.addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase();
+    renderUsers(allUsers.filter(u => `${u.fullName} ${u.studentId}`.toLowerCase().includes(q)));
   });
 
-  // CSV Import
-  const importForm = document.getElementById('importForm');
-  if (importForm) {
-    importForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const fileInput = document.getElementById('csvfile');
-      if (!fileInput || !fileInput.files || !fileInput.files.length) return showAlert('Choose a CSV file');
-      const fd = new FormData();
-      fd.append('file', fileInput.files[0]);
-      try {
-        const json = await window.api.fetch('/api/admin/import', { method: 'POST', body: fd });
-        const resultEl = document.getElementById('importResult');
-        if (resultEl) {
-          resultEl.textContent = `Imported: ${json.imported || 0}, Skipped: ${json.skipped || 0}`;
-        }
-        showAlert('Import completed', 'success');
-        // refresh user list
-        allUsers = await fetchUsers();
-        renderUsersTable(filterUsers(userSearch?.value || ''));
-      } catch (err) {
-        const msg = (err && err.message) || 'Import failed';
-        showAlert(msg);
-      }
-    });
-  }
+  document.getElementById('adminLogoutBtn').onclick = () => window.api.fetch('/api/logout', { method: 'POST' }).then(() => window.location.assign('/public/index.html'));
 
-  // Slide upload (admin helper) — uses /api/upload
-  const slideForm = document.getElementById('slideUploadForm');
-  if (slideForm) {
-    slideForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const fileInput = document.getElementById('slideFile');
-      const courseInput = document.getElementById('courseName');
-      const slideTitleInput = document.getElementById('repSlideTitle') || document.getElementById('slideTitle');
-      if (!fileInput || !fileInput.files || !fileInput.files.length) return showAlert('Choose a slide file');
-      const fd = new FormData(slideForm);
-      // ensure courseTitle and slideTitle are present
-      if (courseInput && !fd.get('courseTitle') && courseInput.value) fd.set('courseTitle', courseInput.value);
-      if (slideTitleInput && slideTitleInput.value) fd.set('slideTitle', slideTitleInput.value);
-      try {
-        await window.api.fetch('/api/upload', { method: 'POST', body: fd });
-        const resultEl = document.getElementById('uploadSlideResult');
-        if (resultEl) resultEl.textContent = 'Uploaded successfully.';
-        showAlert('Slide uploaded', 'success');
-        slideForm.reset();
-      } catch (err) {
-        const msg = (err && err.message) || 'Upload failed';
-        showAlert(msg);
-      }
-    });
-  }
-
-  // Personalize Admin header with firstName and local avatar, then initialize
-  try {
-    const user = await requireAdminSession();
-    if (user) {
-      const raw = user.full_name || user.fullName || user.name || user.username || user.student_id || user.studentId || 'Admin';
-      const first = user.firstName || (String(raw).trim().split(/\s+/)[0] || 'Admin');
-      const nm = document.getElementById('adminWelcomeName');
-      if (nm) nm.textContent = first;
-      const av = document.getElementById('adminAvatar');
-      if (av) av.src = '/public/images/avatar.png';
-    }
-    // Wire Admin Logout button
-    const adminLogoutBtn = document.getElementById('adminLogoutBtn');
-    adminLogoutBtn?.addEventListener('click', async () => {
-      try { await window.api.fetch('/api/logout', { method: 'POST' }); } catch (err) {}
-      window.location.href = '/public/index.html';
-    });
-
-    allUsers = await fetchUsers();
-    renderUsersTable(filterUsers(''));
-  } catch (e) {
-    // already redirected or message shown
-  }
+  init();
 });

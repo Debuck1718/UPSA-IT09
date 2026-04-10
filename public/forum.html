@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Forum • Discussions</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body { background: #f0f2f5; }
+        .forum-card { border: none; border-radius: 12px; transition: 0.2s; }
+        .reply-card { border-left: 3px solid #dee2e6; margin-left: 2rem; background: #fafafa; }
+        .avatar-sm { width: 35px; height: 35px; border-radius: 50%; background: #0d6efd; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .post-input { border-radius: 20px; background: #e4e6eb; border: none; padding: 10px 20px; cursor: pointer; }
+        .post-input:hover { background: #d8dadf; }
+        .badge-target { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    </style>
+</head>
+<body>
+
+    <div class="container py-4">
+        <div class="row">
+            <div class="col-lg-3 d-none d-lg-block">
+                <div class="card forum-card p-3 sticky-top" style="top: 20px;">
+                    <h6 class="fw-bold mb-3">Feeds</h6>
+                    <div class="list-group list-group-flush">
+                        <button class="list-group-item list-group-item-action border-0 rounded active" data-filter="global">
+                            <i class="bi bi-globe me-2"></i> Global Square
+                        </button>
+                        <button class="list-group-item list-group-item-action border-0 rounded" data-filter="program">
+                            <i class="bi bi-mortarboard me-2"></i> My Program
+                        </button>
+                        <button class="list-group-item list-group-item-action border-0 rounded" data-filter="class">
+                            <i class="bi bi-people me-2"></i> My Class
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-7">
+                <div class="card forum-card mb-4">
+                    <div class="card-body d-flex align-items-center gap-3">
+                        <div class="avatar-sm" id="userInitial">U</div>
+                        <div class="post-input flex-grow-1" data-bs-toggle="modal" data-bs-target="#postModal">
+                            Start a discussion...
+                        </div>
+                    </div>
+                </div>
+
+                <div id="forumFeed">
+                    <div class="text-center p-5">
+                        <div class="spinner-border text-primary"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="postModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content forum-card">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold">Create Post</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="postForm">
+                        <select name="target_type" class="form-select mb-3 border-0 bg-light fw-bold" required>
+                            <option value="global">Post to Global Square</option>
+                            <option value="program">Post to My Program</option>
+                            <option value="class">Post to My Class</option>
+                        </select>
+                        <textarea name="content" class="form-control border-0 fs-5" rows="4" placeholder="What's on your mind?" required></textarea>
+                        <div class="text-end mt-3">
+                            <button type="submit" class="btn btn-primary px-4 fw-bold">Post</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="replyModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content forum-card">
+                <div class="modal-body">
+                    <p class="text-muted small mb-2">Replying to post...</p>
+                    <form id="replyForm">
+                        <input type="hidden" name="parent_id" id="replyParentId">
+                        <textarea name="content" class="form-control border-0" rows="3" placeholder="Write a reply..." required></textarea>
+                        <div class="text-end mt-2">
+                            <button type="submit" class="btn btn-primary btn-sm px-3">Reply</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./api.js"></script>
+    <script src="./forum.js"></script>
+</body>
+</html>

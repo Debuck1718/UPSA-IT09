@@ -1165,3 +1165,189 @@ app.get("/healthz", (req, res) => res.status(200).send("ok"));
     }
   });
 })();
+
+app.post("/api/admin/resources", requireAdmin, async (req, res) => {
+  try {
+    const { 
+      title, description, url, youtube_id, 
+      category_id, program_id, is_global, status 
+    } = req.body;
+    
+    const u = req.session.user;
+    let finalUrl = url;
+
+    // Handle File Upload if present
+    if (req.files && req.files.file) {
+      const file = req.files.file;
+      const fileId = uuidv4();
+      const objectPath = `resources/${u.institutionId || 'global'}/${fileId}_${file.name}`;
+
+      const { error: upErr } = await supabase.storage
+        .from("campus-resources") // Ensure this bucket exists in Supabase
+        .upload(objectPath, file.data, { contentType: file.mimetype });
+
+      if (upErr) throw upErr;
+      
+      // Construct the public URL from Supabase
+      const { data: publicUrlData } = supabase.storage
+        .from("campus-resources")
+        .getPublicUrl(objectPath);
+      
+      finalUrl = publicUrlData.publicUrl;
+    }
+
+    const query = `
+      INSERT INTO resources (
+        title, description, url, youtube_id, category_id, 
+        program_id, institution_id, is_global, uploader_id, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING *
+    `;
+
+    const vals = [
+      title, description, finalUrl, youtube_id || null, category_id,
+      program_id || u.programId, u.institutionId, !!is_global, u.id, status || 'approved'
+    ];
+
+    const { rows } = await db.pool.query(query, vals);
+    res.json({ ok: true, resource: rows[0] });
+  } catch (e) {
+    console.error("Resource creation error:", e);
+    res.status(500).json({ ok: false, message: "Failed to create resource" });
+  }
+});
+
+// Get all top-level posts and their reply counts for moderation
+app.get("/api/admin/forum/summary", requireAdmin, async (req, res) => {
+  try {
+    const query = `
+      SELECT p.*, u.full_name, 
+      (SELECT COUNT(*) FROM forum_posts r WHERE r.parent_id = p.id) as reply_count
+      FROM forum_posts p
+      JOIN users_app u ON p.user_id = u.id
+      WHERE p.parent_id IS NULL
+      ORDER BY p.created_at DESC
+    `;
+    const { rows } = await db.pool.query(query);
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ ok: false });
+  }
+});
+
+// Delete a post and all its nested replies
+app.delete("/api/admin/forum/posts/:id", requireAdmin, async (req, res) => {
+  try {
+    const postId = req.params.id;
+    // This query handles the tree deletion if you didn't set ON DELETE CASCADE
+    await db.pool.query("DELETE FROM forum_posts WHERE id = $1 OR parent_id = $1", [postId]);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false });
+  }
+});
+
+
+// --- NEW: User Permissions & Promotions (is_rep, is_leader, is_creator) ---
+app.post("/api/admin/users/:studentId/permissions", requireAdmin, async (req, res) => {
+  try {
+    const sid = String(req.params.studentId || "").trim();
+    const { bio, is_rep, is_leader, is_creator, role } = req.body;
+
+    const query = `
+      UPDATE users_app 
+      SET bio = $1, is_rep = $2, is_leader = $3, is_creator = $4, role = $5
+      WHERE student_id = $6
+      RETURNING student_id, role, is_rep, is_leader, is_creator
+    `;
+    const vals = [bio, !!is_rep, !!is_leader, !!is_creator, role || "student", sid];
+    
+    const result = await db.pool.query(query, vals);
+    if (!result.rowCount) return res.status(404).json({ ok: false, message: "User not found" });
+
+    return res.json({ ok: true, user: result.rows[0] });
+  } catch (e) {
+    console.error("Permissions Update Error:", e);
+    res.status(500).json({ ok: false, message: "Server error" });
+  }
+});
+
+// --- NEW: Forum Moderation Tools ---
+// List all posts across all threads for moderation
+app.get("/api/admin/forum/posts", requireAdmin, async (req, res) => {
+  try {
+    const query = `
+      SELECT p.*, u.full_name as user_name 
+      FROM forum_posts p
+      LEFT JOIN users_app u ON p.user_id = u.id
+      ORDER BY p.created_at DESC
+    `;
+    const { rows } = await db.pool.query(query);
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ ok: false, message: "Failed to fetch posts" });
+  }
+});
+
+// Delete a post (Moderation action)
+app.delete("/api/admin/forum/posts/:id", requireAdmin, async (req, res) => {
+  try {
+    const postId = req.params.id;
+    // This will also delete replies if you have ON DELETE CASCADE set up in SQL
+    await db.pool.query("DELETE FROM forum_posts WHERE id = $1", [postId]);
+    res.json({ ok: true, message: "Post removed by moderator" });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: "Failed to delete post" });
+  }
+});
+
+// --- NEW: Announcement Management ---
+app.post("/api/admin/announcements", requireAdmin, async (req, res) => {
+  try {
+    const { title, content, is_global } = req.body;
+    const u = req.session.user;
+
+    const query = `
+      INSERT INTO announcements (title, content, is_global, institution_id, created_by)
+      VALUES ($1, $2, $3, $4, $5) RETURNING *
+    `;
+    const result = await db.pool.query(query, [title, content, !!is_global, u.institutionId, u.id]);
+    res.json({ ok: true, announcement: result.rows[0] });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: "Failed to post announcement" });
+  }
+});
+
+// --- NEW: Category Management ---
+app.post("/api/admin/categories", requireAdmin, async (req, res) => {
+  try {
+    const { name } = req.body;
+    await db.pool.query("INSERT INTO categories (name) VALUES ($1)", [name]);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: "Error adding category" });
+  }
+});
+
+// Step 1: Send the email
+app.post("/api/auth/forgot-password", async (req, res) => {
+    const { email } = req.body;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'https://upsa-it09.onrender.com/reset-password.html',
+    });
+    
+    if (error) return res.status(400).json({ ok: false, message: error.message });
+    res.json({ ok: true });
+});
+
+// Step 2: Update the password (Called from reset-password.html)
+app.post("/api/auth/reset-password", async (req, res) => {
+    const { password } = req.body;
+    
+    // Supabase automatically picks up the session from the URL if using their client-side SDK,
+    // otherwise, the token must be passed in the headers.
+    const { error } = await supabase.auth.updateUser({ password });
+
+    if (error) return res.status(400).json({ ok: false, message: error.message });
+    res.json({ ok: true });
+});

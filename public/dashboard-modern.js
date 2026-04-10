@@ -192,3 +192,112 @@ document.addEventListener('DOMContentLoaded', function() {
     loadSlides();
   })();
 });
+
+// --- Section Switching Logic ---
+function showSection(sectionId) {
+    // Hide all sections
+    document.querySelectorAll('.content-section').forEach(section => {
+        section.classList.add('d-none');
+    });
+
+    // Remove active class from all links
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
+    });
+
+    // Show selected section
+    const target = document.getElementById(sectionId);
+    if (target) {
+        target.classList.remove('d-none');
+    }
+
+    // Set clicked link as active
+    const activeLink = document.querySelector(`[onclick="showSection('${sectionId}')"]`);
+    if (activeLink) {
+        activeLink.classList.add('active');
+    }
+
+    // Trigger data fetch if section requires it
+    if (sectionId === 'announcements-section') loadAnnouncements();
+    if (sectionId === 'resource-hub') loadResources();
+}
+
+/**
+ * Handle Permissions for UI Elements
+ */
+async function checkPermissions() {
+    try {
+        const session = await window.api.fetch('/api/session');
+        const user = session.user;
+
+        // Update UI with name/program
+        document.getElementById('user-firstname').innerText = user.full_name.split(' ')[0];
+        document.getElementById('user-course').innerText = user.program;
+
+        // Hierarchy Check: Show "Create" buttons only for authorized roles
+        if (user.role === 'admin' || user.is_leader || user.is_creator) {
+            document.getElementById('uploadBtn')?.classList.remove('d-none');
+            document.getElementById('announceBtn')?.classList.remove('d-none');
+        }
+    } catch (e) {
+        console.error("Permission check failed", e);
+    }
+}
+// --- Resource Hub Logic ---
+async function loadResources() {
+    const grid = document.getElementById('resourceGrid');
+    grid.innerHTML = '<div class="text-center p-5 text-white">Loading resources...</div>';
+    
+    try {
+        // Fetches resources filtered by user's program_id (Handled by your existing API pattern)
+        const data = await window.api.fetch('/api/resources');
+        grid.innerHTML = '';
+        
+        if (!data.resources?.length) {
+            grid.innerHTML = '<div class="text-center text-white-50">No resources available for your program yet.</div>';
+            return;
+        }
+
+        data.resources.forEach(res => {
+            const card = document.createElement('div');
+            card.className = 'col-md-6 col-lg-4';
+            card.innerHTML = `
+                <div class="card h-100 border-0 shadow-sm bg-white">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi ${res.category_icon || 'bi-play-circle'} text-primary fs-4 me-2"></i>
+                            <span class="badge bg-light text-dark text-uppercase">${res.category_name}</span>
+                        </div>
+                        <h6 class="fw-bold">${res.title}</h6>
+                        <p class="small text-muted text-truncate">${res.description || 'No description provided.'}</p>
+                        <button class="btn btn-sm w-100 ${res.youtube_id ? 'btn-danger' : 'btn-primary'}" 
+                                onclick="handleResourceClick('${res.youtube_id}', '${res.url}', '${res.title}', '${res.description}')">
+                            ${res.youtube_id ? '<i class="bi bi-youtube"></i> Watch Video' : '<i class="bi bi-box-arrow-up-right"></i> Open Link'}
+                        </button>
+                    </div>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    } catch (e) {
+        grid.innerHTML = '<div class="text-center text-danger">Failed to load resource hub.</div>';
+    }
+}
+
+function handleResourceClick(youtubeId, url, title, desc) {
+    if (youtubeId && youtubeId !== 'null') {
+        const modal = new bootstrap.Modal(document.getElementById('videoModal'));
+        document.getElementById('videoTitle').innerText = title;
+        document.getElementById('videoDescription').innerText = desc;
+        document.getElementById('videoContainer').innerHTML = 
+            `<iframe src="https://www.youtube.com/embed/${youtubeId}" allowfullscreen></iframe>`;
+        modal.show();
+        
+        // Clear iframe on close to stop audio
+        document.getElementById('videoModal').addEventListener('hidden.bs.modal', () => {
+            document.getElementById('videoContainer').innerHTML = '';
+        }, {once: true});
+    } else {
+        window.open(url, '_blank');
+    }
+}

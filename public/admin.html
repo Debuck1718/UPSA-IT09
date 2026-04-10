@@ -3,280 +3,171 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Admin • User Management</title>
+    <title>Admin • Command Center</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="./style.css">
+    <style>
+      .nav-tabs .nav-link { color: #666; font-weight: 500; border: none; }
+      .nav-tabs .nav-link.active { color: var(--bs-primary); border-bottom: 3px solid var(--bs-primary); background: none; }
+      .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    </style>
   </head>
   <body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top shadow-sm">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm">
       <div class="container">
-        <a class="navbar-brand fw-semibold" href="./index.html">
-          <span class="me-2">🛠️</span> Admin Panel
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain" aria-controls="navMain" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div id="navMain" class="collapse navbar-collapse">
-          <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
-            <li class="nav-item">
-              <a href="./index.html" class="btn btn-light btn-sm px-3">Back to Dashboard</a>
-            </li>
-          </ul>
+        <a class="navbar-brand fw-bold" href="./index.html">🛡️ SYSTEM ADMIN</a>
+        <div class="ms-auto d-flex align-items-center gap-3">
+          <span class="text-white-50 small d-none d-md-block" id="adminHeaderName">Admin</span>
+          <button class="btn btn-outline-danger btn-sm" id="adminLogoutBtn">Logout</button>
         </div>
       </div>
     </nav>
 
     <main class="container py-4">
-      <!-- Hero / Header -->
-      <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
-        <div class="d-flex align-items-center gap-3">
-          <img id="adminAvatar" src="/public/images/avatar.png" alt="avatar" style="width:56px;height:56px;border-radius:50%;object-fit:cover;">
-          <div>
-            <h1 class="h5 mb-1">Welcome, <span id="adminWelcomeName">Admin</span> 👋</h1>
-            <p class="text-muted mb-0">Manage users, roles, cohorts, and uploads with ease.</p>
-          </div>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
-          <a class="btn btn-outline-secondary btn-sm" href="./sample-users.csv" download><i class="bi bi-download me-1"></i>CSV Template</a>
-          <a class="btn btn-outline-primary btn-sm" href="/public/courses.html"><i class="bi bi-collection me-1"></i>Browse Slides</a>
-          <button class="btn btn-primary btn-sm" type="button" id="refreshBtn" title="Refresh list"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
-          <button class="btn btn-danger btn-sm" type="button" id="adminLogoutBtn" title="Logout"><i class="bi bi-box-arrow-right me-1"></i>Logout</button>
-        </div>
-      </div>
+      <div id="alert" class="alert d-none shadow-sm" role="alert"></div>
 
-      <!-- Section title -->
-      <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-        <h2 class="h5 mb-0">Users</h2>
-      </div>
+      <ul class="nav nav-tabs mb-4 border-bottom-0" id="adminTabs" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-users">Users & Roles</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-announcements">Announcements</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-moderation">Forum Moderation</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-resources">Categories</button></li>
+      </ul>
 
-      <div id="alert" class="alert d-none" role="alert"></div>
-
-      <div class="card mb-4 shadow-sm">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-          <span class="fw-semibold">Import users (CSV)</span>
-          <small class="text-muted">Max 5MB</small>
-        </div>
-        <div class="card-body">
-          <form id="importForm" class="row gy-2 gx-2 align-items-end" enctype="multipart/form-data">
-            <div class="col-12 col-md-8">
-              <label for="csvfile" class="form-label">Select a CSV file</label>
-              <input type="file" id="csvfile" name="file" accept=".csv" class="form-control" required>
-              <div class="form-text">
-                Columns: studentId, username, full_name, email, program, classGroup, course(optional), role, password(optional)
+      <div class="tab-content">
+        <div class="tab-pane fade show active" id="tab-users">
+          <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+              <div class="row g-2">
+                <div class="col-md-6"><input type="search" id="userSearch" class="form-control" placeholder="Search by ID, name, or program..."></div>
+                <div class="col-md-6 text-md-end">
+                  <button class="btn btn-primary" onclick="document.getElementById('csvfile').click()"><i class="bi bi-upload me-2"></i>Bulk Import</button>
+                  <input type="file" id="csvfile" class="d-none" accept=".csv">
+                </div>
               </div>
             </div>
-            <div class="col-12 col-md-auto">
-              <button id="importBtn" class="btn btn-primary w-100">
-                Import
-              </button>
-            </div>
-          </form>
-          <div id="importResult" class="mt-2 small"></div>
-        </div>
-      </div>
-
-      <div class="card mb-4 shadow-sm">
-        <div class="card-header bg-white">
-          <span class="fw-semibold">Upload slide (with course)</span>
-        </div>
-        <div class="card-body">
-          <form id="slideUploadForm" class="row gy-2 gx-2 align-items-end" enctype="multipart/form-data">
-            <div class="col-12 col-md-5">
-              <label for="courseName" class="form-label">Course</label>
-              <input type="text" id="courseName" name="course" class="form-control" placeholder="e.g., Environmental Studies" required>
-              <div class="form-text">Enter the exact course name to group slides.</div>
-            </div>
-            <div class="col-12 col-md-5">
-              <label for="slideFile" class="form-label">Slide file (PDF/PPT)</label>
-              <input type="file" id="slideFile" name="file" class="form-control" accept=".pdf,.ppt,.pptx" required>
-            </div>
-            <div class="col-12 col-md-auto">
-              <button id="uploadSlideBtn" class="btn btn-primary w-100" type="submit">Upload</button>
-            </div>
-          </form>
-          <div id="uploadSlideResult" class="small mt-2"></div>
-          <div class="mt-2">
-            <a class="btn btn-outline-secondary btn-sm" href="./courses.html">Browse slides by course</a>
-          </div>
-        </div>
-      </div>
-
-      <div class="card mb-4 shadow-sm">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-          <span class="fw-semibold">Admin Tools</span>
-        </div>
-        <div class="card-body">
-          <div class="row g-3">
-            <div class="col-12 col-lg-6">
-              <h6 class="fw-semibold">Promote Cohort</h6>
-              <form id="formPromoteCohort" class="row gy-2 gx-2">
-                <div class="col-12">
-                  <label class="form-label">Institution ID</label>
-                  <input type="text" class="form-control" id="promoteInstitutionId" placeholder="e.g., upsa" value="upsa">
-                </div>
-                <div class="col-12">
-                  <label class="form-label">Program</label>
-                  <input type="text" class="form-control" id="promoteProgram" placeholder="e.g., Information Technology">
-                </div>
-                <div class="col-12">
-                  <label class="form-label">Academic Year Start</label>
-                  <input type="number" class="form-control" id="promoteYear" placeholder="e.g., 2026">
-                </div>
-                <div class="col-12">
-                  <label class="form-label">Next Level (optional)</label>
-                  <input type="number" class="form-control" id="promoteNextLevel" placeholder="e.g., 200">
-                </div>
-                <div class="col-12">
-                  <button class="btn btn-outline-primary" type="submit">Promote</button>
-                </div>
-              </form>
-              <div id="promoteResult" class="small mt-2"></div>
-            </div>
-            <div class="col-12 col-lg-6">
-              <h6 class="fw-semibold">Update User</h6>
-              <form id="formUpdateUser" class="row gy-2 gx-2">
-                <div class="col-12">
-                  <label class="form-label">Student ID</label>
-                  <input type="text" class="form-control" id="updStudentId" placeholder="e.g., S1001" required>
-                </div>
-                <div class="col-12">
-                  <label class="form-label">Role</label>
-                  <select class="form-select" id="updRole">
-                    <option value="">(no change)</option>
-                    <option value="student">student</option>
-                    <option value="rep">rep</option>
-                    <option value="teacher">teacher</option>
-                    <option value="admin">admin</option>
-                  </select>
-                </div>
-                <div class="col-12">
-                  <label class="form-label">Program (optional)</label>
-                  <input type="text" class="form-control" id="updProgram" placeholder="e.g., Information Technology">
-                </div>
-                <div class="col-12">
-                  <label class="form-label">Academic Year Start (optional)</label>
-                  <input type="number" class="form-control" id="updYear" placeholder="e.g., 2026">
-                </div>
-                <div class="col-12">
-                  <label class="form-label">Class/Group (optional)</label>
-                  <input type="text" class="form-control" id="updClassGroup" placeholder="e.g., IT1">
-                </div>
-                <div class="col-12">
-                  <button class="btn btn-outline-secondary" type="submit">Update</button>
-                </div>
-              </form>
-              <div id="updateResult" class="small mt-2"></div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>User / Student ID</th>
+                    <th>Cohort & Program</th>
+                    <th>Capabilities</th>
+                    <th class="text-end">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="usersBody"></tbody>
+              </table>
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-2">
-        <h2 class="h5 mb-0">All users</h2>
-        <div class="d-flex gap-2 align-items-center">
-          <div class="input-group input-group-sm" style="max-width: 320px;">
-            <span class="input-group-text">Search</span>
-            <input type="search" id="userSearch" class="form-control" placeholder="Student ID, name, email, program, class">
-          </div>
-          <button class="btn btn-outline-primary btn-sm d-inline-flex d-md-none" type="button" id="refreshBtnMobile" title="Refresh list">Refresh</button>
-        </div>
-      </div>
-
-      <!-- Edit User Modal -->
-      <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="editUserModalLabel">Edit User</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              <div class="mb-3">
-                <label class="form-label">Student ID</label>
-                <input type="text" id="editStudentId" class="form-control" readonly>
+        <div class="tab-pane fade" id="tab-announcements">
+          <div class="row">
+            <div class="col-md-4">
+              <div class="card shadow-sm border-0">
+                <div class="card-body">
+                  <h6 class="fw-bold mb-3">Create Broadcast</h6>
+                  <form id="announcementForm">
+                    <input type="text" id="annTitle" class="form-control mb-2" placeholder="Title" required>
+                    <textarea id="annContent" class="form-control mb-3" rows="4" placeholder="Announcement details..." required></textarea>
+                    <div class="mb-3">
+                      <label class="form-label small fw-bold">Target Audience</label>
+                      <select id="annTarget" class="form-select form-select-sm">
+                        <option value="global">Global (Everyone)</option>
+                        <option value="institution">Current Institution Only</option>
+                      </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Post Announcement</button>
+                  </form>
+                </div>
               </div>
-
-              <!-- Role section -->
-              <div class="border rounded p-3 mb-3">
-                <h6 class="fw-semibold mb-2">Role</h6>
-                <div class="row g-2 align-items-end">
-                  <div class="col-12 col-md-8">
-                    <label class="form-label">Select role</label>
-                    <select id="editRole" class="form-select">
-                      <option value="">(no change)</option>
-                      <option value="student">student</option>
-                      <option value="rep">rep</option>
-                      <option value="teacher">teacher</option>
-                      <option value="admin">admin</option>
-                    </select>
-                  </div>
-                  <div class="col-12 col-md-4">
-                    <button type="button" id="saveRoleBtn" class="btn btn-primary w-100">Save role</button>
-                  </div>
+            </div>
+            <div class="col-md-8">
+              <div id="announcementList" class="d-flex flex-column gap-3">
                 </div>
-                <div id="editUserRoleResult" class="small mt-1"></div>
-              </div>
+            </div>
+          </div>
+        </div>
 
-              <!-- Cohort section -->
-              <div class="border rounded p-3">
-                <h6 class="fw-semibold mb-2">Cohort / Class</h6>
-                <div class="row g-2">
-                  <div class="col-12">
-                    <label class="form-label">Program (optional)</label>
-                    <input type="text" id="editProgram" class="form-control" placeholder="e.g., Information Technology">
-                  </div>
-                  <div class="col-12">
-                    <label class="form-label">Academic Year Start (optional)</label>
-                    <input type="number" id="editYear" class="form-control" placeholder="e.g., 2026">
-                  </div>
-                  <div class="col-12">
-                    <label class="form-label">Class/Group (optional)</label>
-                    <input type="text" id="editClassGroup" class="form-control" placeholder="e.g., IT1">
-                  </div>
-                  <div class="col-12">
-                    <button type="button" id="saveCohortBtn" class="btn btn-outline-secondary w-100">Save cohort</button>
-                  </div>
-                </div>
-                <div id="editUserCohortResult" class="small mt-1"></div>
+        <div class="tab-pane fade" id="tab-moderation">
+          <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+              <h6 class="mb-0 fw-bold text-danger"><i class="bi bi-shield-lock me-2"></i>Flagged Forum Posts</h6>
+            </div>
+            <div class="list-group list-group-flush" id="forumModerationList">
+              <div class="p-5 text-center text-muted">Scanning for active threads...</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-resources">
+          <div class="card shadow-sm border-0" style="max-width: 600px;">
+            <div class="card-header bg-white fw-bold">Resource Categories</div>
+            <div class="list-group list-group-flush" id="categoryList"></div>
+            <div class="card-footer bg-light">
+              <div class="input-group">
+                <input type="text" id="newCatName" class="form-control" placeholder="Add Category (e.g. Lab Manuals)">
+                <button class="btn btn-primary" id="addCatBtn">Add</button>
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      <div class="table-responsive shadow-sm rounded overflow-hidden">
-        <table class="table table-hover align-middle mb-0">
-          <thead class="table-light">
-            <tr>
-              <th scope="col">ID</th>
-              <th scope="col">Name</th>
-              <th scope="col" class="d-none d-md-table-cell">Email</th>
-              <th scope="col" class="d-none d-md-table-cell">Program</th>
-              <th scope="col" class="d-none d-md-table-cell">Class</th>
-              <th scope="col">Course</th>
-              <th scope="col">Role</th>
-              <th scope="col" class="text-end">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="usersBody"></tbody>
-        </table>
-      </div>
-
-      <p class="text-muted small mt-2 mb-0">
-        Tip: On mobile, swipe the table horizontally to see more columns.
-      </p>
     </main>
+
+    <div class="modal fade" id="editUserModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow border-0">
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold" id="modalUserName">Manage User</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form id="editUserPermissionsForm">
+              <input type="hidden" id="editStudentId">
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Student Bio</label>
+                <textarea id="editBio" class="form-control" rows="2"></textarea>
+              </div>
+              <div class="bg-light p-3 rounded border mb-3">
+                <h6 class="small fw-bold mb-3 text-uppercase">Promotion & Verification</h6>
+                <div class="row g-3">
+                  <div class="col-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="checkIsRep">
+                      <label class="form-check-label">Class Rep</label>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="checkIsLeader">
+                      <label class="form-check-label">Leader</label>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="checkIsCreator">
+                      <label class="form-check-label">Verified Creator</label>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="checkIsAdmin">
+                      <label class="form-check-label text-danger fw-bold">Super Admin</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary w-100 py-2">Update Credentials</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="./api.js"></script>
-    <script>
-      // Detect file:// context or no network/server and set a global flag for admin.js
-      (function(){
-        const isFile = location.protocol === 'file:';
-        const offline = !navigator.onLine;
-        window.ADMIN_OFFLINE = isFile || offline;
-      })();
-    </script>
     <script src="./admin.js"></script>
   </body>
 </html>
