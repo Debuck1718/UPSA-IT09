@@ -1166,6 +1166,128 @@ app.get("/healthz", (req, res) => res.status(200).send("ok"));
   });
 })();
 
+// Middleware to allow Admins, Reps, or designated Creators to upload
+const requireCreator = (req, res, next) => {
+  const u = req.session.user;
+  const isAllowed = u && (u.role === 'admin' || u.is_rep || u.is_leader || u.is_creator);
+  
+  if (isAllowed) return next();
+  res.status(403).json({ ok: false, message: "Upload permissions required." });
+};
+
+// Strict Admin-only middleware
+const requireAdmin = (req, res, next) => {
+  if (req.session.user && req.session.user.role === 'admin') return next();
+  res.status(403).json({ ok: false, message: "Administrator access required." });
+};
+
+// GET /api/categories - For the filter pills
+app.get("/api/categories", async (req, res) => {
+  try {
+    const { rows } = await db.pool.query("SELECT * FROM resource_categories ORDER BY name ASC");
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json([]);
+  }
+});
+
+// GET /api/resources - Only approved items for the public grid
+app.get("/api/resources", async (req, res) => {
+  try {
+    const query = `
+      SELECT r.*, c.name as category_name 
+      FROM resources r
+      LEFT JOIN resource_categories c ON r.category_id = c.id
+      WHERE r.status = 'approved'
+      ORDER BY r.created_at DESC
+    `;
+    const { rows } = await db.pool.query(query);
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ ok: false, message: "Failed to fetch library" });
+  }
+});
+
+// PATCH /api/resources/:id/view - Increments view count
+app.patch("/api/resources/:id/view", async (req, res) => {
+  try {
+    await db.pool.query("UPDATE resources SET view_count = view_count + 1 WHERE id = $1", [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false });
+  }
+});
+
+app.post("/api/resources", requireCreator, async (req, res) => {
+  try {
+    const { title, description, url, youtube_id, category_id, is_global } = req.body;
+    const u = req.session.user;
+
+    // Logic: Admins auto-approve, others go to 'pending'
+    const status = (u.role === 'admin') ? 'approved' : 'pending';
+
+    const query = `
+      INSERT INTO resources (
+        title, description, url, youtube_id, category_id, 
+        uploader_id, status, is_global
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+    `;
+
+    const vals = [
+      title, description, url, youtube_id || null, 
+      category_id, u.id, status, !!is_global
+    ];
+
+    const { rows } = await db.pool.query(query, vals);
+    res.json({ ok: true, resource: rows[0], autoApproved: u.role === 'admin' });
+  } catch (e) {
+    console.error("Upload error:", e);
+    res.status(500).json({ ok: false, message: "Submission failed" });
+  }
+});
+
+// GET /api/creator/my-resources - Allows creators to see their own upload status
+app.get("/api/creator/my-resources", requireCreator, async (req, res) => {
+  const { rows } = await db.pool.query(
+    "SELECT * FROM resources WHERE uploader_id = $1 ORDER BY created_at DESC", 
+    [req.session.user.id]
+  );
+  res.json(rows);
+});
+
+// GET /api/admin/resources/pending - The approval queue
+app.get("/api/admin/resources/pending", requireAdmin, async (req, res) => {
+  const query = `
+    SELECT r.*, u.full_name as uploader_name 
+    FROM resources r
+    JOIN users_app u ON r.uploader_id = u.id
+    WHERE r.status = 'pending'
+  `;
+  const { rows } = await db.pool.query(query);
+  res.json(rows);
+});
+
+// PATCH /api/admin/resources/:id/status - Approve or Reject
+app.patch("/api/admin/resources/:id/status", requireAdmin, async (req, res) => {
+  const { status } = req.body; // Expects 'approved' or 'rejected'
+  try {
+    const result = await db.pool.query(
+      "UPDATE resources SET status = $1 WHERE id = $2 RETURNING id",
+      [status, req.params.id]
+    );
+    res.json({ ok: true, message: `Resource ${status}` });
+  } catch (e) {
+    res.status(500).json({ ok: false });
+  }
+});
+
+// DELETE /api/admin/resources/:id - Hard delete
+app.delete("/api/admin/resources/:id", requireAdmin, async (req, res) => {
+  await db.pool.query("DELETE FROM resources WHERE id = $1", [req.params.id]);
+  res.json({ ok: true });
+});
+
 app.post("/api/admin/resources", requireAdmin, async (req, res) => {
   try {
     const { 
@@ -1302,19 +1424,67 @@ app.delete("/api/admin/forum/posts/:id", requireAdmin, async (req, res) => {
 });
 
 // --- NEW: Announcement Management ---
-app.post("/api/admin/announcements", requireAdmin, async (req, res) => {
+// GET /api/announcements
+app.get("/api/announcements", async (req, res) => {
   try {
-    const { title, content, is_global } = req.body;
     const u = req.session.user;
 
+    // Fetch announcements that are EITHER global, for their institution, OR for their program
     const query = `
-      INSERT INTO announcements (title, content, is_global, institution_id, created_by)
-      VALUES ($1, $2, $3, $4, $5) RETURNING *
+      SELECT a.*, u.full_name as author_name, u.role as author_role
+      FROM announcements a
+      LEFT JOIN users_app u ON a.author_id = u.id
+      WHERE a.is_global = true 
+      ${u ? 'OR a.target_institution = $1 OR a.target_program = $2' : ''}
+      ORDER BY a.created_at DESC
     `;
-    const result = await db.pool.query(query, [title, content, !!is_global, u.institutionId, u.id]);
-    res.json({ ok: true, announcement: result.rows[0] });
+    
+    // We use the session data to filter
+    const params = u ? [u.institutionId, u.programId] : [];
+    const { rows } = await db.pool.query(query, params);
+    res.json(rows);
   } catch (e) {
-    res.status(500).json({ ok: false, message: "Failed to post announcement" });
+    console.error("Fetch announcements error:", e);
+    res.status(500).json([]);
+  }
+});
+
+// POST /api/admin/announcements
+app.post("/api/admin/announcements", requireLeader, async (req, res) => {
+  try {
+    const { title, content, is_global, target_program } = req.body;
+    const u = req.session.user;
+
+
+    const finalIsGlobal = (u.role === 'admin') ? !!is_global : false;
+    
+    // If it's a leader, we ensure the institution_id is theirs
+    // target_program remains optional (null = whole institution)
+    const finalInstitutionId = u.institution_id; 
+
+    const query = `
+      INSERT INTO announcements (
+        title, content, is_global, author_id, 
+        target_institution, target_program
+      )
+      VALUES ($1, $2, $3, $4, $5, $6) 
+      RETURNING *
+    `;
+
+    const vals = [
+      title, 
+      content, 
+      finalIsGlobal, 
+      u.id, 
+      finalInstitutionId, 
+      target_program || null
+    ];
+
+    const { rows } = await db.pool.query(query, vals);
+    res.json({ ok: true, announcement: rows[0] });
+  } catch (e) {
+    console.error("Post announcement error:", e);
+    res.status(500).json({ ok: false, message: "Failed to broadcast announcement" });
   }
 });
 
@@ -1340,12 +1510,11 @@ app.post("/api/auth/forgot-password", async (req, res) => {
     res.json({ ok: true });
 });
 
-// Step 2: Update the password (Called from reset-password.html)
+
 app.post("/api/auth/reset-password", async (req, res) => {
     const { password } = req.body;
     
-    // Supabase automatically picks up the session from the URL if using their client-side SDK,
-    // otherwise, the token must be passed in the headers.
+
     const { error } = await supabase.auth.updateUser({ password });
 
     if (error) return res.status(400).json({ ok: false, message: error.message });

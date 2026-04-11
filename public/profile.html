@@ -8,31 +8,45 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
         body { background: #f8f9fa; }
-        .profile-header { background: linear-gradient(135deg, #0d6efd 0%, #003d99 100%); color: white; border-radius: 0 0 25px 25px; }
-        .profile-img { width: 120px; height: 120px; border-radius: 50%; border: 5px solid white; background: #fff; object-fit: cover; }
+        .profile-header { background: linear-gradient(135deg, #0d6efd 0%, #003d99 100%); color: white; border-radius: 0 0 25px 25px; position: relative; }
+        .profile-img { width: 120px; height: 120px; border-radius: 50%; border: 5px solid white; background: #fff; object-fit: cover; overflow: hidden; }
         .badge-verified { background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 20px; padding: 5px 15px; font-size: 0.8rem; }
         .stat-card { border: none; border-radius: 15px; text-align: center; padding: 20px; }
-        .activity-card { border: none; border-radius: 12px; margin-bottom: 10px; background: white; }
+        .activity-card { border: none; border-radius: 12px; margin-bottom: 10px; background: white; transition: 0.2s; }
+        .activity-card:hover { background: #f1f1f1; }
+        
+        /* Modern Back Button */
+        .btn-back { 
+            position: absolute; top: 20px; left: 20px; 
+            background: rgba(255, 255, 255, 0.2); color: white; 
+            border: none; border-radius: 50%; width: 40px; height: 40px; 
+            display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px); transition: 0.3s;
+        }
+        .btn-back:hover { background: rgba(255, 255, 255, 0.4); color: white; }
     </style>
 </head>
 <body>
 
     <div class="profile-header pb-5 pt-4">
+        <a href="javascript:history.back()" class="btn-back shadow-sm">
+            <i class="bi bi-arrow-left fs-5"></i>
+        </a>
+
         <div class="container text-center">
             <div class="mb-3 position-relative d-inline-block">
-                <div class="profile-img d-flex align-items-center justify-content-center mx-auto">
-                    <i class="bi bi-person-fill text-primary display-4" id="profilePlaceholder"></i>
+                <div class="profile-img d-flex align-items-center justify-content-center mx-auto" id="profileImageWrapper">
+                    <i class="bi bi-person-circle text-primary display-4" id="profilePlaceholder"></i>
                 </div>
             </div>
-            <h3 class="fw-bold mb-1" id="userName">Student Name</h3>
-            <p class="mb-3 opacity-75" id="userProgram">Program Name • Year 1</p>
+            <h3 class="fw-bold mb-1" id="userName">Loading...</h3>
+            <p class="mb-3 opacity-75" id="userProgram">Fetching details...</p>
             
-            <div class="d-flex justify-content-center gap-2" id="badgeContainer">
-                </div>
+            <div class="d-flex justify-content-center gap-2" id="badgeContainer"></div>
         </div>
     </div>
 
-    <div class="container mt-n4">
+    <div class="container mt-n4" style="margin-top: -30px;">
         <div class="row g-4">
             <div class="col-lg-4">
                 <div class="card shadow-sm border-0 mb-4 rounded-4">
@@ -43,11 +57,11 @@
                                 <i class="bi bi-pencil-fill text-primary"></i>
                             </button>
                         </div>
-                        <p class="text-muted small" id="userBio">No bio added yet. Tell the campus community about yourself!</p>
+                        <p class="text-muted small" id="userBio">...</p>
                         <hr>
                         <div class="small">
-                            <div class="mb-2"><i class="bi bi-building me-2"></i> <span id="userInstitution">UPSA</span></div>
-                            <div class="mb-2"><i class="bi bi-envelope me-2"></i> <span id="userEmail">email@example.com</span></div>
+                            <div class="mb-2"><i class="bi bi-building me-2"></i> <span id="userInstitution">...</span></div>
+                            <div class="mb-2"><i class="bi bi-envelope me-2"></i> <span id="userEmail">...</span></div>
                         </div>
                     </div>
                 </div>
@@ -102,7 +116,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <textarea id="bioInput" class="form-control" rows="4" maxlength="250" placeholder="I'm interested in cybersecurity and AI..."></textarea>
+                    <textarea id="bioInput" class="form-control" rows="4" maxlength="250" placeholder="Tell us about yourself..."></textarea>
                 </div>
                 <div class="modal-footer border-0">
                     <button type="button" class="btn btn-primary px-4" id="saveBioBtn">Save Bio</button>
@@ -111,6 +125,7 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="./api.js"></script>
     <script src="./profile.js"></script>
 </body>

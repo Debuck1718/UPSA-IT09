@@ -265,20 +265,33 @@
     .getElementById("repDashRefreshCourses")
     ?.addEventListener("click", loadCourses);
 
+  // Reusable Logout Function
+  async function handleLogout() {
+    if (confirm("Sign out of the Rep Dashboard?")) {
+      try {
+        await window.api.fetch("/api/logout", { method: "POST" });
+      } catch (err) {
+        console.error("Logout error", err);
+      }
+      window.location.href = "/public/index.html";
+    }
+  }
+
+  // Attach to Sidebar Logout
   const repLogoutBtn = document.getElementById("repLogoutBtn");
   if (repLogoutBtn) {
-    repLogoutBtn.addEventListener("click", async (e) => {
-      e.preventDefault(); // Stop default button behavior
-      if (confirm("Sign out of the Rep Dashboard?")) {
-        try {
-          // Note: Changed to /api/auth/logout if that's your backend route
-          await window.api.fetch("/api/logout", { method: "POST" });
-        } catch (err) {
-          console.error("Logout error", err);
-        }
-        // Force redirect to login page
-        window.location.href = "/public/index.html";
-      }
+    repLogoutBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      handleLogout();
+    });
+  }
+
+  // Attach to Mobile Navbar Logout
+  const mobileLogoutBtn = document.getElementById("mobileLogoutBtn");
+  if (mobileLogoutBtn) {
+    mobileLogoutBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      handleLogout();
     });
   }
 

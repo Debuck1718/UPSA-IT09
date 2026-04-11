@@ -3,64 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Post Announcement • Campus Hub</title>
+    <title>New Broadcast • Campus Hub</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <style>
-        body { background: #f4f7f6; min-height: 100vh; }
-        .creation-card { border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .form-label { font-size: 0.9rem; color: #444; }
+        :root { --accent: #4361ee; }
+        body { background: #f0f2f5; font-family: 'Inter', sans-serif; min-height: 100vh; }
+        
+        .creation-card { 
+            border: none; 
+            border-radius: 20px; 
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.05);
+        }
+
+        .form-control, .form-select {
+            border-radius: 12px;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            transition: 0.2s border-color;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.1);
+        }
+
+        .btn-post {
+            border-radius: 14px;
+            background: var(--accent);
+            border: none;
+            transition: 0.3s;
+            letter-spacing: 0.5px;
+        }
+        .btn-post:hover { background: #3751d4; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(67, 97, 238, 0.3); }
+
+        .role-badge {
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
 
-    <div class="container py-5">
+    <div class="container py-5 animate__animated animate__fadeIn">
         <div class="row justify-content-center">
             <div class="col-lg-7">
-                <div class="mb-4">
-                    <a href="announcements.html" class="text-decoration-none text-muted small">
-                        <i class="bi bi-arrow-left"></i> Back to Announcements
-                    </a>
+                <div class="mb-4 d-flex justify-content-between align-items-center">
+                    <button onclick="window.history.back()" class="btn btn-light rounded-pill px-3 text-muted border-0 shadow-sm">
+                        <i class="bi bi-chevron-left me-1"></i> Back
+                    </button>
+                    <div id="userBadgeArea"></div>
                 </div>
 
                 <div class="card creation-card">
                     <div class="card-body p-4 p-md-5">
-                        <div class="mb-4">
-                            <h3 class="fw-bold"><i class="bi bi-megaphone me-2 text-primary"></i>New Broadcast</h3>
-                            <p class="text-muted">Send an official update to students. Please ensure information is accurate.</p>
+                        <div class="text-center mb-5">
+                            <div class="bg-primary bg-opacity-10 text-primary d-inline-block p-4 rounded-circle mb-3">
+                                <i class="bi bi-megaphone-fill fs-1"></i>
+                            </div>
+                            <h3 class="fw-bold">Campus Broadcast</h3>
+                            <p class="text-muted small">Post verified updates to your institution's digital hub.</p>
                         </div>
 
                         <form id="announcementForm">
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Headline</label>
-                                <input type="text" name="title" class="form-control" placeholder="e.g. End of Semester Timetable Update" required>
+                            <div class="mb-4">
+                                <label class="form-label fw-bold small text-muted text-uppercase">Headline</label>
+                                <input type="text" name="title" class="form-control form-control-lg" placeholder="e.g. Mid-Semester Examination Dates" required>
                             </div>
                             
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Announcement Content</label>
-                                <textarea name="content" class="form-control" rows="6" placeholder="Write your message here..." required></textarea>
+                            <div class="mb-4">
+                                <label class="form-label fw-bold small text-muted text-uppercase">Message Body</label>
+                                <textarea name="content" class="form-control" rows="5" placeholder="Details about the update..." required></textarea>
                             </div>
 
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label fw-bold">Target Audience</label>
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-12">
+                                    <label class="form-label fw-bold small text-muted text-uppercase">Target Audience</label>
                                     <select name="target_program" class="form-select" id="programSelect">
-                                        <option value="">All Students in My Institution</option>
-                                        </select>
-                                </div>
-                                
-                                <div class="col-md-6 mb-3 d-flex align-items-end">
-                                    <div id="globalToggleArea" class="d-none">
-                                        <div class="form-check form-switch mb-2">
-                                            <input class="form-check-input" type="checkbox" name="is_global" id="isGlobalAnn">
-                                            <label class="form-check-label fw-bold" for="isGlobalAnn">Global Campus Broadcast</label>
-                                        </div>
-                                    </div>
+                                        <option value="">Full Institution Broadcast</option>
+                                    </select>
+                                    <small id="scopeHint" class="text-muted mt-2 d-block"></small>
                                 </div>
                             </div>
 
-                            <button type="submit" id="submitBtn" class="btn btn-primary w-100 py-3 fw-bold mt-3">
-                                <span id="btnText"><i class="bi bi-send-fill me-2"></i> Post Announcement</span>
+                            <div id="adminOptions" class="d-none mb-4 animate__animated animate__fadeIn">
+                                <div class="p-3 bg-warning bg-opacity-10 border border-warning border-opacity-20 rounded-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="is_global" id="isGlobalAnn">
+                                        <label class="form-check-label fw-bold text-warning-emphasis" for="isGlobalAnn">
+                                            ACTIVATE GLOBAL REACH
+                                        </label>
+                                    </div>
+                                    <small class="text-warning-emphasis opacity-75">This will display to every user across all institutions.</small>
+                                </div>
+                            </div>
+
+                            <button type="submit" id="submitBtn" class="btn btn-primary w-100 btn-post py-3 fw-bold">
+                                <span id="btnText"><i class="bi bi-send-check-fill me-2"></i> PUBLISH BROADCAST</span>
                                 <span id="btnLoader" class="spinner-border spinner-border-sm d-none"></span>
                             </button>
                         </form>
@@ -75,46 +121,59 @@
         document.addEventListener('DOMContentLoaded', async () => {
             const form = document.getElementById('announcementForm');
             const programSelect = document.getElementById('programSelect');
-            const globalToggle = document.getElementById('globalToggleArea');
+            const adminOptions = document.getElementById('adminOptions');
+            const scopeHint = document.getElementById('scopeHint');
+            const badgeArea = document.getElementById('userBadgeArea');
 
-            // 1. Check Permissions & Load Programs
-            try {
-                const [session, programs] = await Promise.all([
-                    window.api.fetch('/api/session'),
-                    window.api.fetch('/api/programs') // Assuming you have a route to list programs
-                ]);
+            let currentUser = null;
 
-                const u = session.user;
-                
-                // Security check: If not authorized, kick them out
-                if (!(u.role === 'admin' || u.role === 'rep' || u.is_leader)) {
-                    alert("Unauthorized access.");
-                    window.location.href = 'announcements.html';
-                    return;
+            async function init() {
+                try {
+                    const session = await window.api.fetch('/api/session');
+                    currentUser = session.user;
+
+                    // 1. Authorization: Leaders (Rep/Leader flags) and Admins
+                    const isAuthorized = currentUser.role === 'admin' || currentUser.is_leader === true || currentUser.is_rep === true;
+                    
+                    if (!isAuthorized) {
+                        alert("Restricted Access: Valid leadership credentials required.");
+                        window.location.href = 'announcements.html';
+                        return;
+                    }
+
+                    // 2. Fetch all programs to allow granular targeting
+                    const programs = await window.api.fetch('/api/programs');
+
+                    // 3. UI logic based on Role
+                    if (currentUser.role === 'admin') {
+                        adminOptions.classList.remove('d-none');
+                        badgeArea.innerHTML = `<span class="badge bg-dark role-badge shadow-sm">Super Admin</span>`;
+                        scopeHint.innerText = "Target any specific program or post to the entire institution.";
+                        
+                        if (programs) {
+                            programSelect.innerHTML += programs.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+                        }
+                    } else {
+                        badgeArea.innerHTML = `<span class="badge bg-primary role-badge shadow-sm">Campus Leader</span>`;
+                        scopeHint.innerText = `Post to all students at ${currentUser.institution_name || 'your institution'}.`;
+                        
+                        // Leaders see their own programs for specific targeting
+                        if (programs) {
+                            programSelect.innerHTML += programs.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+                        }
+                    }
+
+                } catch (e) {
+                    console.error("Initialization error", e);
                 }
-
-                // Hierarchy: Only Admins can see the Global toggle
-                if (u.role === 'admin') {
-                    globalToggle.classList.remove('d-none');
-                }
-
-                // Populate programs
-                programSelect.innerHTML += programs.map(p => 
-                    `<option value="${p.id}">${p.name}</option>`
-                ).join('');
-
-            } catch (e) {
-                console.error("Initialization failed", e);
             }
 
-            // 2. Handle Submission
             form.onsubmit = async (e) => {
                 e.preventDefault();
-                
                 const btnText = document.getElementById('btnText');
                 const btnLoader = document.getElementById('btnLoader');
                 const submitBtn = document.getElementById('submitBtn');
-
+                
                 btnText.classList.add('d-none');
                 btnLoader.classList.remove('d-none');
                 submitBtn.disabled = true;
@@ -122,25 +181,33 @@
                 const formData = new FormData(form);
                 const payload = Object.fromEntries(formData);
                 
-                // Convert checkbox to boolean
+                // Backend expects explicit booleans
                 payload.is_global = form.is_global ? form.is_global.checked : false;
 
                 try {
-                    const res = await window.api.post('/api/announcements', payload);
-                    if (res.ok) {
-                        alert("Announcement posted!");
+                    // Send to your refined /api/admin/announcements endpoint
+                    const res = await window.api.fetch('/api/admin/announcements', {
+                        method: 'POST',
+                        body: JSON.stringify(payload),
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    if (res && res.ok) {
+                        alert("The message has been successfully broadcast.");
                         window.location.href = 'announcements.html';
                     } else {
-                        alert(res.message || "Failed to post.");
+                        throw new Error(res.message || "Failed to publish broadcast.");
                     }
                 } catch (err) {
-                    alert("System error. Check connection.");
+                    alert(err.message);
                 } finally {
                     btnText.classList.remove('d-none');
                     btnLoader.classList.add('d-none');
                     submitBtn.disabled = false;
                 }
             };
+
+            init();
         });
     </script>
 </body>
