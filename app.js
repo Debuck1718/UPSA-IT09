@@ -222,6 +222,18 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+const requireLeader = (req, res, next) => {
+  const u = req.session?.user;
+  if (!u) return res.status(401).json({ ok: false });
+
+  if (u.role === "admin" || u.is_leader) return next();
+
+  return res.status(403).json({
+    ok: false,
+    message: "Leader access required",
+  });
+};
+
 // List users for admin
 app.get("/api/admin/users", requireAdmin, async (req, res) => {
   try {
