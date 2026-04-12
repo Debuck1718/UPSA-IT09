@@ -887,13 +887,6 @@ app.post("/api/admin/create", async (req, res) => {
   }
 });
 
-// --- Admin APIs ---
-function requireAdmin(req, res, next) {
-  if (!req.session.user) return res.status(401).json({ ok: false });
-  if (req.session.user.role !== "admin")
-    return res.status(403).json({ ok: false });
-  return next();
-}
 
 app.get("/api/admin/users", requireAdmin, async (req, res) => {
   const all = await db.getAllUsers();
