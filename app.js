@@ -753,40 +753,7 @@ app.post("/api/upload", async (req, res) => {
   }
 });
 
-// Courses endpoints
-// List distinct course names across all slides (legacy/global)
-app.get("/api/courses", async (req, res) => {
-  try {
-    if (!db.listCourses) {
-      return res.json({ ok: true, courses: [] });
-    }
-    const courses = await db.listCourses();
-    return res.json({ ok: true, courses });
-  } catch (e) {
-    console.error("List courses error:", e);
-    return res
-      .status(500)
-      .json({ ok: false, message: "Failed to load courses" });
-  }
-});
 
-// List course titles for current user's classGroupId (rep/student)
-app.get("/api/courses/mine", async (req, res) => {
-  try {
-    const u = req.session?.user;
-    if (!u) return res.status(401).json({ ok: false, message: "Unauthorized" });
-    if (!db.listCourseTitlesForClassGroupId) {
-      return res.json({ ok: true, titles: [] });
-    }
-    const titles = await db.listCourseTitlesForClassGroupId(u.classGroupId);
-    return res.json({ ok: true, titles });
-  } catch (e) {
-    console.error("List my course titles error:", e);
-    return res
-      .status(500)
-      .json({ ok: false, message: "Failed to load titles" });
-  }
-});
 // Email verification flow not used in current production path (skipped)
 
 app.post("/api/logout", (req, res) => {
@@ -1134,38 +1101,6 @@ app.get("/api/slides/:id/url", async (req, res) => {
   }
 });
 
-// health endpoint for keepalive
-app.get("/healthz", (req, res) => res.status(200).send("ok"));
-
-(async () => {
-  try {
-    if (typeof db.initSchema === "function") {
-      await db.initSchema();
-    }
-  } catch (err) {
-    console.warn(
-      "Continuing without confirmed schema init; errors may occur until DB is ready.",
-      err,
-    );
-  }
-
-  app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
-    // Self-ping keepalive (optional) using relative path to avoid localhost construction
-    if (process.env.KEEPALIVE === "true") {
-      const urlPath = "/healthz";
-      const intervalMs = Number(process.env.KEEPALIVE_INTERVAL_MS || 60000);
-      console.log(
-        `[keepalive] enabled; pinging ${urlPath} every ${intervalMs}ms`,
-      );
-      setInterval(() => {
-        // Use fetch relative to current origin (Node 18+ has global fetch)
-        fetch(urlPath).catch(() => {});
-      }, intervalMs);
-    }
-  });
-})();
-
 // Middleware to allow Admins, Reps, or designated Creators to upload
 const requireCreator = (req, res, next) => {
   const u = req.session.user;
@@ -1173,12 +1108,6 @@ const requireCreator = (req, res, next) => {
   
   if (isAllowed) return next();
   res.status(403).json({ ok: false, message: "Upload permissions required." });
-};
-
-// Strict Admin-only middleware
-const requireAdmin = (req, res, next) => {
-  if (req.session.user && req.session.user.role === 'admin') return next();
-  res.status(403).json({ ok: false, message: "Administrator access required." });
 };
 
 // GET /api/categories - For the filter pills
@@ -1520,3 +1449,36 @@ app.post("/api/auth/reset-password", async (req, res) => {
     if (error) return res.status(400).json({ ok: false, message: error.message });
     res.json({ ok: true });
 });
+
+// health endpoint for keepalive
+app.get("/healthz", (req, res) => res.status(200).send("ok"));
+
+(async () => {
+  try {
+    if (typeof db.initSchema === "function") {
+      await db.initSchema();
+    }
+  } catch (err) {
+    console.warn(
+      "Continuing without confirmed schema init; errors may occur until DB is ready.",
+      err,
+    );
+  }
+
+  app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+    // Self-ping keepalive (optional) using relative path to avoid localhost construction
+    if (process.env.KEEPALIVE === "true") {
+      const urlPath = "/healthz";
+      const intervalMs = Number(process.env.KEEPALIVE_INTERVAL_MS || 60000);
+      console.log(
+        `[keepalive] enabled; pinging ${urlPath} every ${intervalMs}ms`,
+      );
+      setInterval(() => {
+        // Use fetch relative to current origin (Node 18+ has global fetch)
+        fetch(urlPath).catch(() => {});
+      }, intervalMs);
+    }
+  });
+})();
+
