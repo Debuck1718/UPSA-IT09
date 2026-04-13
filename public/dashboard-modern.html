@@ -1,151 +1,222 @@
 <!doctype html>
 <html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Dashboard | Student Hub</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/public/style.css">
-    <link rel="stylesheet" href="/public/dashboard-nav.css">
-    <link rel="stylesheet" href="/public/dashboard-ultra.css">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+    />
+    <link rel="stylesheet" href="/public/style.css" />
+    <link rel="stylesheet" href="/public/dashboard-nav.css" />
+    <link rel="stylesheet" href="/public/dashboard-ultra.css" />
     <style>
-        .content-section { transition: opacity 0.3s ease; }
-        .nav-link { cursor: pointer; }
+      .content-section {
+        transition: opacity 0.3s ease;
+      }
+      .nav-link {
+        cursor: pointer;
+      }
     </style>
-</head>
-<body>
-
+  </head>
+  <body>
     <nav class="sidebar d-flex flex-column">
-        <div class="w-100 text-center mb-4">
-            <img id="avatar" class="avatar" src="/public/images/avatar.png" alt="Profile" style="cursor: pointer;" onclick="location.href='profile.html'">
-            <h5 class="mt-2 text-white" id="user-firstname">Student</h5>
-            <span id="user-course" class="badge bg-info text-dark" style="font-size: 0.7rem;">Program</span>
-        </div>
-        
-        <ul class="nav flex-column flex-grow-1" id="main-nav">
-            <li class="nav-item">
-                <a class="nav-link active" onclick="showSection('academic-section')">
-                    <i class="bi bi-book me-2"></i> My Academics
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" onclick="showSection('resource-hub')">
-                    <i class="bi bi-grid-1x2-fill me-2"></i> Resource Hub
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" onclick="showSection('announcements-section')">
-                    <i class="bi bi-megaphone me-2"></i> Announcements
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" onclick="showSection('community-section')">
-                    <i class="bi bi-chat-dots me-2"></i> Community
-                </a>
-            </li>
-        </ul>
+      <div class="w-100 text-center mb-4">
+        <img
+          id="avatar"
+          class="avatar"
+          src="/public/images/avatar.png"
+          alt="Profile"
+          style="cursor: pointer"
+          onclick="location.href = 'profile.html'"
+        />
+        <h5 class="mt-2 text-white" id="user-firstname">Student</h5>
+        <span
+          id="user-course"
+          class="badge bg-info text-dark"
+          style="font-size: 0.7rem"
+          >Program</span
+        >
+        <div id="user-role" class="d-none"></div>
+      </div>
 
-        <div class="mt-auto p-3">
-            <button id="logoutBtn" class="btn btn-outline-light btn-sm w-100 rounded-pill">
-                <i class="bi bi-box-arrow-right"></i> Logout
-            </button>
-        </div>
+      <ul class="nav flex-column flex-grow-1" id="main-nav">
+        <li class="nav-item">
+          <a class="nav-link active" onclick="showSection('academic-section')">
+            <i class="bi bi-book me-2"></i> My Academics
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" onclick="showSection('resource-hub')">
+            <i class="bi bi-grid-1x2-fill me-2"></i> Resource Hub
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" onclick="showSection('announcements-section')">
+            <i class="bi bi-megaphone me-2"></i> Announcements
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" onclick="showSection('community-section')">
+            <i class="bi bi-chat-dots me-2"></i> Community
+          </a>
+        </li>
+      </ul>
+
+      <div class="mt-auto p-3">
+        <button
+          id="logoutBtn"
+          class="btn btn-outline-light btn-sm w-100 rounded-pill"
+        >
+          <i class="bi bi-box-arrow-right"></i> Logout
+        </button>
+      </div>
     </nav>
 
     <main class="main-content container-fluid py-4">
-        
-        <div id="academic-section" class="content-section">
-            <div class="row g-4">
-                <div class="col-lg-4">
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-header border-0 d-flex justify-content-between align-items-center">
-                            <span class="fw-bold">My Courses</span>
-                            <button id="refreshCourses" class="btn btn-sm btn-light rounded-circle"><i class="bi bi-arrow-clockwise"></i></button>
-                        </div>
-                        <div class="card-body p-0 overflow-auto" style="max-height: 70vh;">
-                            <ul id="coursesList" class="list-group list-group-flush course-list"></ul>
-                            <div id="coursesEmpty" class="text-muted text-center py-4 d-none">No courses found.</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-8">
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-header border-0 d-flex justify-content-between align-items-center">
-                            <span id="slidesCourseTitle" class="fw-bold">Select a Course</span>
-                            <button id="refreshSlides" class="btn btn-sm btn-light rounded-circle"><i class="bi bi-arrow-clockwise"></i></button>
-                        </div>
-                        <div class="card-body p-0">
-                            <ul id="slidesList" class="list-group list-group-flush slide-list"></ul>
-                            <div id="slidesEmpty" class="text-muted text-center py-4">Click a course on the left to view slides.</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="resource-hub" class="content-section d-none">
-            <div class="card border-0 mb-4 shadow-sm">
-                <div class="card-header border-0 d-flex justify-content-between align-items-center">
-                    <span class="fw-bold">Universal Learning Resources</span>
-                    <a href="upload-resource.html" class="btn btn-primary btn-sm rounded-pill d-none" id="uploadBtn">
-                        <i class="bi bi-plus-lg"></i> Upload
-                    </a>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3 mb-4" id="categoryFilter"></div>
-                    <div class="row g-4" id="resourceGrid"></div>
-                </div>
-            </div>
-        </div>
-
-        <div id="announcements-section" class="content-section d-none">
+      <div id="academic-section" class="content-section">
+        <div class="row g-4">
+          <div class="col-lg-4">
             <div class="card border-0 shadow-sm">
-                <div class="card-header border-0 d-flex justify-content-between align-items-center">
-                    <span class="fw-bold">Campus Updates</span>
-                    <a href="create-announcement.html" class="btn btn-dark btn-sm rounded-pill d-none" id="announceBtn">
-                        <i class="bi bi-plus-lg"></i> Post New
-                    </a>
+              <div
+                class="card-header border-0 d-flex justify-content-between align-items-center"
+              >
+                <span class="fw-bold">My Courses</span>
+                <button
+                  id="refreshCourses"
+                  class="btn btn-sm btn-light rounded-circle"
+                >
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+              </div>
+              <div class="card-body p-0 overflow-auto" style="max-height: 70vh">
+                <ul
+                  id="coursesList"
+                  class="list-group list-group-flush course-list"
+                ></ul>
+                <div
+                  id="coursesEmpty"
+                  class="text-muted text-center py-4 d-none"
+                >
+                  No courses found.
                 </div>
-                <div class="card-body" id="announcementList">
-                    </div>
+              </div>
             </div>
-        </div>
-
-        <div id="community-section" class="content-section d-none">
+          </div>
+          <div class="col-lg-8">
             <div class="card border-0 shadow-sm">
-                <div class="card-header border-0 fw-bold">Student Forum</div>
-                <div class="card-body">
-                    <div class="text-center py-5">
-                        <i class="bi bi-chat-dots fs-1 text-muted"></i>
-                        <p class="mt-2">Joining the discussion? Click below to enter the full forum.</p>
-                        <a href="forum.html" class="btn btn-primary px-4 rounded-pill">Open Forum Square</a>
-                    </div>
+              <div
+                class="card-header border-0 d-flex justify-content-between align-items-center"
+              >
+                <span id="slidesCourseTitle" class="fw-bold"
+                  >Select a Course</span
+                >
+                <button
+                  id="refreshSlides"
+                  class="btn btn-sm btn-light rounded-circle"
+                >
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+              </div>
+              <div class="card-body p-0">
+                <ul
+                  id="slidesList"
+                  class="list-group list-group-flush slide-list"
+                ></ul>
+                <div id="slidesEmpty" class="text-muted text-center py-4">
+                  Click a course on the left to view slides.
                 </div>
+              </div>
             </div>
+          </div>
         </div>
+      </div>
 
-        <div class="modal fade" id="videoModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-lg modal-dialog-centered">
-                <div class="modal-content bg-dark text-white border-0">
-                    <div class="modal-header border-0">
-                        <h5 class="modal-title" id="videoTitle">Video Title</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body p-0">
-                        <div class="ratio ratio-16x9" id="videoContainer"></div>
-                        <div class="p-3">
-                            <p id="videoDescription" class="text-white-50 small"></p>
-                        </div>
-                    </div>
-                </div>
+      <div id="resource-hub" class="content-section d-none">
+        <div class="card border-0 mb-4 shadow-sm">
+          <div
+            class="card-header border-0 d-flex justify-content-between align-items-center"
+          >
+            <span class="fw-bold">Universal Learning Resources</span>
+            <a
+              href="upload-resource.html"
+              class="btn btn-primary btn-sm rounded-pill d-none"
+              id="uploadBtn"
+            >
+              <i class="bi bi-plus-lg"></i> Upload
+            </a>
+          </div>
+          <div class="card-body">
+            <div class="row g-3 mb-4" id="categoryFilter"></div>
+            <div class="row g-4" id="resourceGrid"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="announcements-section" class="content-section d-none">
+        <div class="card border-0 shadow-sm">
+          <div
+            class="card-header border-0 d-flex justify-content-between align-items-center"
+          >
+            <span class="fw-bold">Campus Updates</span>
+            <a
+              href="create-announcement.html"
+              class="btn btn-dark btn-sm rounded-pill d-none"
+              id="announceBtn"
+            >
+              <i class="bi bi-plus-lg"></i> Post New
+            </a>
+          </div>
+          <div class="card-body" id="announcementList"></div>
+        </div>
+      </div>
+
+      <div id="community-section" class="content-section d-none">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header border-0 fw-bold">Student Forum</div>
+          <div class="card-body">
+            <div class="text-center py-5">
+              <i class="bi bi-chat-dots fs-1 text-muted"></i>
+              <p class="mt-2">
+                Joining the discussion? Click below to enter the full forum.
+              </p>
+              <a href="forum.html" class="btn btn-primary px-4 rounded-pill"
+                >Open Forum Square</a
+              >
             </div>
+          </div>
         </div>
+      </div>
 
+      <div class="modal fade" id="videoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content bg-dark text-white border-0">
+            <div class="modal-header border-0">
+              <h5 class="modal-title" id="videoTitle">Video Title</h5>
+              <button
+                type="button"
+                class="btn-close btn-close-white"
+                data-bs-dismiss="modal"
+              ></button>
+            </div>
+            <div class="modal-body p-0">
+              <div class="ratio ratio-16x9" id="videoContainer"></div>
+              <div class="p-3">
+                <p id="videoDescription" class="text-white-50 small"></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/public/api.js"></script>
     <script src="/public/dashboard-modern.js"></script>
-</body>
+  </body>
 </html>

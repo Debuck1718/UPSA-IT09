@@ -1455,6 +1455,78 @@ app.post("/api/auth/reset-password", async (req, res) => {
     res.json({ ok: true });
 });
 
+// GET /api/user/profile-full
+app.get("/api/user/profile-full", async (req, res) => {
+  try {
+    const u = req.session?.user;
+    if (!u) return res.status(401).json({ ok: false, message: "Unauthorized" });
+
+    // 1. Fetch full user details from DB
+    const userRes = await db.pool.query(
+      "SELECT id, student_id, full_name, email, role, program, class_group, institution_id, bio, avatar_url FROM users_app WHERE id = $1",
+      [u.id]
+    );
+
+    if (!userRes.rowCount) {
+      return res.status(404).json({ ok: false, message: "User not found" });
+    }
+
+    const userData = userRes.rows[0];
+
+    // 2. Fetch user activity (slides/resources)
+    // Adjust table names ('slides') to match your actual schema
+    const resourcesRes = await db.pool.query(
+      "SELECT id, slide_title as title, created_at FROM slides WHERE uploader_id = $1 ORDER BY created_at DESC",
+      [u.id]
+    );
+
+    // 3. Fetch user posts (discussions)
+    // Note: Ensure you have a 'posts' or 'discussions' table
+    let posts = [];
+    try {
+      const postsRes = await db.pool.query(
+        "SELECT id, title, content, created_at FROM posts WHERE author_id = $1 ORDER BY created_at DESC",
+        [u.id]
+      );
+      posts = postsRes.rows;
+    } catch (e) {
+      console.warn("Posts table might not exist yet, skipping...");
+    }
+
+    return res.json({
+      ok: true,
+      user: userData,
+      activity: {
+        resources: resourcesRes.rows,
+        posts: posts
+      }
+    });
+
+  } catch (e) {
+    console.error("Profile full fetch error:", e);
+    return res.status(500).json({ ok: false, message: "Server error" });
+  }
+});
+
+// Also add the bio update route to prevent the next error!
+app.post("/api/user/update-bio", async (req, res) => {
+  try {
+    const u = req.session?.user;
+    if (!u) return res.status(401).json({ ok: false });
+
+    const { bio } = req.body;
+    await db.pool.query(
+      "UPDATE users_app SET bio = $1 WHERE id = $2",
+      [bio, u.id]
+    );
+
+    return res.json({ ok: true, message: "Bio updated" });
+  } catch (e) {
+    return res.status(500).json({ ok: false });
+  }
+});
+
+
 // health endpoint for keepalive
 app.get("/healthz", (req, res) => res.status(200).send("ok"));
 

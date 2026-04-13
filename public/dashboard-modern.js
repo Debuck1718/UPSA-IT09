@@ -107,14 +107,25 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function setUserInfo(user) {
-    const nameRaw = user.fullName || user.name || user.username || user.studentId || user.id || 'User';
-    const firstName = user.firstName || (String(nameRaw).trim().split(/\s+/)[0] || 'User');
-    document.getElementById('user-firstname').textContent = firstName;
-    document.getElementById('user-role').textContent = user.role || '';
-    document.getElementById('user-course').textContent = user.program || '';
+
+    const nameRaw = user.full_name || user.fullName || user.name || 'Student';
+    const firstName = String(nameRaw).trim().split(/\s+/)[0];
+
+    const firstNameEl = document.getElementById('user-firstname');
+    if (firstNameEl) firstNameEl.textContent = firstName;
+
+    const courseEl = document.getElementById('user-course');
+    if (courseEl) courseEl.textContent = user.program || 'No Program';
+
+    const roleEl = document.getElementById('user-role');
+    if (roleEl) roleEl.textContent = user.role || '';
+
+    // 5. Update Avatar
     const avatar = document.getElementById('avatar');
-    if (avatar) avatar.src = '/public/images/avatar.png';
-  }
+    if (avatar && user.avatar_url) {
+        avatar.src = user.avatar_url;
+    }
+}
 
   async function loadSlides() {
     const slidesList = document.getElementById('slidesList');

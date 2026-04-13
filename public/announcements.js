@@ -2,109 +2,124 @@ document.addEventListener('DOMContentLoaded', async () => {
     const list = document.getElementById('announcementsList');
     const badge = document.getElementById('countBadge');
     const adminAction = document.getElementById('adminAction');
+    let currentUser = null;
 
-    // Smart Back Logic
-    window.goBack = () => {
-        const dest = sessionStorage.getItem('dashboard') || 'dashboard-modern.html';
-        window.location.href = dest;
-    };
-
-    async function loadAnnouncements() {
-        // Show Loading State
-        list.innerHTML = `
-            <div class="col-12 text-center py-5">
-                <div class="spinner-border text-primary" role="status"></div>
-                <p class="mt-2 text-muted">Tuning into the broadcast...</p>
-            </div>`;
-
+    /**
+     * Initialize Page
+     */
+    async function init() {
         try {
-            const [data, session] = await Promise.all([
-                window.api.fetch('/api/announcements'),
-                window.api.fetch('/api/session')
-            ]);
+            // 1. Fetch Session
+            const session = await window.api.fetch('/api/session');
+            currentUser = session.user;
 
-            const u = session?.user;
-            
-            if (u && (u.role === 'admin' || u.is_leader === true || u.is_rep === true)) {
-                adminAction.innerHTML = `
-                    <a href="create-announcement.html" class="btn btn-primary btn-sm rounded-pill px-3 animate__animated animate__fadeIn">
-                        <i class="bi bi-plus-lg me-1"></i> Post
-                    </a>`;
+            // 2. Setup Role-Based UI (Post Button)
+            // Checks for 'admin' or 'rep' roles
+            if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'rep')) {
+                if (adminAction) {
+                    adminAction.innerHTML = `
+                        <a href="create-announcement.html" class="btn btn-primary btn-sm rounded-pill animate__animated animate__fadeIn">
+                            <i class="bi bi-plus-lg"></i> Post New
+                        </a>`;
+                }
             }
 
-            renderAnnouncements(data);
+            // 3. Load Data
+            await loadAnnouncements();
+
         } catch (e) {
-            console.error(e);
+            console.error("Initialization failed:", e);
+            // If session fails, we still try to load public announcements
+            await loadAnnouncements();
+        }
+    }
+
+    /**
+     * Dynamic Back Button Logic
+     * Exposed to global window so the HTML onclick="goBack()" works
+     */
+    window.goBack = function() {
+        if (!currentUser) {
+            // If session is lost, go to login
+            window.location.href = 'index.html';
+            return;
+        }
+
+        // Role-based routing
+        switch (currentUser.role) {
+            case 'admin':
+                window.location.href = 'dashboard-admin.html';
+                break;
+            case 'rep':
+                // Redirect to the representative's specific dashboard
+                window.location.href = 'dashboard-modern.html'; 
+                break;
+            default:
+                window.location.href = 'dashboard-modern.html';
+        }
+    };
+
+    /**
+     * Fetch and Render Announcements
+     */
+    async function loadAnnouncements() {
+        try {
+            list.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>`;
+            
+            const data = await window.api.fetch('/api/announcements');
+            const items = data.announcements || [];
+            
+            if (badge) badge.textContent = `${items.length} Updates`;
+            
+            if (items.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state animate__animated animate__fadeIn">
+                        <i class="bi bi-megaphone text-muted display-4"></i>
+                        <p class="mt-3">No updates today. Check back later!</p>
+                    </div>`;
+                return;
+            }
+
+            list.innerHTML = items.map(item => `
+                <div class="col-12 animate__animated animate__fadeInUp">
+                    <div class="announcement-card p-3 shadow-sm">
+                        <div class="status-strip ${item.is_global ? 'bg-global' : 'bg-local'}"></div>
+                        <div class="d-flex justify-content-between">
+                            <h6 class="fw-bold mb-1">${item.title}</h6>
+                            ${item.is_new ? '<span class="badge bg-danger pulse-badge">NEW</span>' : ''}
+                        </div>
+                        <p class="small text-muted mb-2">${item.content}</p>
+                        <div class="author-info d-flex align-items-center">
+                            <i class="bi bi-person-circle me-1"></i>
+                            <span>${item.author_name || 'Campus Admin'} • ${new Date(item.created_at).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+        } catch (err) {
+            console.error("Load error:", err);
             renderError();
         }
     }
 
-    function renderAnnouncements(items) {
-        if (!items || items.length === 0) {
-            list.innerHTML = `
-                <div class="empty-state text-center animate__animated animate__fadeIn">
-                    <div class="display-1 text-muted mb-3 opacity-25">
-                        <i class="bi bi-chat-dots"></i>
-                    </div>
-                    <h5 class="fw-bold">All Quiet on Campus</h5>
-                    <p class="text-muted">No new announcements today. Check back later!</p>
-                </div>`;
-            badge.innerText = "0 Updates";
-            return;
-        }
-
-        badge.innerText = `${items.length} Updates`;
-        
-        list.innerHTML = items.map((a, i) => {
-            const delay = i * 0.1;
-            const isGlobal = a.is_global;
-            // Show a "NEW" badge if posted in the last 24 hours
-            const isNew = (new Date() - new Date(a.created_at)) < (24 * 60 * 60 * 1000);
-            
-            const date = new Date(a.created_at).toLocaleDateString('en-GB', {
-                day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-            });
-
-            return `
-            <div class="col-12 animate__animated animate__fadeInUp" style="animation-delay: ${delay}s">
-                <div class="card announcement-card shadow-sm border-0">
-                    <div class="status-strip ${isGlobal ? 'bg-global' : 'bg-local'}"></div>
-                    <div class="card-body p-4">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div class="d-flex gap-2">
-                                <span class="badge ${isGlobal ? 'bg-warning text-dark' : 'bg-primary bg-opacity-10 text-primary'} rounded-pill small">
-                                    ${isGlobal ? '<i class="bi bi-globe me-1"></i> Global' : '<i class="bi bi-building me-1"></i> Campus'}
-                                </span>
-                                ${isNew ? '<span class="badge bg-danger rounded-pill pulse-badge">NEW</span>' : ''}
-                            </div>
-                            <small class="text-muted">${date}</small>
-                        </div>
-                        <h5 class="fw-bold mb-2">${a.title}</h5>
-                        <p class="text-secondary mb-3" style="white-space: pre-wrap;">${a.content}</p>
-                        <div class="d-flex align-items-center author-info border-top pt-3">
-                            <div class="rounded-circle bg-light d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
-                                <i class="bi bi-patch-check-fill text-primary"></i>
-                            </div>
-                            <span>
-                                <strong>${a.author_name}</strong> 
-                                <span class="text-muted mx-1">•</span> 
-                                <span class="text-uppercase small fw-bold text-accent">${a.author_role || 'Official'}</span>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>`;
-        }).join('');
-    }
-
+    /**
+     * Error State Handler
+     */
     function renderError() {
-        list.innerHTML = `
-            <div class="text-center py-5">
-                <i class="bi bi-exclamation-triangle display-4 text-danger"></i>
-                <p class="mt-3">Failed to load broadcast. Please check your connection.</p>
-                <button onclick="location.reload()" class="btn btn-outline-primary btn-sm rounded-pill">Try Again</button>
-            </div>`;
+        if (list) {
+            list.innerHTML = `
+                <div class="text-center py-5 animate__animated animate__headShake">
+                    <i class="bi bi-exclamation-triangle display-4 text-danger"></i>
+                    <p class="mt-3 fw-semibold">Failed to load broadcast.</p>
+                    <p class="small text-muted">Please check your internet connection.</p>
+                    <button onclick="location.reload()" class="btn btn-outline-primary btn-sm rounded-pill mt-2">
+                        <i class="bi bi-arrow-clockwise"></i> Try Again
+                    </button>
+                </div>`;
+        }
     }
 
-    loadAnnouncements();
+    // Launch!
+    init();
 });
