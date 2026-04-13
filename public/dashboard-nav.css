@@ -1,18 +1,16 @@
 /* --- Dashboard Layout & Navigation Logic --- */
-
+/* --- Desktop Sidebar Styling --- */
 .sidebar {
   min-height: 100vh;
   width: 260px;
   position: fixed;
   top: 0;
   left: 0;
-  padding: 2rem 1rem;
-  z-index: 1000;
+  z-index: 1045;
   display: flex;
-  overflow-y: auto;
   flex-direction: column;
   transition: all 0.3s ease;
-  background-color: #1a1d20; 
+  background-color: #1a1d20;
 }
 
 .main-content {
@@ -25,19 +23,19 @@
   display: flex;
   align-items: center;
   padding: 0.8rem 1.2rem;
-  margin-bottom: 0.5rem;
   text-decoration: none;
   border-radius: 10px;
+  color: rgba(255, 255, 255, 0.7);
   transition: all 0.2s ease;
-  color: rgba(255,255,255,0.8);
+  cursor: pointer;
 }
 
 .sidebar .nav-link:hover, .sidebar .nav-link.active {
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
 }
 
-/* --- Mobile Transition: Side-to-Bottom Nav --- */
+/* --- Mobile Bottom Navigation (Unified Style) --- */
 @media (max-width: 991px) {
   .sidebar {
     position: fixed;
@@ -45,37 +43,39 @@
     bottom: 0;
     left: 0;
     right: 0;
-    width: 100%;
-    min-height: auto;
+    width: 100% !important;
     height: 70px;
+    min-height: auto;
     flex-direction: row !important;
-    padding: 0 !important; /* Maximizes horizontal space */
+    padding: 0 !important;
     border-radius: 20px 20px 0 0;
-    box-shadow: 0 -5px 15px rgba(0,0,0,0.3);
-    overflow: hidden; /* Prevents side-scrolling */
+    box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.3);
+    z-index: 1050;
+    overflow: hidden;
+    transform: none !important; /* Overrides offcanvas horizontal slide */
+    visibility: visible !important;
   }
 
-  /* Hide Profile/Branding on Mobile Bottom Bar */
+  /* Hide Branding/Avatar on Mobile Bar */
   .sidebar .avatar, 
-  .sidebar h5,
-  .sidebar h6,
+  .sidebar h5, 
+  .sidebar h6, 
+  .sidebar small, 
   .sidebar #user-course,
-  .sidebar small,
   .sidebar .w-100.text-center {
     display: none !important;
   }
 
-  /* Main Nav Container (80% width for the 4 links) */
+  /* Force Horizontal Row */
   .sidebar .nav {
     flex-direction: row !important;
     width: 80% !important;
+    margin: 0 !important;
+    padding: 0 !important;
     height: 100%;
-    margin: 0;
-    padding: 0;
-    justify-content: space-evenly;
+    gap: 0 !important;
   }
 
-  /* Force each Nav Item to take equal share of that 80% */
   .sidebar .nav-item {
     flex: 1;
     display: flex;
@@ -83,7 +83,7 @@
     align-items: center;
   }
 
-  /* Logout Container (Remaining 20% width) */
+  /* Logout Button Area (20% width) */
   .sidebar .mt-auto {
     margin: 0 !important;
     padding: 0 !important;
@@ -93,50 +93,44 @@
     align-items: center;
   }
 
-  /* Universal Link Styling for Student & Rep */
+  /* Icon Styling */
   .sidebar .nav-link, 
   #logoutBtn, 
   #repLogoutBtn {
-    margin: 0 !important;
-    padding: 10px 0 !important;
-    display: flex !important;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem !important; /* Size for thumb-friendly icons */
+    padding: 0 !important;
+    font-size: 1.5rem !important;
+    color: #adb5bd !important;
     width: 100%;
+    height: 100%;
+    justify-content: center;
     background: transparent !important;
-    border: none !important;
   }
 
-  /* Icon Alignment */
-  .sidebar .nav-link i, 
-  #logoutBtn i, 
-  #repLogoutBtn i {
+  .sidebar .nav-link.active {
+    color: #fff !important;
+    background: transparent !important;
+  }
+
+  /* Hide Text Labels */
+  .sidebar .nav-link span, 
+  .sidebar .nav-link i.me-2,
+  #logoutBtn span, 
+  #repLogoutBtn span {
+    display: none !important;
+  }
+  
+  /* Reset margins for icons */
+  .sidebar .nav-link i {
     margin: 0 !important;
   }
 
-  /* Hide ALL text labels on mobile to prevent overflow */
-  .sidebar .nav-link span,
-  .sidebar .nav-link .me-2,
-  #logoutBtn span,
-  #repLogoutBtn span {
-    display: none !important; 
-  }
-
-  /* Logout Icon Specific Color */
   #logoutBtn, #repLogoutBtn {
     color: #ff4d4d !important;
   }
 
   .main-content {
     margin-left: 0;
-    padding: 1rem;
-    padding-bottom: 90px; /* Space so content isn't blocked by nav */
-  }
-
-  /* Fix for the Welcome Name in the Main Header if present */
-  .main-content header h2 #repWelcomeName {
-    display: inline !important; 
+    padding-bottom: 90px;
   }
 }
