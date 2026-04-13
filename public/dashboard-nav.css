@@ -1,16 +1,18 @@
 /* --- Dashboard Layout & Navigation Logic --- */
-/* --- Desktop Sidebar Styling --- */
+
 .sidebar {
   min-height: 100vh;
   width: 260px;
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 1045;
+  padding: 2rem 1rem;
+  z-index: 1000;
   display: flex;
+  overflow-y: auto;
   flex-direction: column;
   transition: all 0.3s ease;
-  background-color: #1a1d20;
+  background-color: #1a1d20; /* Ensure visibility */
 }
 
 .main-content {
@@ -23,19 +25,13 @@
   display: flex;
   align-items: center;
   padding: 0.8rem 1.2rem;
+  margin-bottom: 0.5rem;
   text-decoration: none;
   border-radius: 10px;
-  color: rgba(255, 255, 255, 0.7);
   transition: all 0.2s ease;
-  cursor: pointer;
 }
 
-.sidebar .nav-link:hover, .sidebar .nav-link.active {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-}
-
-/* --- Mobile Bottom Navigation (Unified Style) --- */
+/* --- Mobile Transition: Side-to-Bottom Nav --- */
 @media (max-width: 991px) {
   .sidebar {
     position: fixed;
@@ -43,94 +39,72 @@
     bottom: 0;
     left: 0;
     right: 0;
-    width: 100% !important;
-    height: 70px;
+    width: 100%;
     min-height: auto;
+    height: 70px;
     flex-direction: row !important;
-    padding: 0 !important;
+    padding: 0 0.5rem;
     border-radius: 20px 20px 0 0;
-    box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.3);
-    z-index: 1050;
-    overflow: hidden;
-    transform: none !important; /* Overrides offcanvas horizontal slide */
-    visibility: visible !important;
+    justify-content: space-around;
+    box-shadow: 0 -5px 15px rgba(0,0,0,0.2);
   }
 
-  /* Hide Branding/Avatar on Mobile Bar */
+  /* REFINED: We hide the branding and the CONTAINER of the logout btn 
+     because it's being moved to the top header in HTML or handled as an icon.
+  */
   .sidebar .avatar, 
-  .sidebar h5, 
-  .sidebar h6, 
-  .sidebar small, 
-  .sidebar #user-course,
+  .sidebar h5,
+  .sidebar h6,
+  .sidebar #repWelcomeName,
+  .sidebar small,
   .sidebar .w-100.text-center {
     display: none !important;
   }
 
-  /* Force Horizontal Row */
   .sidebar .nav {
     flex-direction: row !important;
-    width: 80% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    height: 100%;
-    gap: 0 !important;
-  }
-
-  .sidebar .nav-item {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-
-  /* Logout Button Area (20% width) */
-  .sidebar .mt-auto {
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 20% !important;
-    display: flex !important;
-    justify-content: center;
-    align-items: center;
-  }
-
-  /* Icon Styling */
-  .sidebar .nav-link, 
-  #logoutBtn, 
-  #repLogoutBtn {
-    flex-direction: column;
-    padding: 0 !important;
-    font-size: 1.5rem !important;
-    color: #adb5bd !important;
     width: 100%;
-    height: 100%;
-    justify-content: center;
-    background: transparent !important;
+    justify-content: space-between;
+    align-items: center;
   }
 
-  .sidebar .nav-link.active {
-    color: #fff !important;
-    background: transparent !important;
+  /* Convert Logout button into a Nav Icon for the bottom bar */
+  .sidebar .mt-auto {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    display: flex !important; /* Show it back as an icon */
   }
 
-  /* Hide Text Labels */
-  .sidebar .nav-link span, 
-  .sidebar .nav-link i.me-2,
-  #logoutBtn span, 
-  #repLogoutBtn span {
-    display: none !important;
-  }
-  
-  /* Reset margins for icons */
-  .sidebar .nav-link i {
-    margin: 0 !important;
+  .sidebar .nav-link, 
+  .sidebar #repLogoutBtn {
+    margin-bottom: 0;
+    flex-direction: column;
+    font-size: 1.5rem; /* Large icons for thumbs */
+    padding: 10px;
+    color: #fff;
+    width: auto;
   }
 
-  #logoutBtn, #repLogoutBtn {
+
+  .sidebar .nav-link span,
+  .sidebar #repLogoutBtn span {
+    display: none !important; 
+  }
+
+
+  .sidebar #repLogoutBtn {
     color: #ff4d4d !important;
+    background: transparent !important;
   }
 
   .main-content {
     margin-left: 0;
-    padding-bottom: 90px;
+    padding: 1rem;
+    padding-bottom: 100px; /* Extra space so content doesn't hide behind nav */
+  }
+
+  /* Fix for the Welcome Name in the Main Header */
+  .main-content header h2 #repWelcomeName {
+    display: inline !important; 
   }
 }
