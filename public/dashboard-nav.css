@@ -12,7 +12,7 @@
   overflow-y: auto;
   flex-direction: column;
   transition: all 0.3s ease;
-  background-color: #1a1d20; /* Ensure visibility */
+  background-color: #1a1d20; 
 }
 
 .main-content {
@@ -29,6 +29,12 @@
   text-decoration: none;
   border-radius: 10px;
   transition: all 0.2s ease;
+  color: rgba(255,255,255,0.8);
+}
+
+.sidebar .nav-link:hover, .sidebar .nav-link.active {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
 }
 
 /* --- Mobile Transition: Side-to-Bottom Nav --- */
@@ -43,67 +49,93 @@
     min-height: auto;
     height: 70px;
     flex-direction: row !important;
-    padding: 0 0.5rem;
+    padding: 0 !important; /* Maximizes horizontal space */
     border-radius: 20px 20px 0 0;
-    justify-content: space-around;
-    box-shadow: 0 -5px 15px rgba(0,0,0,0.2);
+    box-shadow: 0 -5px 15px rgba(0,0,0,0.3);
+    overflow: hidden; /* Prevents side-scrolling */
   }
 
-  /* REFINED: We hide the branding and the CONTAINER of the logout btn 
-     because it's being moved to the top header in HTML or handled as an icon.
-  */
+  /* Hide Profile/Branding on Mobile Bottom Bar */
   .sidebar .avatar, 
   .sidebar h5,
   .sidebar h6,
-  .sidebar #repWelcomeName,
+  .sidebar #user-course,
   .sidebar small,
   .sidebar .w-100.text-center {
     display: none !important;
   }
 
+  /* Main Nav Container (80% width for the 4 links) */
   .sidebar .nav {
     flex-direction: row !important;
-    width: 100%;
-    justify-content: space-between;
+    width: 80% !important;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    justify-content: space-evenly;
+  }
+
+  /* Force each Nav Item to take equal share of that 80% */
+  .sidebar .nav-item {
+    flex: 1;
+    display: flex;
+    justify-content: center;
     align-items: center;
   }
 
-  /* Convert Logout button into a Nav Icon for the bottom bar */
+  /* Logout Container (Remaining 20% width) */
   .sidebar .mt-auto {
-    margin-top: 0 !important;
-    padding-top: 0 !important;
-    display: flex !important; /* Show it back as an icon */
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 20% !important;
+    display: flex !important;
+    justify-content: center;
+    align-items: center;
   }
 
+  /* Universal Link Styling for Student & Rep */
   .sidebar .nav-link, 
-  .sidebar #repLogoutBtn {
-    margin-bottom: 0;
+  #logoutBtn, 
+  #repLogoutBtn {
+    margin: 0 !important;
+    padding: 10px 0 !important;
+    display: flex !important;
     flex-direction: column;
-    font-size: 1.5rem; /* Large icons for thumbs */
-    padding: 10px;
-    color: #fff;
-    width: auto;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem !important; /* Size for thumb-friendly icons */
+    width: 100%;
+    background: transparent !important;
+    border: none !important;
   }
 
+  /* Icon Alignment */
+  .sidebar .nav-link i, 
+  #logoutBtn i, 
+  #repLogoutBtn i {
+    margin: 0 !important;
+  }
 
+  /* Hide ALL text labels on mobile to prevent overflow */
   .sidebar .nav-link span,
-  .sidebar #repLogoutBtn span {
+  .sidebar .nav-link .me-2,
+  #logoutBtn span,
+  #repLogoutBtn span {
     display: none !important; 
   }
 
-
-  .sidebar #repLogoutBtn {
+  /* Logout Icon Specific Color */
+  #logoutBtn, #repLogoutBtn {
     color: #ff4d4d !important;
-    background: transparent !important;
   }
 
   .main-content {
     margin-left: 0;
     padding: 1rem;
-    padding-bottom: 100px; /* Extra space so content doesn't hide behind nav */
+    padding-bottom: 90px; /* Space so content isn't blocked by nav */
   }
 
-  /* Fix for the Welcome Name in the Main Header */
+  /* Fix for the Welcome Name in the Main Header if present */
   .main-content header h2 #repWelcomeName {
     display: inline !important; 
   }
