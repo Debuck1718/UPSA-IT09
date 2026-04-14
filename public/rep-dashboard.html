@@ -4,114 +4,60 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Course Rep • Dashboard</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"
-    />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" />
     <link rel="stylesheet" href="/public/dashboard-nav.css" />
     <link rel="stylesheet" href="/public/dashboard-ultra.css" />
   </head>
   <body>
     <nav class="navbar navbar-dark bg-dark d-lg-none p-3 shadow-sm">
       <div class="container-fluid">
-        <button
-          class="navbar-toggler border-0"
-          type="button"
-          data-bs-toggle="offcanvas"
-          data-bs-target="#mobileSidebar"
-        >
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu">
           <span class="navbar-toggler-icon"></span>
         </button>
         <span class="navbar-brand mb-0 h1 fs-6">Rep Dashboard</span>
         <div class="dropdown">
-          <a
-            href="#"
-            class="text-white text-decoration-none dropdown-toggle"
-            data-bs-toggle="dropdown"
-          >
+          <a href="#" class="text-white text-decoration-none dropdown-toggle" data-bs-toggle="dropdown">
             <i class="bi bi-person-circle"></i>
           </a>
           <ul class="dropdown-menu dropdown-menu-end shadow">
-            <li>
-              <a class="dropdown-item" href="/public/profile.html"
-                ><i class="bi bi-person me-2"></i>Profile</a
-              >
-            </li>
+            <li><a class="dropdown-item" href="/public/profile.html"><i class="bi bi-person me-2"></i>Profile</a></li>
             <li><hr class="dropdown-divider" /></li>
-            <li>
-              <button class="dropdown-item text-danger" id="mobileLogoutBtn">
-                <i class="bi bi-box-arrow-left me-2"></i>Logout
-              </button>
-            </li>
+            <li><button class="dropdown-item text-danger" id="mobileLogoutBtn"><i class="bi bi-box-arrow-left me-2"></i>Logout</button></li>
           </ul>
         </div>
       </div>
     </nav>
 
-    <aside
-      class="sidebar offcanvas-lg offcanvas-start d-flex flex-column p-3"
-      id="mobileSidebar"
-    ></aside>
-
-    <aside class="sidebar d-flex flex-column p-3">
-      <div class="w-100 text-center mb-4">
+    <aside class="sidebar offcanvas-lg offcanvas-start d-flex flex-column p-3" id="sidebarMenu">
+      <div class="w-100 text-center mb-4 d-none d-lg-block">
         <a href="/public/profile.html">
-          <img
-            id="repAvatar"
-            src="/public/images/avatar.png"
-            class="avatar mb-2"
-            alt="Rep Profile"
-            style="
-              width: 80px;
-              height: 80px;
-              object-fit: cover;
-              border-radius: 50%;
-            "
-          />
+          <img id="repAvatar" src="/public/images/avatar.png" class="avatar mb-2" alt="Rep Profile" style="width: 80px; height: 80px; object-fit: cover; border-radius: 50%;" />
         </a>
         <h6 class="mb-0 text-white fw-bold" id="repWelcomeName">Course Rep</h6>
         <small class="text-white-50">Administrator</small>
       </div>
 
-      <nav class="nav flex-column w-100 gap-2">
-        <a
-          class="nav-link active d-flex align-items-center"
-          href="/public/rep-dashboard.html"
-        >
-          <i class="bi bi-speedometer2 me-2"></i> <span>Dashboard</span>
+      <nav class="nav flex-column flex-grow-1 gap-2">
+        <a class="nav-link active" href="/public/rep-dashboard.html">
+          <i class="bi bi-speedometer2"></i> <span>Dashboard</span>
         </a>
-
-        <a
-          class="nav-link d-flex align-items-center"
-          href="/public/courses.html"
-        >
-          <i class="bi bi-book me-2"></i> <span>Course Catalog</span>
+        <a class="nav-link" href="/public/courses.html">
+          <i class="bi bi-book"></i> <span>Catalog</span>
         </a>
-
-        <a
-          class="nav-link d-flex align-items-center"
-          href="/public/resources.html"
-        >
-          <i class="bi bi-grid-1x2-fill me-2"></i> <span>Resources Hub</span>
+        <a class="nav-link" href="/public/resources.html">
+          <i class="bi bi-grid-1x2-fill"></i> <span>Resources</span>
         </a>
-
-        <a
-          class="nav-link d-flex align-items-center"
-          href="/public/announcements.html"
-        >
-          <i class="bi bi-megaphone me-2"></i> <span>Announcements</span>
+        <a class="nav-link" href="/public/announcements.html">
+          <i class="bi bi-megaphone"></i> <span>Alerts</span>
+        </a>
+        <a class="nav-link d-lg-none text-danger" href="#" id="mobileBottomLogout">
+          <i class="bi bi-box-arrow-right"></i>
         </a>
       </nav>
 
-      <div class="mt-auto pt-4">
-        <button
-          id="repLogoutBtn"
-          class="btn btn-outline-danger w-100 text-start d-flex align-items-center border-0"
-        >
+      <div class="mt-auto pt-4 d-none d-lg-block">
+        <button id="repLogoutBtn" class="btn btn-outline-danger w-100 text-start d-flex align-items-center border-0">
           <i class="bi bi-box-arrow-left me-2"></i> <span>Logout</span>
         </button>
       </div>
@@ -119,21 +65,15 @@
 
     <main class="main-content">
       <header class="mb-4">
-        <h2 class="text-white fw-bold">
-          Welcome, <span id="repWelcomeName">Course Rep</span> 👋
-        </h2>
-        <p class="text-white-50">
-          Manage class resources and slide distribution for your class group.
-        </p>
+        <h2 class="text-white fw-bold">Welcome, <span id="repWelcomeName">Course Rep</span> 👋</h2>
+        <p class="text-white-50">Manage class resources and slide distribution for your class group.</p>
       </header>
 
       <div class="row g-3 mb-4">
         <div class="col-12 col-md-4">
           <div class="card h-100 shadow-sm border-0">
             <div class="card-body d-flex align-items-center">
-              <div class="display-6 me-3 text-primary">
-                <i class="bi bi-collection"></i>
-              </div>
+              <div class="display-6 me-3 text-primary"><i class="bi bi-collection"></i></div>
               <div>
                 <div class="text-muted small">Courses</div>
                 <div id="statCourses" class="h4 mb-0 fw-bold">0</div>
@@ -144,9 +84,7 @@
         <div class="col-12 col-md-4">
           <div class="card h-100 shadow-sm border-0">
             <div class="card-body d-flex align-items-center">
-              <div class="display-6 me-3 text-info">
-                <i class="bi bi-file-earmark-pdf"></i>
-              </div>
+              <div class="display-6 me-3 text-info"><i class="bi bi-file-earmark-pdf"></i></div>
               <div>
                 <div class="text-muted small">Total Slides</div>
                 <div id="statSlides" class="h4 mb-0 fw-bold">0</div>
@@ -157,9 +95,7 @@
         <div class="col-12 col-md-4">
           <div class="card h-100 shadow-sm border-0">
             <div class="card-body d-flex align-items-center">
-              <div class="display-6 me-3 text-warning">
-                <i class="bi bi-cloud-arrow-up"></i>
-              </div>
+              <div class="display-6 me-3 text-warning"><i class="bi bi-cloud-arrow-up"></i></div>
               <div>
                 <div class="text-muted small">Recent (7d)</div>
                 <div id="statRecent" class="h4 mb-0 fw-bold">0</div>
@@ -172,84 +108,30 @@
       <div class="row g-4">
         <div class="col-12 col-lg-5">
           <div class="card shadow-sm border-0">
-            <div class="card-header fw-bold bg-transparent">
-              Upload New Resource
-            </div>
+            <div class="card-header fw-bold bg-transparent">Upload New Resource</div>
             <div class="card-body">
               <div id="alert" class="alert d-none" role="alert"></div>
-              <form
-                id="repDashUploadForm"
-                class="gy-3 gx-2"
-                enctype="multipart/form-data"
-              >
+              <form id="repDashUploadForm" class="gy-3 gx-2" enctype="multipart/form-data">
                 <div class="mb-3">
-                  <label class="form-label small fw-bold"
-                    >Target Class/Group</label
-                  >
-                  <input
-                    type="text"
-                    id="repDashClassGroup"
-                    name="classGroup"
-                    class="form-control"
-                    placeholder="e.g., IT1"
-                    required
-                  />
+                  <label class="form-label small fw-bold">Target Class/Group</label>
+                  <input type="text" id="repDashClassGroup" name="classGroup" class="form-control" placeholder="e.g., IT1" required />
                 </div>
-
                 <div class="mb-3">
                   <label class="form-label small fw-bold">Course Title</label>
                   <div class="input-group">
-                    <select
-                      id="repDashCourseTitle"
-                      name="courseTitle"
-                      class="form-select"
-                    ></select>
-                    <button
-                      class="btn btn-outline-primary"
-                      type="button"
-                      id="repDashAddTitleBtn"
-                    >
-                      New
-                    </button>
+                    <select id="repDashCourseTitle" name="courseTitle" class="form-select"></select>
+                    <button class="btn btn-outline-primary" type="button" id="repDashAddTitleBtn">New</button>
                   </div>
-                  <input
-                    type="text"
-                    id="repDashNewTitle"
-                    class="form-control mt-2 d-none"
-                    placeholder="Enter new course name"
-                  />
                 </div>
-
                 <div class="mb-3">
                   <label class="form-label small fw-bold">Slide Title</label>
-                  <input
-                    type="text"
-                    id="repDashSlideTitle"
-                    name="slideTitle"
-                    class="form-control"
-                    placeholder="Week 1: Fundamentals"
-                    required
-                  />
+                  <input type="text" id="repDashSlideTitle" name="slideTitle" class="form-control" placeholder="Week 1: Fundamentals" required />
                 </div>
-
                 <div class="mb-4">
                   <label class="form-label small fw-bold">File (PDF/PPT)</label>
-                  <input
-                    type="file"
-                    id="repDashFile"
-                    name="file"
-                    class="form-control"
-                    accept=".pdf,.ppt,.pptx"
-                    required
-                  />
+                  <input type="file" id="repDashFile" name="file" class="form-control" accept=".pdf,.ppt,.pptx" required />
                 </div>
-
-                <button
-                  type="submit"
-                  class="btn btn-primary w-100 fw-bold py-2 shadow-sm"
-                >
-                  Confirm Upload
-                </button>
+                <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm">Confirm Upload</button>
               </form>
             </div>
           </div>
@@ -257,26 +139,13 @@
 
         <div class="col-12 col-lg-7">
           <div class="card shadow-sm border-0">
-            <div
-              class="card-header bg-transparent d-flex justify-content-between align-items-center"
-            >
+            <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
               <span class="fw-bold">Active Slide Catalog</span>
-              <button
-                id="repDashRefreshCourses"
-                class="btn btn-sm btn-light border"
-              >
-                Refresh
-              </button>
+              <button id="repDashRefreshCourses" class="btn btn-sm btn-light border">Refresh</button>
             </div>
             <div class="card-body p-0">
-              <div
-                id="repDashCoursesSlides"
-                class="accordion accordion-flush"
-              ></div>
-              <div
-                id="repDashCoursesEmpty"
-                class="text-muted text-center py-5 d-none"
-              >
+              <div id="repDashCoursesSlides" class="accordion accordion-flush"></div>
+              <div id="repDashCoursesEmpty" class="text-muted text-center py-5 d-none">
                 <i class="bi bi-inbox display-1 opacity-25"></i>
                 <p class="mt-2">No slides uploaded yet.</p>
               </div>
