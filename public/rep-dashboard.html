@@ -10,11 +10,8 @@
     <link rel="stylesheet" href="/public/dashboard-ultra.css" />
   </head>
   <body>
-    <nav class="navbar navbar-dark bg-dark d-lg-none p-3 shadow-sm">
+    <nav class="navbar navbar-dark bg-dark d-lg-none p-3 shadow-sm fixed-top" style="z-index: 1060;">
       <div class="container-fluid">
-        <button class="navbar-toggler border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu">
-          <span class="navbar-toggler-icon"></span>
-        </button>
         <span class="navbar-brand mb-0 h1 fs-6">Rep Dashboard</span>
         <div class="dropdown">
           <a href="#" class="text-white text-decoration-none dropdown-toggle" data-bs-toggle="dropdown">
@@ -29,7 +26,7 @@
       </div>
     </nav>
 
-    <aside class="sidebar offcanvas-lg offcanvas-start d-flex flex-column p-3" id="sidebarMenu">
+    <aside class="sidebar d-flex flex-column p-3">
       <div class="w-100 text-center mb-4 d-none d-lg-block">
         <a href="/public/profile.html">
           <img id="repAvatar" src="/public/images/avatar.png" class="avatar mb-2" alt="Rep Profile" style="width: 80px; height: 80px; object-fit: cover; border-radius: 50%;" />
@@ -51,9 +48,6 @@
         <a class="nav-link" href="/public/announcements.html">
           <i class="bi bi-megaphone"></i> <span>Alerts</span>
         </a>
-        <a class="nav-link d-lg-none text-danger" href="#" id="mobileBottomLogout">
-          <i class="bi bi-box-arrow-right"></i>
-        </a>
       </nav>
 
       <div class="mt-auto pt-4 d-none d-lg-block">
@@ -68,92 +62,7 @@
         <h2 class="text-white fw-bold">Welcome, <span id="repWelcomeName">Course Rep</span> 👋</h2>
         <p class="text-white-50">Manage class resources and slide distribution for your class group.</p>
       </header>
-
-      <div class="row g-3 mb-4">
-        <div class="col-12 col-md-4">
-          <div class="card h-100 shadow-sm border-0">
-            <div class="card-body d-flex align-items-center">
-              <div class="display-6 me-3 text-primary"><i class="bi bi-collection"></i></div>
-              <div>
-                <div class="text-muted small">Courses</div>
-                <div id="statCourses" class="h4 mb-0 fw-bold">0</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-12 col-md-4">
-          <div class="card h-100 shadow-sm border-0">
-            <div class="card-body d-flex align-items-center">
-              <div class="display-6 me-3 text-info"><i class="bi bi-file-earmark-pdf"></i></div>
-              <div>
-                <div class="text-muted small">Total Slides</div>
-                <div id="statSlides" class="h4 mb-0 fw-bold">0</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-12 col-md-4">
-          <div class="card h-100 shadow-sm border-0">
-            <div class="card-body d-flex align-items-center">
-              <div class="display-6 me-3 text-warning"><i class="bi bi-cloud-arrow-up"></i></div>
-              <div>
-                <div class="text-muted small">Recent (7d)</div>
-                <div id="statRecent" class="h4 mb-0 fw-bold">0</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="row g-4">
-        <div class="col-12 col-lg-5">
-          <div class="card shadow-sm border-0">
-            <div class="card-header fw-bold bg-transparent">Upload New Resource</div>
-            <div class="card-body">
-              <div id="alert" class="alert d-none" role="alert"></div>
-              <form id="repDashUploadForm" class="gy-3 gx-2" enctype="multipart/form-data">
-                <div class="mb-3">
-                  <label class="form-label small fw-bold">Target Class/Group</label>
-                  <input type="text" id="repDashClassGroup" name="classGroup" class="form-control" placeholder="e.g., IT1" required />
-                </div>
-                <div class="mb-3">
-                  <label class="form-label small fw-bold">Course Title</label>
-                  <div class="input-group">
-                    <select id="repDashCourseTitle" name="courseTitle" class="form-select"></select>
-                    <button class="btn btn-outline-primary" type="button" id="repDashAddTitleBtn">New</button>
-                  </div>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label small fw-bold">Slide Title</label>
-                  <input type="text" id="repDashSlideTitle" name="slideTitle" class="form-control" placeholder="Week 1: Fundamentals" required />
-                </div>
-                <div class="mb-4">
-                  <label class="form-label small fw-bold">File (PDF/PPT)</label>
-                  <input type="file" id="repDashFile" name="file" class="form-control" accept=".pdf,.ppt,.pptx" required />
-                </div>
-                <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm">Confirm Upload</button>
-              </form>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-12 col-lg-7">
-          <div class="card shadow-sm border-0">
-            <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
-              <span class="fw-bold">Active Slide Catalog</span>
-              <button id="repDashRefreshCourses" class="btn btn-sm btn-light border">Refresh</button>
-            </div>
-            <div class="card-body p-0">
-              <div id="repDashCoursesSlides" class="accordion accordion-flush"></div>
-              <div id="repDashCoursesEmpty" class="text-muted text-center py-5 d-none">
-                <i class="bi bi-inbox display-1 opacity-25"></i>
-                <p class="mt-2">No slides uploaded yet.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </main>
+      </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/public/api.js"></script>

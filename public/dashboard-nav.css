@@ -7,11 +7,13 @@
   top: 0;
   left: 0;
   padding: 2rem 1rem;
-  z-index: 1000;
+  z-index: 1050; /* Sits below the profile dropdown but above content */
   display: flex;
-  overflow-y: auto;
+  background: #212529;
   flex-direction: column;
   transition: all 0.3s ease;
+  visibility: visible !important;
+  transform: none !important;
 }
 
 .main-content {
@@ -26,35 +28,37 @@
   padding: 0.8rem 1.2rem;
   margin-bottom: 0.5rem;
   text-decoration: none;
+  color: rgba(255,255,255,0.7);
   transition: all 0.2s ease;
 }
 
-/* --- Mobile Transition: Side-to-Bottom Nav --- */
+.sidebar .nav-link:hover, .sidebar .nav-link.active {
+  color: #fff;
+  background: rgba(255,255,255,0.1);
+  border-radius: 10px;
+}
+
+/* --- Mobile Fix: Horizontal Top Nav --- */
 @media (max-width: 991px) {
   .sidebar {
     position: fixed;
-    top: auto;
-    bottom: 0;
+    top: 56px; /* Sits exactly below the black header */
     left: 0;
     right: 0;
     width: 100%;
     min-height: auto;
-    height: 70px;
+    height: 60px;
     flex-direction: row !important;
     padding: 0 1rem;
-    border-radius: 20px 20px 0 0;
+    background: #2c3034 !important; /* Slightly lighter than header for depth */
     justify-content: space-around;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    pointer-events: auto !important; /* Forces link clicks to work */
   }
 
-  /* Hide profile/branding on mobile nav bar */
-  .sidebar .avatar, 
-  .sidebar h5,
-  .sidebar h6,             /* Added: For the "Rep Account" text */
-  .sidebar #repWelcomeName, /* Added: Specifically for the Rep's name */
-  .sidebar #user-role,      /* Added: For the "Administrator" label */
-  .sidebar #user-course, 
+  .sidebar .w-100.text-center, 
   .sidebar .mt-auto,
-  .sidebar .w-100.text-center {
+  .sidebar .nav-link span {
     display: none !important;
   }
 
@@ -67,18 +71,12 @@
 
   .sidebar .nav-link {
     margin-bottom: 0;
-    flex-direction: column;
-    font-size: 1.4rem; /* Icons only for mobile */
     padding: 10px;
-  }
-
-  .sidebar .nav-link span {
-    display: none; /* Hide text, show only icons */
+    font-size: 1.5rem;
   }
 
   .main-content {
     margin-left: 0;
-    padding: 1rem;
-    padding-bottom: 90px; /* Space for the bottom bar */
+    padding-top: 130px; /* Space for both Header + Nav Menu */
   }
 }
