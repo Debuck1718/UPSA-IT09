@@ -412,6 +412,9 @@ app.post("/api/login", async (req, res) => {
       classGroupId,
       fullName,
       firstName,
+      is_rep: !!user.is_rep, 
+      is_leader: !!user.is_leader, 
+      is_creator: !!user.is_creator
     };
 
     // Role-based redirect hint
