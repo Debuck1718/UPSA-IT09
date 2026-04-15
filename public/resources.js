@@ -9,10 +9,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   let currentFilter = "all";
 
   /**
-   * INITIALIZATION
+   * INITIALIZATION & ROLE-BASED ROUTING
    */
   async function init() {
-    // Show skeleton loading state immediately
     renderSkeletons();
 
     try {
@@ -22,40 +21,72 @@ document.addEventListener("DOMContentLoaded", async () => {
         window.api.fetch("/api/session")
       ]);
 
-      // 1. Permission Check for Upload Button
       const u = session?.user;
-      if (u && (u.role === 'admin' || u.is_rep || u.is_leader || u.is_creator)) {
-        uploadAction.innerHTML = `
-            <a href="upload-resource.html" class="btn btn-primary rounded-pill px-4 animate__animated animate__fadeIn">
-                <i class="bi bi-cloud-arrow-up me-2"></i>Upload
-            </a>`;
+      const currentPage = window.location.pathname;
+
+      // --- 1. SESSION & ROUTING LOGIC ---
+      if (!u) {
+        window.location.replace("index.html");
+        return;
       }
 
-      // 2. Initialize Category Pills
-      cats.forEach((cat) => {
-        const span = document.createElement("span");
-        span.className = "badge rounded-pill bg-white text-dark border p-2 px-3 category-pill";
-        span.dataset.cat = cat.id;
-        span.textContent = cat.name;
-        span.onclick = (e) => filterByCategory(cat.id, e);
-        catContainer.appendChild(span);
-      });
+      if (u.role === 'admin') {
+        // Redirect Admin to their panel if they wander into the student library
+        if (!currentPage.includes("admin.html")) {
+          window.location.replace("admin.html");
+          return;
+        }
+      } else if (u.is_rep) {
+        // Redirect Reps to their specific dashboard
+        if (!currentPage.includes("rep-dashboard.html")) {
+          window.location.replace("rep-dashboard.html");
+          return;
+        }
+      } else {
+        // Standard Students go to modern dashboard
+        if (!currentPage.includes("dashboard-modern.html") && !currentPage.includes("resources.html")) {
+          window.location.replace("dashboard-modern.html");
+          return;
+        }
+      }
 
-      // 3. Store and Render Data
-      allResources = resources;
+      // --- 2. PERMISSION CHECK FOR UI ELEMENTS ---
+      // This ensures that even if a Rep/Admin stays on this page, they see the upload button
+      if (u.role === 'admin' || u.is_rep || u.is_leader || u.is_creator) {
+        if (uploadAction) {
+          uploadAction.innerHTML = `
+            <a href="upload-resource.html" class="btn btn-primary rounded-pill px-4 animate__animated animate__fadeIn">
+                <i class="bi bi-cloud-arrow-up me-2"></i>Upload Resource
+            </a>`;
+        }
+      }
+
+      // --- 3. INITIALIZE CONTENT ---
+      if (cats && Array.isArray(cats)) {
+        cats.forEach((cat) => {
+          const span = document.createElement("span");
+          span.className = "badge rounded-pill bg-white text-dark border p-2 px-3 category-pill";
+          span.dataset.cat = cat.id;
+          span.textContent = cat.name;
+          span.onclick = (e) => filterByCategory(cat.id, e);
+          catContainer.appendChild(span);
+        });
+      }
+
+      allResources = Array.isArray(resources) ? resources : [];
       setTimeout(() => renderLayout(allResources), 300);
 
     } catch (e) {
       console.error("Initialization Error:", e);
-      grid.innerHTML = `<div class="text-center p-5 text-danger">Failed to connect to library.</div>`;
+      grid.innerHTML = `<div class="text-center p-5 text-danger">Connection lost. Please log in again.</div>`;
     }
   }
 
- 
-  function renderLayout(items) {
-    if (!items.length) return renderResources([], "resourcesGrid");
+  // --- RENDERING LOGIC ---
 
-    // Sectioning: Most Viewed (Top 4)
+  function renderLayout(items) {
+    if (!items || !items.length) return renderResources([], "resourcesGrid");
+
     const topResources = [...items]
       .sort((a, b) => (b.view_count || 0) - (a.view_count || 0))
       .slice(0, 4);
@@ -79,20 +110,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   function renderResources(items, targetId) {
     const container = document.getElementById(targetId) || grid;
     
-    if (!items.length) {
+    if (!items || !items.length) {
       const isSearch = searchInput.value.trim() !== "";
       container.innerHTML = `
-        <div class="col-12 text-center py-5 animate__animated animate__fadeIn">
-            <div class="empty-state-container">
-                <i class="bi bi-search-heart display-1 text-primary opacity-25"></i>
-                <h3 class="fw-bold mt-4">No resources found</h3>
-                <p class="text-muted mx-auto" style="max-width: 400px;">
-                    ${isSearch ? `No matches for "<strong>${searchInput.value}</strong>".` : "The library is empty for now."}
-                </p>
-                <button class="btn btn-outline-primary rounded-pill px-4" onclick="location.reload()">
-                    <i class="bi bi-arrow-clockwise me-2"></i>Reset
-                </button>
-            </div>
+        <div class="col-12 text-center py-5">
+            <i class="bi bi-search display-1 text-muted opacity-25"></i>
+            <h3 class="fw-bold mt-4">No results</h3>
+            <p class="text-muted">${isSearch ? `Nothing matches "${searchInput.value}"` : "The library is empty."}</p>
         </div>`;
       return;
     }
@@ -114,21 +138,19 @@ document.addEventListener("DOMContentLoaded", async () => {
           <div class="p-4 text-center bg-light border-bottom">
               <i class="bi ${getFileIcon(res.url)} display-4 text-success"></i>
           </div>`;
-        actionBtn = `<a href="${res.url}" target="_blank" class="btn btn-sm btn-outline-success w-100">Open Resource</a>`;
+        actionBtn = `<a href="${res.url}" target="_blank" class="btn btn-sm btn-outline-success w-100">Open File</a>`;
       }
 
       return `
         <div class="col-md-4 col-lg-3 animate__animated animate__fadeInUp" style="animation-delay: ${delay}s">
-            <div class="card h-100 shadow-sm resource-card">
+            <div class="card h-100 shadow-sm resource-card border-0">
                 ${mediaPreview}
                 <div class="card-body">
                     <h6 class="fw-bold mb-1 text-truncate">${res.title}</h6>
-                    <p class="small text-muted mb-3" style="font-size: 0.75rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                        ${res.description || "No description provided."}
-                    </p>
-                    <div class="d-flex justify-content-between align-items-center mb-3">
+                    <p class="small text-muted mb-3 text-truncate">${res.description || "No description."}</p>
+                    <div class="d-flex justify-content-between align-items-center mb-3" style="font-size: 0.75rem;">
                         <span class="badge bg-light text-primary border">${res.view_count || 0} views</span>
-                        <span class="small text-muted" style="font-size: 0.7rem;">${new Date(res.created_at).toLocaleDateString()}</span>
+                        <span class="text-muted">${new Date(res.created_at).toLocaleDateString()}</span>
                     </div>
                     ${actionBtn}
                 </div>
@@ -139,23 +161,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function renderSkeletons() {
     grid.innerHTML = Array(4).fill(0).map(() => `
-        <div class="col-md-4 col-lg-3">
-            <div class="skeleton-card">
-                <div class="skeleton-img"></div>
-                <div class="skeleton-text"></div>
-                <div class="skeleton-text short"></div>
-                <div class="shimmer"></div>
-            </div>
+        <div class="col-md-3">
+            <div class="skeleton-card" style="height: 250px; background: #eee; border-radius: 12px; margin-bottom: 20px;"></div>
         </div>`).join('');
   }
 
-  /**
-   * UTILITIES & EVENT HANDLERS
-   */
   window.playVideo = (id, title) => {
     document.getElementById("videoTitle").textContent = title;
     document.getElementById("videoPlayerContainer").innerHTML = `
-        <iframe src="https://www.youtube.com/embed/${id}?autoplay=1" allowfullscreen allow="autoplay"></iframe>`;
+        <iframe src="https://www.youtube.com/embed/${id}?autoplay=1" allowfullscreen allow="autoplay" style="width:100%; height:400px; border:0; border-radius:12px;"></iframe>`;
     videoModal.show();
   };
 
@@ -163,14 +177,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!url) return "bi-link-45deg";
     const lower = url.toLowerCase();
     if (lower.includes(".pdf")) return "bi-file-earmark-pdf";
-    if (lower.includes(".ppt") || lower.includes(".pptx")) return "bi-file-earmark-ppt";
-    if (lower.includes(".doc") || lower.includes(".docx")) return "bi-file-earmark-word";
-    return "bi-link-45deg";
+    if (lower.includes(".ppt")) return "bi-file-earmark-ppt";
+    return "bi-file-earmark-text";
   }
 
   function filterByCategory(catId, event) {
-    document.querySelectorAll(".category-pill").forEach((p) => p.classList.remove("active"));
-    event.currentTarget.classList.add("active");
+    document.querySelectorAll(".category-pill").forEach((p) => p.classList.remove("active", "bg-primary", "text-white"));
+    event.currentTarget.classList.add("active", "bg-primary", "text-white");
     currentFilter = catId;
     applyFilters();
   }
@@ -182,14 +195,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       const matchesCat = currentFilter === "all" || r.category_id == currentFilter;
       return matchesSearch && matchesCat;
     });
-
-    // If we are filtering, we bypass the "Layout" (sections) and just show the grid
     renderResources(filtered, "resourcesGrid");
   }
 
   searchInput.addEventListener("input", applyFilters);
-
-  // Modal Cleanup
   document.getElementById("videoModal").addEventListener("hidden.bs.modal", () => {
     document.getElementById("videoPlayerContainer").innerHTML = "";
   });
