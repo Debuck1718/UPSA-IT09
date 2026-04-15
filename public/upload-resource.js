@@ -50,7 +50,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     if (currentUser.role === "admin") {
-      window.location.href = "admin-dashboard.html";
+      window.location.href = "admin.html";
     } 
     else if (currentUser.is_rep || currentUser.is_leader || currentUser.is_creator) {
       window.location.href = "rep-dashboard.html";
