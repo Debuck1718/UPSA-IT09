@@ -9,19 +9,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   const adminOptions = document.getElementById("adminOptions");
   const fileNameDisplay = document.getElementById("fileNameDisplay");
 
-  let userRole = "student";
+  // Define this at the top level so goBack() can see it
+  let currentUser = null; 
 
-  // 1. Initial Permission & Category Load
   async function init() {
     try {
       const session = await window.api.fetch("/api/session");
       if (session && session.user) {
-        userRole = session.user.role;
-        // Admins, Leaders, or Reps see the Global switch
+        currentUser = session.user; // Store the user data here
+        
+        // Toggle Admin/Rep options
         if (
-          userRole === "admin" ||
-          session.user.is_leader ||
-          session.user.is_creator
+          currentUser.role === "admin" ||
+          currentUser.is_leader ||
+          currentUser.is_creator
         ) {
           adminOptions.classList.remove("d-none");
         }
@@ -40,23 +41,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // Smart Back Button / Route Protection
+  // Updated goBack function
   window.goBack = () => {
-    // 1. Check for Admin first
-    if (userRole === "admin") {
+    // If session hasn't loaded yet, just go to default
+    if (!currentUser) {
+      window.location.href = "dashboard-modern.html";
+      return;
+    }
+
+    if (currentUser.role === "admin") {
       window.location.href = "admin-dashboard.html";
-      return;
-    }
-
-
-    if (userData.is_rep || userData.is_leader) {
+    } 
+    else if (currentUser.is_rep || currentUser.is_leader || currentUser.is_creator) {
       window.location.href = "rep-dashboard.html";
-      // Or wherever your reps manage their class
-      return;
+    } 
+    else {
+      window.location.href = "dashboard-modern.html";
     }
-
-    // 3. Default for standard students
-    window.location.href = "dashboard-modern.html";
   };
 
   // UI: Show selected filename
@@ -67,13 +68,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // 2. Toggle UI based on Format
+  // Toggle UI based on Format
   sourceType.addEventListener("change", (e) => {
     const val = e.target.value;
     const linkLabel = document.getElementById("linkLabel");
     const linkHint = document.getElementById("linkHint");
 
-    // Reset visibility
     fileGroup.classList.add("d-none");
     linkGroup.classList.add("d-none");
 
@@ -98,10 +98,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // 3. Handle Form Submission
   form.onsubmit = async (e) => {
     e.preventDefault();
-
     const btnText = document.getElementById("btnText");
     const btnLoader = document.getElementById("btnLoader");
 
@@ -123,18 +121,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     try {
-      // Updated endpoint to match our new structure
       const result = await window.api.fetch("/api/resources", {
         method: "POST",
         body: formData,
       });
 
       if (result && result.ok) {
-        alert(
-          result.autoApproved
-            ? "Published successfully!"
-            : "Submitted for moderation!",
-        );
+        alert(result.autoApproved ? "Published successfully!" : "Submitted for moderation!");
         window.location.href = "resources.html";
       } else {
         throw new Error(result.message || "Action failed");
@@ -152,8 +145,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   function extractYoutubeId(url) {
-    const regExp =
-      /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
     return match && match[2].length === 11 ? match[2] : null;
   }
