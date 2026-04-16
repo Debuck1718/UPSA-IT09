@@ -1,84 +1,117 @@
 window.seedResources = async () => {
-    const confirmSeed = confirm("Ready to populate the library with sample data?");
+    const confirmSeed = confirm("Ready to seed the NEW 2026 resources?");
     if (!confirmSeed) return;
 
-    console.log("🚀 Starting Seed Process...");
+    console.log("🚀 Starting Incremental Seed...");
 
-    // 1. Get current categories so we have valid category_ids
-    let currentCats = [];
     try {
-        currentCats = await window.api.fetch('/api/categories');
-    } catch (e) {
-        console.error("Could not fetch categories", e);
-    }
+        // 1. Get existing data to prevent duplicates
+        const [cats, existingResources] = await Promise.all([
+            window.api.fetch('/api/categories'),
+            window.api.fetch('/api/resources')
+        ]);
 
-    const getCategoryId = (name) => {
-        const found = currentCats.find(c => c.name.toLowerCase() === name.toLowerCase());
-        return found ? found.id : null;
-    };
+        const getCategoryId = (name) => {
+            const found = cats.find(c => c.name.toLowerCase() === name.toLowerCase());
+            return found ? found.id : null;
+        };
 
-    // 2. Sample Data
-    const seedData = [
-        { 
-            title: "Cybersecurity 2026", 
-            cat: "Industry Articles", 
-            url: "https://www.bcs.org/articles-opinion-and-research/cybersecurity-lessons-for-2026/",
-            desc: "Critical cybersecurity trends and forecasts for the 2026 digital economy."
-        },
-        { 
-            title: "MIT Algorithms Exam", 
-            cat: "Past Papers", 
-            url: "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-fall-2011/resource-type/exams/",
-            desc: "Practice exam materials for data structures and algorithm analysis."
-        },
-        { 
-            title: "Postman API Tool", 
-            cat: "Tools & Links", 
-            url: "https://www.postman.com/",
-            desc: "The industry standard platform for building and using APIs."
-        },
-        { 
-            title: "JS Full Course 2026", 
-            cat: "Video Tutorials", 
-            url: "https://www.youtube.com/watch?v=hBfhRlOJlpg",
-            desc: "Comprehensive JavaScript masterclass updated for modern standards."
-        }
-    ];
+        // 2. Updated data with Office and Python tutorials
+        const newSeedData = [
+            { 
+                title: "ICT Year 2 Workbook (GES)", 
+                cat: "Past Papers", 
+                url: "https://curriculumresources.edu.gh/wp-content/uploads/2025/10/ICT-YEAR-2-LV-ONLINE.pdf",
+                desc: "Official Ghana Education Service workbook for advanced computing students."
+            },
+            { 
+                title: "Harvard CS50 2026", 
+                cat: "Video Tutorials", 
+                url: "https://www.youtube.com/watch?v=LfaMVlDaQ24",
+                desc: "Harvard University's introduction to the intellectual enterprises of computer science."
+            },
+            { 
+                title: "Python for Beginners Tutorial", 
+                cat: "Video Tutorials", 
+                url: "https://www.youtube.com/watch?v=mDKM-JtU0uQ",
+                desc: "Comprehensive Python programming guide by Kevin Stratvert, perfect for new coders."
+            },
+            { 
+                title: "Excel for Beginners - Complete Course", 
+                cat: "Video Tutorials", 
+                url: "https://www.youtube.com/watch?v=Vl0gvfGOrz8",
+                desc: "The complete guide to mastering Excel basics by Technology for Teachers and Students."
+            },
+            { 
+                title: "Microsoft Word for Beginners", 
+                cat: "Video Tutorials", 
+                url: "https://www.youtube.com/watch?v=S-nHYzK-BVg",
+                desc: "A full beginner's course on Microsoft Word essentials and document formatting."
+            },
+            { 
+                title: "Full Stack Open 2026", 
+                cat: "Industry Articles", 
+                url: "https://fullstackopen.com/en/",
+                desc: "Modern JavaScript development (React, Node, GraphQL) from the University of Helsinki."
+            },
+            { 
+                title: "IT Industry Outlook 2026", 
+                cat: "Industry Articles", 
+                url: "https://publicsectornetwork.com/insight/it-industry-outlook-2026",
+                desc: "Analysis of AI automation and Zero Trust security in the 2026 workforce."
+            },
+            { 
+                title: "Google Responsible AI Foundations", 
+                cat: "Tools & Links", 
+                url: "https://www.cloudskillsboost.google/course_templates/554",
+                desc: "Practical implementation of ethical frameworks in AI development."
+            }
+        ];
 
-    // 3. Loop and Upload
-    for (const item of seedData) {
-        const catId = getCategoryId(item.cat);
-        
-        if (!catId) {
-            console.warn(`⚠️ Skipping "${item.title}": Category "${item.cat}" does not exist in your database.`);
-            continue;
-        }
+        // 3. Loop and Upload (with Duplicate Check)
+        for (const item of newSeedData) {
+            if (existingResources.some(r => r.title === item.title)) {
+                console.log(`⏭️ Skipping "${item.title}" (Already exists)`);
+                continue;
+            }
 
-        try {
+            const catId = getCategoryId(item.cat);
+            if (!catId) {
+                console.warn(`⚠️ Skipping "${item.title}": Category "${item.cat}" not found.`);
+                continue;
+            }
+
+            let ytId = null;
+            if (item.url.includes('youtube.com')) {
+                ytId = new URL(item.url).searchParams.get('v');
+            } else if (item.url.includes('youtu.be/')) {
+                ytId = item.url.split('youtu.be/')[1].split('?')[0];
+            }
+
             const payload = {
                 title: item.title,
                 description: item.desc,
                 url: item.url,
-                youtube_id: item.url.includes('youtube.com') ? new URL(item.url).searchParams.get('v') : null,
+                youtube_id: ytId,
                 category_id: catId,
                 is_global: true,
-                status: 'approved' // Match the backend 'approved' default
+                status: 'approved' 
             };
 
-            const response = await window.api.fetch('/api/admin/resources', {
+            await window.api.fetch('/api/admin/resources', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
-            if (response.ok || response.resource) {
-                console.log(`✅ Successfully Seeded: ${item.title}`);
-            }
-        } catch (e) {
-            console.error(`❌ Error seeding ${item.title}:`, e);
+            console.log(`✅ Successfully Seeded: ${item.title}`);
         }
-    }
 
-    alert("Seeding complete! Check your console for details.");
-    if (typeof loadPendingResources === 'function') loadPendingResources();
+        alert("New resources added successfully!");
+        if (typeof loadResources === 'function') loadResources();
+
+    } catch (e) {
+        console.error("❌ Seeding Error:", e);
+        alert("Check console for errors.");
+    }
 };
