@@ -16,7 +16,7 @@ window.seedResources = async () => {
             return found ? found.id : null;
         };
 
-        // 2. Updated data with Office and Python tutorials
+        // 2. Updated data with verified working YouTube links for 2026
         const newSeedData = [
             { 
                 title: "ICT Year 2 Workbook (GES)", 
@@ -33,13 +33,13 @@ window.seedResources = async () => {
             { 
                 title: "Python for Beginners Tutorial", 
                 cat: "Video Tutorials", 
-                url: "https://www.youtube.com/watch?v=mDKM-JtU0uQ",
-                desc: "Comprehensive Python programming guide by Kevin Stratvert, perfect for new coders."
+                url: "https://www.youtube.com/watch?v=_uQrJ0TkZlc", // Updated to verified link
+                desc: "Comprehensive Python programming guide, perfect for new coders."
             },
             { 
                 title: "Excel for Beginners - Complete Course", 
                 cat: "Video Tutorials", 
-                url: "https://www.youtube.com/watch?v=Vl0gvfGOrz8",
+                url: "https://www.youtube.com/watch?v=rjpnZpGuD_M", // Updated to verified link
                 desc: "The complete guide to mastering Excel basics by Technology for Teachers and Students."
             },
             { 
@@ -82,10 +82,14 @@ window.seedResources = async () => {
             }
 
             let ytId = null;
-            if (item.url.includes('youtube.com')) {
-                ytId = new URL(item.url).searchParams.get('v');
-            } else if (item.url.includes('youtu.be/')) {
-                ytId = item.url.split('youtu.be/')[1].split('?')[0];
+            try {
+                if (item.url.includes('youtube.com')) {
+                    ytId = new URL(item.url).searchParams.get('v');
+                } else if (item.url.includes('youtu.be/')) {
+                    ytId = item.url.split('youtu.be/')[1].split('?')[0];
+                }
+            } catch (urlErr) {
+                console.warn(`Could not parse ID for ${item.url}`);
             }
 
             const payload = {
@@ -108,7 +112,7 @@ window.seedResources = async () => {
         }
 
         alert("New resources added successfully!");
-        if (typeof loadResources === 'function') loadResources();
+        if (typeof init === 'function') init(); // Refresh the grid
 
     } catch (e) {
         console.error("❌ Seeding Error:", e);

@@ -8,9 +8,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   let allResources = [];
   let currentFilter = "all";
 
-  /**
-   * INITIALIZATION & ROLE-BASED ROUTING
-   */
   async function init() {
     renderSkeletons();
 
@@ -24,64 +21,30 @@ document.addEventListener("DOMContentLoaded", async () => {
       const u = session?.user;
       const currentPage = window.location.pathname;
 
-      // --- 1. SESSION & AUTH CHECK ---
       if (!u) {
         window.location.replace("index.html");
         return;
       }
 
-      // --- 2. SMART NAVIGATION & ROUTING LOGIC ---
-      // Determine the correct "Home" dashboard for this specific user
-      const dashboardUrl =
-        u.role === "admin"
-          ? "admin.html"
-          : u.is_rep
-            ? "rep-dashboard.html"
-            : "dashboard-modern.html";
-
-      // Update UI links to point to the correct dashboard
-      const navBrand = document.querySelector(".navbar-brand");
-      const backBtn = document.querySelector(".btn-back");
+      const dashboardUrl = u.role === "admin" ? "admin.html" : u.is_rep ? "rep-dashboard.html" : "dashboard-modern.html";
+      const navBrand = document.getElementById("navBrand");
+      const backBtn = document.getElementById("backBtn");
       if (navBrand) navBrand.href = dashboardUrl;
       if (backBtn) backBtn.href = dashboardUrl;
 
-      // Role-Based Redirects (Allowing everyone to see resources.html)
-      const isResourcePage = currentPage.includes("resources.html");
-
-      if (u.role === "admin") {
-        if (!currentPage.includes("admin.html") && !isResourcePage) {
-          window.location.replace("admin.html");
-          return;
-        }
-      } else if (u.is_rep) {
-        if (!currentPage.includes("rep-dashboard.html") && !isResourcePage) {
-          window.location.replace("rep-dashboard.html");
-          return;
-        }
-      } else {
-        // Standard Students
-        if (!currentPage.includes("dashboard-modern.html") && !isResourcePage) {
-          window.location.replace("dashboard-modern.html");
-          return;
-        }
-      }
-
-      // --- 3. PERMISSION CHECK FOR UI ELEMENTS ---
       if (u.role === "admin" || u.is_rep || u.is_leader || u.is_creator) {
         if (uploadAction) {
           uploadAction.innerHTML = `
-                    <a href="upload-resource.html" class="btn btn-primary rounded-pill px-4 animate__animated animate__fadeIn">
-                        <i class="bi bi-cloud-arrow-up me-2"></i>Upload Resource
-                    </a>`;
+            <a href="upload-resource.html" class="btn btn-primary rounded-pill px-4 animate__animated animate__fadeIn">
+                <i class="bi bi-cloud-arrow-up me-2"></i>Upload Resource
+            </a>`;
         }
       }
 
-      // --- 4. INITIALIZE CONTENT ---
       if (cats && Array.isArray(cats)) {
         cats.forEach((cat) => {
           const span = document.createElement("span");
-          span.className =
-            "badge rounded-pill bg-white text-dark border p-2 px-3 category-pill";
+          span.className = "badge rounded-pill bg-white text-dark border p-2 px-3 category-pill";
           span.dataset.cat = cat.id;
           span.textContent = cat.name;
           span.onclick = (e) => filterByCategory(cat.id, e);
@@ -96,8 +59,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       grid.innerHTML = `<div class="text-center p-5 text-danger">Connection lost. Please log in again.</div>`;
     }
   }
-
-  // --- RENDERING LOGIC ---
 
   function renderLayout(items) {
     if (!items || !items.length) return renderResources([], "resourcesGrid");
@@ -126,13 +87,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const container = document.getElementById(targetId) || grid;
 
     if (!items || !items.length) {
-      const isSearch = searchInput.value.trim() !== "";
-      container.innerHTML = `
-        <div class="col-12 text-center py-5">
-            <i class="bi bi-search display-1 text-muted opacity-25"></i>
-            <h3 class="fw-bold mt-4">No results</h3>
-            <p class="text-muted">${isSearch ? `Nothing matches "${searchInput.value}"` : "The library is empty."}</p>
-        </div>`;
+      container.innerHTML = `<div class="col-12 text-center py-5 text-muted">No resources found.</div>`;
       return;
     }
 
@@ -145,7 +100,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (res.youtube_id) {
           mediaPreview = `
           <div class="youtube-thumb" onclick="playVideo('${res.youtube_id}', '${res.title.replace(/'/g, "\\'")}')">
-              <img src="https://img.youtube.com/vi/${res.youtube_id}/hqdefault.jpg" class="card-img-top" alt="Thumb" style="height: 180px; object-fit: cover;">
+              <img src="https://img.youtube.com/vi/${res.youtube_id}/hqdefault.jpg" 
+                   onerror="this.src='https://img.youtube.com/vi/${res.youtube_id}/0.jpg'"
+                   class="card-img-top" alt="Thumb" style="height: 180px; object-fit: cover;">
               <i class="bi bi-play-circle-fill play-overlay"></i>
           </div>`;
           actionBtn = `<button class="btn btn-sm btn-outline-danger w-100" onclick="playVideo('${res.youtube_id}', '${res.title.replace(/'/g, "\\'")}')">Watch Video</button>`;
@@ -177,21 +134,23 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderSkeletons() {
-    grid.innerHTML = Array(4)
-      .fill(0)
-      .map(
-        () => `
+    grid.innerHTML = Array(4).fill(0).map(() => `
         <div class="col-md-3">
             <div class="skeleton-card" style="height: 250px; background: #eee; border-radius: 12px; margin-bottom: 20px;"></div>
-        </div>`,
-      )
-      .join("");
+        </div>`).join("");
   }
 
   window.playVideo = (id, title) => {
     document.getElementById("videoTitle").textContent = title;
+    // Updated with referrerpolicy to fix Error 153
     document.getElementById("videoPlayerContainer").innerHTML = `
-        <iframe src="https://www.youtube.com/embed/${id}?autoplay=1" allowfullscreen allow="autoplay" style="width:100%; height:400px; border:0; border-radius:12px;"></iframe>`;
+        <iframe 
+            src="https://www.youtube.com/embed/${id}?autoplay=1&rel=0" 
+            allowfullscreen 
+            allow="autoplay" 
+            referrerpolicy="strict-origin-when-cross-origin"
+            style="width:100%; height:100%; border:0;">
+        </iframe>`;
     videoModal.show();
   };
 
@@ -204,10 +163,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function filterByCategory(catId, event) {
-    document
-      .querySelectorAll(".category-pill")
-      .forEach((p) => p.classList.remove("active", "bg-primary", "text-white"));
-    event.currentTarget.classList.add("active", "bg-primary", "text-white");
+    document.querySelectorAll(".category-pill").forEach((p) => p.classList.remove("active"));
+    event.currentTarget.classList.add("active");
     currentFilter = catId;
     applyFilters();
   }
@@ -215,22 +172,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   function applyFilters() {
     const query = searchInput.value.toLowerCase();
     const filtered = allResources.filter((r) => {
-      const matchesSearch =
-        r.title.toLowerCase().includes(query) ||
-        (r.description && r.description.toLowerCase().includes(query));
-      const matchesCat =
-        currentFilter === "all" || r.category_id == currentFilter;
+      const matchesSearch = r.title.toLowerCase().includes(query) || (r.description && r.description.toLowerCase().includes(query));
+      const matchesCat = currentFilter === "all" || r.category_id == currentFilter;
       return matchesSearch && matchesCat;
     });
     renderResources(filtered, "resourcesGrid");
   }
 
   searchInput.addEventListener("input", applyFilters);
-  document
-    .getElementById("videoModal")
-    .addEventListener("hidden.bs.modal", () => {
-      document.getElementById("videoPlayerContainer").innerHTML = "";
-    });
+  document.getElementById("videoModal").addEventListener("hidden.bs.modal", () => {
+    document.getElementById("videoPlayerContainer").innerHTML = "";
+  });
 
   init();
 });
