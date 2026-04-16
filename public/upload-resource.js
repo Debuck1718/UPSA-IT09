@@ -108,41 +108,60 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const formData = new FormData(form);
     const sType = sourceType.value;
+    
+    // 1. Ensure 'type' is sent (Backends usually use this to route logic)
     formData.append("type", sType);
 
-    if (sType === "youtube") {
-      const ytId = extractYoutubeId(urlInput.value.trim());
-      if (!ytId) {
-        alert("Invalid YouTube URL");
-        resetBtn();
-        return;
-      }
-      formData.append("youtube_id", ytId);
+    // 2. Handle the "is_global" checkbox properly for production
+    const isGlobalCheckbox = document.getElementById("isGlobal");
+    // Explicitly set to true/false string or boolean based on backend needs
+    formData.set("is_global", isGlobalCheckbox.checked ? "true" : "false");
+
+    // 3. Clean up the payload based on selection
+    if (sType === "file") {
+        formData.delete("url"); // Don't send empty URL if it's a file
+        formData.delete("youtube_id");
+    } else {
+        formData.delete("file"); // CRITICAL: Don't send empty file object if it's a link
+        
+        if (sType === "youtube") {
+            const ytId = extractYoutubeId(urlInput.value.trim());
+            if (!ytId) {
+                alert("Please enter a valid YouTube URL");
+                resetBtn();
+                return;
+            }
+            formData.set("youtube_id", ytId);
+        } else {
+            formData.delete("youtube_id");
+        }
     }
 
     try {
-      const result = await window.api.fetch("/api/resources", {
-        method: "POST",
-        body: formData,
-      });
+        // NOTE: When sending FormData, do NOT set 'Content-Type' header manually.
+        // fetch() will automatically set it to 'multipart/form-data; boundary=...'
+        const result = await window.api.fetch("/api/resources", {
+            method: "POST",
+            body: formData,
+        });
 
-      if (result && result.ok) {
-        alert(result.autoApproved ? "Published successfully!" : "Submitted for moderation!");
-        window.location.href = "resources.html";
-      } else {
-        throw new Error(result.message || "Action failed");
-      }
+        if (result && (result.ok || result.success)) {
+            alert(result.autoApproved ? "Published successfully!" : "Submitted for moderation!");
+            window.location.href = "resources.html";
+        } else {
+            throw new Error(result.message || "Upload failed. Please try again.");
+        }
     } catch (err) {
-      alert(err.message);
+        alert("Error: " + err.message);
     } finally {
-      resetBtn();
+        resetBtn();
     }
 
     function resetBtn() {
-      btnText.classList.remove("d-none");
-      btnLoader.classList.add("d-none");
+        btnText.classList.remove("d-none");
+        btnLoader.classList.add("d-none");
     }
-  };
+};
 
   function extractYoutubeId(url) {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
