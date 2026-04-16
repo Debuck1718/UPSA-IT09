@@ -1,46 +1,84 @@
 window.seedResources = async () => {
-    const confirmSeed = confirm("This will attempt to add sample resources to your library. Proceed?");
+    const confirmSeed = confirm("Ready to populate the library with sample data?");
     if (!confirmSeed) return;
 
-    // 1. Create Categories First
-    const cats = ["Industry Articles", "Past Papers", "Tools & Links", "Video Tutorials"];
-    console.log("Creating categories...");
-    
-    for (const name of cats) {
-        try {
-            await window.api.fetch('/api/admin/categories', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name })
-            });
-        } catch (e) { console.log(`Category ${name} might already exist.`); }
+    console.log("🚀 Starting Seed Process...");
+
+    // 1. Get current categories so we have valid category_ids
+    let currentCats = [];
+    try {
+        currentCats = await window.api.fetch('/api/categories');
+    } catch (e) {
+        console.error("Could not fetch categories", e);
     }
 
-    // 2. Fetch Category IDs
-    const currentCats = await window.api.fetch('/api/categories');
-    const getID = (name) => currentCats.find(c => c.name === name)?.id;
+    const getCategoryId = (name) => {
+        const found = currentCats.find(c => c.name.toLowerCase() === name.toLowerCase());
+        return found ? found.id : null;
+    };
 
-    // 3. Define Resources
-    const resources = [
-        { title: "Cybersecurity 2026", url: "https://www.bcs.org/articles-opinion-and-research/cybersecurity-lessons-for-2026/", category_id: getID("Industry Articles") },
-        { title: "MIT Algorithms Exam", url: "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-fall-2011/resource-type/exams/", category_id: getID("Past Papers") },
-        { title: "Postman API Tool", url: "https://www.postman.com/", category_id: getID("Tools & Links") },
-        { title: "JS Full Course 2026", url: "https://www.youtube.com/watch?v=hBfhRlOJlpg", category_id: getID("Video Tutorials") }
+    // 2. Sample Data
+    const seedData = [
+        { 
+            title: "Cybersecurity 2026", 
+            cat: "Industry Articles", 
+            url: "https://www.bcs.org/articles-opinion-and-research/cybersecurity-lessons-for-2026/",
+            desc: "Critical cybersecurity trends and forecasts for the 2026 digital economy."
+        },
+        { 
+            title: "MIT Algorithms Exam", 
+            cat: "Past Papers", 
+            url: "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-fall-2011/resource-type/exams/",
+            desc: "Practice exam materials for data structures and algorithm analysis."
+        },
+        { 
+            title: "Postman API Tool", 
+            cat: "Tools & Links", 
+            url: "https://www.postman.com/",
+            desc: "The industry standard platform for building and using APIs."
+        },
+        { 
+            title: "JS Full Course 2026", 
+            cat: "Video Tutorials", 
+            url: "https://www.youtube.com/watch?v=hBfhRlOJlpg",
+            desc: "Comprehensive JavaScript masterclass updated for modern standards."
+        }
     ];
 
-    // 4. Upload
-    for (const res of resources) {
-        if (!res.category_id) continue;
+    // 3. Loop and Upload
+    for (const item of seedData) {
+        const catId = getCategoryId(item.cat);
+        
+        if (!catId) {
+            console.warn(`⚠️ Skipping "${item.title}": Category "${item.cat}" does not exist in your database.`);
+            continue;
+        }
+
         try {
-            await window.api.fetch('/api/admin/resources/upload', {
+            const payload = {
+                title: item.title,
+                description: item.desc,
+                url: item.url,
+                youtube_id: item.url.includes('youtube.com') ? new URL(item.url).searchParams.get('v') : null,
+                category_id: catId,
+                is_global: true,
+                status: 'approved' // Match the backend 'approved' default
+            };
+
+            const response = await window.api.fetch('/api/admin/resources', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...res, description: "Automated Seed Resource", file_type: "Link", is_approved: true })
+                body: JSON.stringify(payload)
             });
-            console.log(`✅ Seeded: ${res.title}`);
-        } catch (e) { console.error(`❌ Error seeding ${res.title}`); }
+
+            if (response.ok || response.resource) {
+                console.log(`✅ Successfully Seeded: ${item.title}`);
+            }
+        } catch (e) {
+            console.error(`❌ Error seeding ${item.title}:`, e);
+        }
     }
 
-    alert("Seed Process Finished! Refresh the library to see updates.");
-    if (typeof loadCategories === 'function') loadCategories();
+    alert("Seeding complete! Check your console for details.");
+    if (typeof loadPendingResources === 'function') loadPendingResources();
 };
