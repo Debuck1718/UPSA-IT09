@@ -18,54 +18,70 @@ document.addEventListener("DOMContentLoaded", async () => {
       const [cats, resources, session] = await Promise.all([
         window.api.fetch("/api/categories"),
         window.api.fetch("/api/resources"),
-        window.api.fetch("/api/session")
+        window.api.fetch("/api/session"),
       ]);
 
       const u = session?.user;
       const currentPage = window.location.pathname;
 
-      // --- 1. SESSION & ROUTING LOGIC ---
+      // --- 1. SESSION & AUTH CHECK ---
       if (!u) {
         window.location.replace("index.html");
         return;
       }
 
-      if (u.role === 'admin') {
-        // Redirect Admin to their panel if they wander into the student library
-        if (!currentPage.includes("admin.html")) {
+      // --- 2. SMART NAVIGATION & ROUTING LOGIC ---
+      // Determine the correct "Home" dashboard for this specific user
+      const dashboardUrl =
+        u.role === "admin"
+          ? "admin.html"
+          : u.is_rep
+            ? "rep-dashboard.html"
+            : "dashboard-modern.html";
+
+      // Update UI links to point to the correct dashboard
+      const navBrand = document.querySelector(".navbar-brand");
+      const backBtn = document.querySelector(".btn-back");
+      if (navBrand) navBrand.href = dashboardUrl;
+      if (backBtn) backBtn.href = dashboardUrl;
+
+      // Role-Based Redirects (Allowing everyone to see resources.html)
+      const isResourcePage = currentPage.includes("resources.html");
+
+      if (u.role === "admin") {
+        if (!currentPage.includes("admin.html") && !isResourcePage) {
           window.location.replace("admin.html");
           return;
         }
       } else if (u.is_rep) {
-        // Redirect Reps to their specific dashboard
-        if (!currentPage.includes("rep-dashboard.html")) {
+        if (!currentPage.includes("rep-dashboard.html") && !isResourcePage) {
           window.location.replace("rep-dashboard.html");
           return;
         }
       } else {
-        // Standard Students go to modern dashboard
-        if (!currentPage.includes("dashboard-modern.html") && !currentPage.includes("resources.html")) {
+        // Standard Students
+        if (!currentPage.includes("dashboard-modern.html") && !isResourcePage) {
           window.location.replace("dashboard-modern.html");
           return;
         }
       }
 
-      // --- 2. PERMISSION CHECK FOR UI ELEMENTS ---
-      // This ensures that even if a Rep/Admin stays on this page, they see the upload button
-      if (u.role === 'admin' || u.is_rep || u.is_leader || u.is_creator) {
+      // --- 3. PERMISSION CHECK FOR UI ELEMENTS ---
+      if (u.role === "admin" || u.is_rep || u.is_leader || u.is_creator) {
         if (uploadAction) {
           uploadAction.innerHTML = `
-            <a href="upload-resource.html" class="btn btn-primary rounded-pill px-4 animate__animated animate__fadeIn">
-                <i class="bi bi-cloud-arrow-up me-2"></i>Upload Resource
-            </a>`;
+                    <a href="upload-resource.html" class="btn btn-primary rounded-pill px-4 animate__animated animate__fadeIn">
+                        <i class="bi bi-cloud-arrow-up me-2"></i>Upload Resource
+                    </a>`;
         }
       }
 
-      // --- 3. INITIALIZE CONTENT ---
+      // --- 4. INITIALIZE CONTENT ---
       if (cats && Array.isArray(cats)) {
         cats.forEach((cat) => {
           const span = document.createElement("span");
-          span.className = "badge rounded-pill bg-white text-dark border p-2 px-3 category-pill";
+          span.className =
+            "badge rounded-pill bg-white text-dark border p-2 px-3 category-pill";
           span.dataset.cat = cat.id;
           span.textContent = cat.name;
           span.onclick = (e) => filterByCategory(cat.id, e);
@@ -75,7 +91,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       allResources = Array.isArray(resources) ? resources : [];
       setTimeout(() => renderLayout(allResources), 300);
-
     } catch (e) {
       console.error("Initialization Error:", e);
       grid.innerHTML = `<div class="text-center p-5 text-danger">Connection lost. Please log in again.</div>`;
@@ -109,7 +124,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function renderResources(items, targetId) {
     const container = document.getElementById(targetId) || grid;
-    
+
     if (!items || !items.length) {
       const isSearch = searchInput.value.trim() !== "";
       container.innerHTML = `
@@ -121,27 +136,28 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    container.innerHTML = items.map((res, index) => {
-      const delay = (index % 4) * 0.1;
-      let actionBtn = "";
-      let mediaPreview = "";
+    container.innerHTML = items
+      .map((res, index) => {
+        const delay = (index % 4) * 0.1;
+        let actionBtn = "";
+        let mediaPreview = "";
 
-      if (res.youtube_id) {
-        mediaPreview = `
+        if (res.youtube_id) {
+          mediaPreview = `
           <div class="youtube-thumb" onclick="playVideo('${res.youtube_id}', '${res.title.replace(/'/g, "\\'")}')">
               <img src="https://img.youtube.com/vi/${res.youtube_id}/hqdefault.jpg" class="card-img-top" alt="Thumb" style="height: 180px; object-fit: cover;">
               <i class="bi bi-play-circle-fill play-overlay"></i>
           </div>`;
-        actionBtn = `<button class="btn btn-sm btn-outline-danger w-100" onclick="playVideo('${res.youtube_id}', '${res.title.replace(/'/g, "\\'")}')">Watch Video</button>`;
-      } else {
-        mediaPreview = `
+          actionBtn = `<button class="btn btn-sm btn-outline-danger w-100" onclick="playVideo('${res.youtube_id}', '${res.title.replace(/'/g, "\\'")}')">Watch Video</button>`;
+        } else {
+          mediaPreview = `
           <div class="p-4 text-center bg-light border-bottom">
               <i class="bi ${getFileIcon(res.url)} display-4 text-success"></i>
           </div>`;
-        actionBtn = `<a href="${res.url}" target="_blank" class="btn btn-sm btn-outline-success w-100">Open File</a>`;
-      }
+          actionBtn = `<a href="${res.url}" target="_blank" class="btn btn-sm btn-outline-success w-100">Open File</a>`;
+        }
 
-      return `
+        return `
         <div class="col-md-4 col-lg-3 animate__animated animate__fadeInUp" style="animation-delay: ${delay}s">
             <div class="card h-100 shadow-sm resource-card border-0">
                 ${mediaPreview}
@@ -156,14 +172,20 @@ document.addEventListener("DOMContentLoaded", async () => {
                 </div>
             </div>
         </div>`;
-    }).join("");
+      })
+      .join("");
   }
 
   function renderSkeletons() {
-    grid.innerHTML = Array(4).fill(0).map(() => `
+    grid.innerHTML = Array(4)
+      .fill(0)
+      .map(
+        () => `
         <div class="col-md-3">
             <div class="skeleton-card" style="height: 250px; background: #eee; border-radius: 12px; margin-bottom: 20px;"></div>
-        </div>`).join('');
+        </div>`,
+      )
+      .join("");
   }
 
   window.playVideo = (id, title) => {
@@ -182,7 +204,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function filterByCategory(catId, event) {
-    document.querySelectorAll(".category-pill").forEach((p) => p.classList.remove("active", "bg-primary", "text-white"));
+    document
+      .querySelectorAll(".category-pill")
+      .forEach((p) => p.classList.remove("active", "bg-primary", "text-white"));
     event.currentTarget.classList.add("active", "bg-primary", "text-white");
     currentFilter = catId;
     applyFilters();
@@ -191,17 +215,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   function applyFilters() {
     const query = searchInput.value.toLowerCase();
     const filtered = allResources.filter((r) => {
-      const matchesSearch = r.title.toLowerCase().includes(query) || (r.description && r.description.toLowerCase().includes(query));
-      const matchesCat = currentFilter === "all" || r.category_id == currentFilter;
+      const matchesSearch =
+        r.title.toLowerCase().includes(query) ||
+        (r.description && r.description.toLowerCase().includes(query));
+      const matchesCat =
+        currentFilter === "all" || r.category_id == currentFilter;
       return matchesSearch && matchesCat;
     });
     renderResources(filtered, "resourcesGrid");
   }
 
   searchInput.addEventListener("input", applyFilters);
-  document.getElementById("videoModal").addEventListener("hidden.bs.modal", () => {
-    document.getElementById("videoPlayerContainer").innerHTML = "";
-  });
+  document
+    .getElementById("videoModal")
+    .addEventListener("hidden.bs.modal", () => {
+      document.getElementById("videoPlayerContainer").innerHTML = "";
+    });
 
   init();
 });
