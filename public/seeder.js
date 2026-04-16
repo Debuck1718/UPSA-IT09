@@ -39,14 +39,38 @@ window.seedResources = async () => {
             { 
                 title: "Excel for Beginners - Complete Course", 
                 cat: "Video Tutorials", 
-                url: "https://www.youtube.com/watch?v=rjpnZpGuD_M", // Updated to verified link
+                url: "https://www.youtube.com/watch?v=wbJcJCkBcMg", // Updated to verified link
                 desc: "The complete guide to mastering Excel basics by Technology for Teachers and Students."
+            },
+            { 
+                title: "JavaScript for Beginners - Complete Course by Carnes", 
+                cat: "Video Tutorials", 
+                url: "https://www.youtube.com/watch?v=PkZNo7MFNFg", // Updated to verified link
+                desc: "The complete guide to mastering JavaScript basics by FreeCodeCamp.org and Beau Carnes."
             },
             { 
                 title: "Microsoft Word for Beginners", 
                 cat: "Video Tutorials", 
                 url: "https://www.youtube.com/watch?v=S-nHYzK-BVg",
                 desc: "A full beginner's course on Microsoft Word essentials and document formatting."
+            },
+            { 
+                title: "SQL Course for Beginners by Mosh", 
+                cat: "Video Tutorials", 
+                url: "https://www.youtube.com/watch?v=7S_tz1z_5bA",
+                desc: "A full beginner's course on SQL for AI, machine learning and data analysis ."
+            },
+            { 
+                title: "C++ Full Course by Bro Code", 
+                cat: "Video Tutorials", 
+                url: "https://www.youtube.com/watch?v=-TkoO8Z07hI",
+                desc: "A full beginner's course on C++ which will upgrade your skills for video editing, developing gaming softwares and more."
+            },
+            { 
+                title: "Java Full Course for beginners by Mosh", 
+                cat: "Video Tutorials", 
+                url: "https://www.youtube.com/watch?v=eIrMbAQSU34",
+                desc: "A full beginner friendly course on Java."
             },
             { 
                 title: "Full Stack Open 2026", 
