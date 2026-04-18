@@ -7,108 +7,42 @@ const cors = require("cors");
 const helmet = require("helmet");
 const bcrypt = require("bcryptjs");
 const { v4: uuidv4 } = require("uuid");
-const { parse } = require("csv-parse/sync");
 const { createClient } = require("@supabase/supabase-js");
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-// Enable file upload parsing for CSV admin import and (optionally) other uploads
+// 1. GLOBAL SECURITY & PARSERS (MUST BE FIRST)
+app.set("trust proxy", 1);
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(express.json({ limit: "5mb" })); // Increased limit for larger metadata
+app.use(express.urlencoded({ extended: true, limit: "5mb" }));
+
+// 2. FILE UPLOAD CONFIGURATION
 app.use(
   fileUpload({
     limits: { fileSize: Number(process.env.MAX_UPLOAD_MB || 25) * 1024 * 1024 },
     abortOnLimit: true,
+    useTempFiles: false, // Keep in memory for fast Supabase transfer
   }),
 );
 
-// Database (Postgres via Supabase)
+// 3. DATABASE & SUPABASE INIT
 const db = require("./db_pg");
-
-// Supabase Storage client (service role)
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET || "slides";
-const supabase =
-  SUPABASE_URL && SUPABASE_SERVICE_KEY
-    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+const supabase = (SUPABASE_URL && SUPABASE_SERVICE_KEY) 
+    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY) 
     : null;
 
-// Validate critical envs (non-fatal warnings)
-(function validateEnv() {
-  const missing = [];
-  if (!process.env.DATABASE_URL) missing.push("DATABASE_URL");
-  if (!process.env.SUPABASE_URL) missing.push("SUPABASE_URL");
-  if (!process.env.SUPABASE_SERVICE_KEY) missing.push("SUPABASE_SERVICE_KEY");
-  if (!process.env.SESSION_SECRET) missing.push("SESSION_SECRET");
-  if (missing.length) {
-    console.warn("[env] Missing variables:", missing.join(", "));
-  }
-})();
-
-// Initialize DB schema (store promise to await on server start)
-let schemaReady = Promise.resolve();
-if (typeof db.initSchema === "function") {
-  schemaReady = db.initSchema().catch((err) => {
-    console.error("Failed to init database schema:", err);
-  });
-}
-
-// Small env health endpoint (no secrets)
-app.get("/api/env/health", (req, res) => {
-  res.json({
-    ok: true,
-    hasDatabaseUrl: !!process.env.DATABASE_URL,
-    hasSupabaseUrl: !!process.env.SUPABASE_URL,
-    hasSupabaseServiceKey: !!process.env.SUPABASE_SERVICE_KEY,
-    hasSessionSecret: !!process.env.SESSION_SECRET,
-    bucket: SUPABASE_BUCKET,
-  });
-});
-// Security and parsers
-app.set("trust proxy", 1);
-app.use(helmet({ contentSecurityPolicy: false }));
-app.use(express.json({ limit: "2mb" }));
-app.use(express.urlencoded({ extended: true, limit: "2mb" }));
-
-// Serve static frontend with cache hints
-app.use(
-  "/public",
-  express.static(path.join(__dirname, "public"), {
-    etag: true,
-    lastModified: true,
-    maxAge: process.env.NODE_ENV === "production" ? "1d" : 0,
-    setHeaders: function (res, filePath) {
-      if (/\.(html)$/i.test(filePath)) {
-        res.setHeader("Cache-Control", "no-cache");
-      }
-    },
-  }),
-);
-
-// CORS: allow in development only
+// 4. CORS CONFIG
 if (process.env.NODE_ENV !== "production") {
-  const allowedOrigins = new Set([
-    "http://127.0.0.1:5500",
-    "http://127.0.0.1:5501",
-    "http://localhost:5500",
-    "http://localhost:5501",
-  ]);
-  app.use(
-    cors({
-      origin: function (origin, callback) {
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.has(origin)) return callback(null, true);
-        return callback(null, false);
-      },
-      credentials: true,
-    }),
-  );
-  app.options("*", cors());
+  app.use(cors({ origin: true, credentials: true }));
 }
 
+// 5. SESSION MANAGEMENT (After Parsers)
 const pgSession = require("connect-pg-simple")(session);
 const isProd = process.env.RENDER || process.env.NODE_ENV === "production";
-const SESSION_SECRET = process.env.SESSION_SECRET || "your_secret_key";
 
 app.use(
   session({
@@ -118,7 +52,7 @@ app.use(
       tableName: "user_sessions",
     }),
     name: "sid",
-    secret: SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || "your_secret_key",
     resave: false,
     saveUninitialized: false,
     proxy: true,
@@ -129,7 +63,12 @@ app.use(
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   }),
-); // --- Static pages ---
+);
+
+// 6. STATIC FILES
+app.use("/public", express.static(path.join(__dirname, "public")));
+
+// --- Static pages ---
 app.get("/", (req, res) => {
   res.redirect(302, "/public/index.html");
 });

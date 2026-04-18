@@ -90,12 +90,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
         await window.api.fetch(`/api/admin/resources/${id}/status`, {
             method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ status: status }), 
+            body: { status: status } 
         });
 
         showAlert(`Resource ${status} successfully`, "success");
-        loadPendingResources();
+        
+        // Refresh the UI
+        if (typeof loadPendingResources === "function") {
+            loadPendingResources();
+        }
     } catch (err) {
         showAlert(err.message);
     }
