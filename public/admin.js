@@ -83,17 +83,23 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   window.processResource = async (id, action) => {
+    const status = action === 'approve' ? 'approved' : 'rejected';
+    
     if (!confirm(`Are you sure you want to ${action} this?`)) return;
+
     try {
-      await window.api.fetch(`/api/admin/resources/${id}/${action}`, {
-        method: "PATCH",
-      });
-      showAlert(`Resource ${action}ed`, "success");
-      loadPendingResources();
+        await window.api.fetch(`/api/admin/resources/${id}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: status }), 
+        });
+
+        showAlert(`Resource ${status} successfully`, "success");
+        loadPendingResources();
     } catch (err) {
-      showAlert(err.message);
+        showAlert(err.message);
     }
-  };
+};
 
   // --- User Management (With Class Group) ---
   async function loadUsers() {
