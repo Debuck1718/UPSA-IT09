@@ -1157,10 +1157,30 @@ app.patch("/api/resources/:id/view", async (req, res) => {
 
 app.post("/api/resources", requireCreator, async (req, res) => {
   try {
-    const { title, description, url, youtube_id, category_id, is_global } = req.body;
+    const { title, description, youtube_id, category_id, is_global, url } = req.body;
     const u = req.session.user;
+    let finalUrl = url; // Use the text URL if provided (for links/websites)
 
-    // Logic: Admins auto-approve, others go to 'pending'
+    // 2. Handle File Upload if a file exists
+    if (req.files && req.files.file) {
+      const file = req.files.file;
+      const fileId = uuidv4();
+      const objectPath = `resources/${fileId}_${file.name}`;
+
+      const { error: upErr } = await supabase.storage
+        .from("campus-resources")
+        .upload(objectPath, file.data, { contentType: file.mimetype });
+
+      if (upErr) throw upErr;
+
+      const { data: publicUrlData } = supabase.storage
+        .from("campus-resources")
+        .getPublicUrl(objectPath);
+      
+      finalUrl = publicUrlData.publicUrl;
+    }
+
+    // 3. Logic: Admins auto-approve, others stay pending
     const status = (u.role === 'admin') ? 'approved' : 'pending';
 
     const query = `
@@ -1172,12 +1192,17 @@ app.post("/api/resources", requireCreator, async (req, res) => {
     `;
 
     const vals = [
-      title, description, url, youtube_id || null, 
-      category_id, u.id, status, !!is_global
+      title, description, finalUrl, youtube_id || null, 
+      category_id, u.id, status, is_global === "true"
     ];
 
     const { rows } = await db.pool.query(query, vals);
-    res.json({ ok: true, resource: rows[0], autoApproved: u.role === 'admin' });
+    res.json({ 
+      ok: true, 
+      resource: rows[0], 
+      autoApproved: u.role === 'admin' 
+    });
+    
   } catch (e) {
     console.error("Upload error:", e);
     res.status(500).json({ ok: false, message: "Submission failed" });

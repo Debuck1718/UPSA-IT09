@@ -87,51 +87,66 @@ document.addEventListener("DOMContentLoaded", async () => {
     const container = document.getElementById(targetId) || grid;
 
     if (!items || !items.length) {
-      container.innerHTML = `<div class="col-12 text-center py-5 text-muted">No resources found.</div>`;
-      return;
+        container.innerHTML = `<div class="col-12 text-center py-5 text-muted">No resources found.</div>`;
+        return;
     }
 
     container.innerHTML = items
-      .map((res, index) => {
-        const delay = (index % 4) * 0.1;
-        let actionBtn = "";
-        let mediaPreview = "";
+        .map((res, index) => {
+            const delay = (index % 4) * 0.1;
+            let actionBtn = "";
+            let mediaPreview = "";
 
-        if (res.youtube_id) {
-          mediaPreview = `
-          <div class="youtube-thumb" onclick="playVideo('${res.youtube_id}', '${res.title.replace(/'/g, "\\'")}')">
-              <img src="https://img.youtube.com/vi/${res.youtube_id}/hqdefault.jpg" 
-                   onerror="this.src='https://img.youtube.com/vi/${res.youtube_id}/0.jpg'"
-                   class="card-img-top" alt="Thumb" style="height: 180px; object-fit: cover;">
-              <i class="bi bi-play-circle-fill play-overlay"></i>
-          </div>`;
-          actionBtn = `<button class="btn btn-sm btn-outline-danger w-100" onclick="playVideo('${res.youtube_id}', '${res.title.replace(/'/g, "\\'")}')">Watch Video</button>`;
-        } else {
-          mediaPreview = `
-          <div class="p-4 text-center bg-light border-bottom">
-              <i class="bi ${getFileIcon(res.url)} display-4 text-success"></i>
-          </div>`;
-          actionBtn = `<a href="${res.url}" target="_blank" class="btn btn-sm btn-outline-success w-100">Open File</a>`;
-        }
+            // Handle YouTube Resources
+            if (res.youtube_id) {
+                mediaPreview = `
+                <div class="youtube-thumb" onclick="playVideo('${res.youtube_id}', '${res.title.replace(/'/g, "\\'")}')">
+                    <img src="https://img.youtube.com/vi/${res.youtube_id}/hqdefault.jpg" 
+                         onerror="this.src='https://img.youtube.com/vi/${res.youtube_id}/0.jpg'"
+                         class="card-img-top" alt="Thumb" style="height: 180px; object-fit: cover;">
+                    <i class="bi bi-play-circle-fill play-overlay"></i>
+                </div>`;
+                actionBtn = `<button class="btn btn-sm btn-outline-danger w-100" onclick="playVideo('${res.youtube_id}', '${res.title.replace(/'/g, "\\'")}')">Watch Video</button>`;
+            } 
+            // Handle File Resources with Safety Check for null/undefined
+            else if (res.url && res.url !== "null" && res.url !== "undefined") {
+                mediaPreview = `
+                <div class="p-4 text-center bg-light border-bottom">
+                    <i class="bi ${getFileIcon(res.url)} display-4 text-success"></i>
+                </div>`;
+                
+                // Construct final link - ensures relative paths don't break if you move to a subfolder
+                const finalLink = res.url.startsWith('http') ? res.url : res.url;
+                
+                actionBtn = `<a href="${finalLink}" target="_blank" class="btn btn-sm btn-outline-success w-100">Open File</a>`;
+            } 
+            // Fallback for resources with broken links
+            else {
+                mediaPreview = `
+                <div class="p-4 text-center bg-light border-bottom">
+                    <i class="bi bi-exclamation-octagon display-4 text-muted"></i>
+                </div>`;
+                actionBtn = `<button class="btn btn-sm btn-secondary w-100" disabled>Link Unavailable</button>`;
+            }
 
-        return `
-        <div class="col-md-4 col-lg-3 animate__animated animate__fadeInUp" style="animation-delay: ${delay}s">
-            <div class="card h-100 shadow-sm resource-card border-0">
-                ${mediaPreview}
-                <div class="card-body">
-                    <h6 class="fw-bold mb-1 text-truncate">${res.title}</h6>
-                    <p class="small text-muted mb-3 text-truncate">${res.description || "No description."}</p>
-                    <div class="d-flex justify-content-between align-items-center mb-3" style="font-size: 0.75rem;">
-                        <span class="badge bg-light text-primary border">${res.view_count || 0} views</span>
-                        <span class="text-muted">${new Date(res.created_at).toLocaleDateString()}</span>
+            return `
+            <div class="col-md-4 col-lg-3 animate__animated animate__fadeInUp" style="animation-delay: ${delay}s">
+                <div class="card h-100 shadow-sm resource-card border-0">
+                    ${mediaPreview}
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-1 text-truncate">${res.title}</h6>
+                        <p class="small text-muted mb-3 text-truncate">${res.description || "No description."}</p>
+                        <div class="d-flex justify-content-between align-items-center mb-3" style="font-size: 0.75rem;">
+                            <span class="badge bg-light text-primary border">${res.view_count || 0} views</span>
+                            <span class="text-muted">${new Date(res.created_at).toLocaleDateString()}</span>
+                        </div>
+                        ${actionBtn}
                     </div>
-                    ${actionBtn}
                 </div>
-            </div>
-        </div>`;
-      })
-      .join("");
-  }
+            </div>`;
+        })
+        .join("");
+}
 
   function renderSkeletons() {
     grid.innerHTML = Array(4).fill(0).map(() => `
