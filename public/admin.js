@@ -86,7 +86,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!confirm(`Are you sure you want to ${action} this?`)) return;
     try {
       await window.api.fetch(`/api/admin/resources/${id}/${action}`, {
-        method: "POST",
+        method: "PATCH",
       });
       showAlert(`Resource ${action}ed`, "success");
       loadPendingResources();
