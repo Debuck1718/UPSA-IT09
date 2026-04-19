@@ -1,6 +1,18 @@
 (function () {
     let selectedCourse = null;
 
+    // --- LOGOUT SHARED LOGIC ---
+    const handleLogout = async (e) => {
+        if (e) e.preventDefault();
+        try { 
+            await window.api.fetch('/api/logout', { method: 'POST' }); 
+        } catch (err) {
+            console.error("Logout request failed:", err);
+        }
+        // Always redirect regardless of API success to ensure user is logged out of UI
+        window.location.assign('/public/index.html');
+    };
+
     // --- SLIDE LOADING LOGIC ---
     async function loadSlides() {
         const slidesList = document.getElementById('slidesList');
@@ -126,25 +138,18 @@
 
             if (document.getElementById('user-firstname')) document.getElementById('user-firstname').textContent = firstName;
             if (document.getElementById('user-course')) document.getElementById('user-course').textContent = user.program || 'No Program';
-            if (document.getElementById('user-role')) document.getElementById('user-role').textContent = user.role || '';
 
             const avatar = document.getElementById('avatar');
-            if (avatar && user.avatar_url) avatar.src = user.avatar_url;
-
-            // Permission Based UI
-            if (user.role === 'admin' || user.is_leader || user.is_creator) {
-                document.getElementById('uploadBtn')?.classList.remove('d-none');
-                document.getElementById('announceBtn')?.classList.remove('d-none');
+            if (avatar) {
+                if (user.avatar_url) avatar.src = user.avatar_url;
+                // Fixed: Navigate correctly to profile page
+                avatar.onclick = () => window.location.href = '/public/profile.html';
             }
         }
 
-        // Event Listeners
-        document.getElementById('logoutBtn')?.addEventListener('click', async (e) => {
-            e.preventDefault();
-            try { await window.api.fetch('/api/logout', { method: 'POST' }); } catch {}
-            window.location.assign('/public/index.html');
-        });
-
+        // Initialize Event Listeners
+        document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
+        document.getElementById('mobileLogoutBtn')?.addEventListener('click', handleLogout);
         document.getElementById('refreshSlides')?.addEventListener('click', loadSlides);
         document.getElementById('refreshCourses')?.addEventListener('click', loadCourses);
 
@@ -157,9 +162,7 @@
                 setSlidesCourseTitle(null);
                 loadSlides();
 
-                // Initialize Push Notifications once user is verified
                 if (window.api && window.api.initPush) {
-                    console.log("Acadex: Initializing Push Subscriptions...");
                     await window.api.initPush();
                 }
             } catch (err) {
@@ -167,75 +170,5 @@
             }
         })();
     });
-
-    // --- GLOBAL UI HELPERS (Exported to window) ---
-    window.showSection = function(sectionId) {
-        document.querySelectorAll('.content-section').forEach(s => s.classList.add('d-none'));
-        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-
-        const target = document.getElementById(sectionId);
-        if (target) target.classList.remove('d-none');
-
-        const activeLink = document.querySelector(`[onclick="showSection('${sectionId}')"]`);
-        if (activeLink) activeLink.classList.add('active');
-
-        if (sectionId === 'announcements-section') loadAnnouncements();
-        if (sectionId === 'resource-hub') loadResources();
-    };
-
-    async function loadResources() {
-        const grid = document.getElementById('resourceGrid');
-        if (!grid) return;
-        grid.innerHTML = '<div class="text-center p-5 text-white">Loading resources...</div>';
-        
-        try {
-            const data = await window.api.fetch('/api/resources');
-            grid.innerHTML = '';
-            
-            if (!data.resources?.length) {
-                grid.innerHTML = '<div class="text-center text-white-50">No resources available.</div>';
-                return;
-            }
-
-            data.resources.forEach(res => {
-                const card = document.createElement('div');
-                card.className = 'col-md-6 col-lg-4 mb-3';
-                card.innerHTML = `
-                    <div class="card h-100 border-0 shadow-sm bg-white">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center mb-2">
-                                <i class="bi ${res.category_icon || 'bi-play-circle'} text-primary fs-4 me-2"></i>
-                                <span class="badge bg-light text-dark text-uppercase">${res.category_name || 'Resource'}</span>
-                            </div>
-                            <h6 class="fw-bold">${res.title}</h6>
-                            <p class="small text-muted text-truncate">${res.description || ''}</p>
-                            <button class="btn btn-sm w-100 ${res.youtube_id ? 'btn-danger' : 'btn-primary'}" 
-                                    onclick="handleResourceClick('${res.youtube_id}', '${res.url}', '${res.title}', '${res.description}')">
-                                ${res.youtube_id ? '<i class="bi bi-youtube"></i> Watch' : '<i class="bi bi-box-arrow-up-right"></i> Open'}
-                            </button>
-                        </div>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
-        } catch (e) {
-            grid.innerHTML = '<div class="text-center text-danger">Failed to load resource hub.</div>';
-        }
-    }
-
-    window.handleResourceClick = function(youtubeId, url, title, desc) {
-        if (youtubeId && youtubeId !== 'null') {
-            const modal = new bootstrap.Modal(document.getElementById('videoModal'));
-            document.getElementById('videoTitle').innerText = title;
-            document.getElementById('videoDescription').innerText = desc;
-            document.getElementById('videoContainer').innerHTML = `<iframe src="https://www.youtube.com/embed/${youtubeId}" allowfullscreen style="width:100%; height:315px; border:0;"></iframe>`;
-            modal.show();
-            document.getElementById('videoModal').addEventListener('hidden.bs.modal', () => {
-                document.getElementById('videoContainer').innerHTML = '';
-            }, {once: true});
-        } else {
-            window.open(url, '_blank');
-        }
-    };
 
 })();
