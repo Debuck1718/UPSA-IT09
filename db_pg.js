@@ -195,9 +195,25 @@ async function getSlideById(id) {
 // Admin: list all users (basic fields)
 async function getAllUsers() {
   const { rows } = await pool.query(`
-    select id, student_id, full_name, email, role, program, class_group, program_id, cohort_id, class_group_id, institution_id, created_at
-    from users_app
-    order by created_at desc
+    SELECT 
+      id, 
+      student_id, 
+      full_name, 
+      email, 
+      role, 
+      program, 
+      class_group, 
+      program_id, 
+      cohort_id, 
+      class_group_id, 
+      institution_id, 
+      created_at,
+      is_rep,      
+      is_leader,   
+      is_creator,  
+      bio          
+    FROM users_app
+    ORDER BY created_at DESC
   `);
   return rows;
 }

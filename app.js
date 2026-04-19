@@ -230,33 +230,6 @@ app.get("/api/admin/users", requireAdmin, async (req, res) => {
   }
 });
 
-// Update user role (admin only)
-app.post("/api/admin/users/:studentId", requireAdmin, async (req, res) => {
-  try {
-    const sid = String(req.params.studentId || "").trim();
-    const role = String(req.body?.role || "").trim();
-    if (!sid || !role) {
-      return res
-        .status(400)
-        .json({ ok: false, message: "Student ID and role are required" });
-    }
-    const allowed = new Set(["student", "rep", "teacher", "admin"]);
-    if (!allowed.has(role)) {
-      return res.status(400).json({ ok: false, message: "Invalid role" });
-    }
-    const r = await db.pool.query(
-      "update users_app set role=$1 where student_id=$2 returning id, student_id, role",
-      [role, sid],
-    );
-    if (!r.rowCount) {
-      return res.status(404).json({ ok: false, message: "User not found" });
-    }
-    return res.json({ ok: true, user: r.rows[0] });
-  } catch (e) {
-    console.error("Update role error:", e);
-    return res.status(500).json({ ok: false, message: "Server error" });
-  }
-});
 
 // Update program / academicYearStart / classGroup (admin only)
 app.post(
