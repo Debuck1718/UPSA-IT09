@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Course Rep • Dashboard</title>
-     <link
+    <link
       rel="icon"
       type="image/png"
       href="images/favicon-96x96.png"
@@ -186,7 +186,19 @@
               <i class="bi bi-plus-circle me-2"></i> Upload New Resource
             </div>
             <div class="card-body p-4">
-              <form id="repDashUploadForm">
+              <form id="repDashUploadForm" enctype="multipart/form-data">
+                <input type="hidden" name="program_id" id="hiddenProgram" />
+                <input
+                  type="hidden"
+                  name="institution_id"
+                  id="hiddenInstitution"
+                />
+                <input
+                  type="hidden"
+                  name="class_group_id"
+                  id="hiddenClassGroup"
+                />
+
                 <div class="mb-3">
                   <label class="form-label fw-semibold">Course Title</label>
                   <div class="input-group">
@@ -222,13 +234,17 @@
                 </div>
 
                 <div class="mb-4">
-                  <label class="form-label fw-semibold">File (PDF/PPTX)</label>
+                  <label class="form-label fw-semibold"
+                    >File (PDF/PPTX/DOCX)</label
+                  >
                   <input
                     type="file"
                     class="form-control"
                     name="file"
+                    accept=".pdf,.pptx,.ppt,.docx,.doc"
                     required
                   />
+                  <div class="form-text text-white-50">Max file size: 50MB</div>
                 </div>
 
                 <button

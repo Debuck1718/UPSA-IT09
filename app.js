@@ -608,121 +608,60 @@ app.post("/api/upload", async (req, res) => {
     if (!req.files || !req.files.file) {
       return res.status(400).json({ ok: false, message: "No file uploaded" });
     }
-    const file = req.files.file;
-    const maxMb = Number(process.env.MAX_UPLOAD_MB || 25);
-    if (file.size > maxMb * 1024 * 1024) {
-      return res
-        .status(413)
-        .json({ ok: false, message: `File too large. Max ${maxMb}MB` });
-    }
-    if (!/\.(pdf|ppt|pptx)$/i.test(file.name)) {
-      return res
-        .status(400)
-        .json({
-          ok: false,
-          message: "Only PDF, PPT, or PPTX files are allowed.",
-        });
-    }
 
+    const file = req.files.file;
     const slideTitle = (req.body?.slideTitle || "").toString().trim();
     const courseTitle = (req.body?.courseTitle || "").toString().trim();
-    if (!slideTitle)
-      return res
-        .status(400)
-        .json({ ok: false, message: "Slide Title is required." });
-    if (!courseTitle)
-      return res
-        .status(400)
-        .json({ ok: false, message: "Course Title is required." });
 
-    if (!supabase) {
-      return res
-        .status(500)
-        .json({ ok: false, message: "Storage not configured" });
-    }
+    // Map metadata from body (frontend) or session (backup)
+    const instId = req.body.institution_id || u.institution_id || u.institutionId || "upsa";
+    const progId = req.body.program_id || u.program || u.program_id || "general";
+    const classId = req.body.class_group_id || u.class_group_id || u.classGroupId || "class";
+    const cohortId = u.cohort_id || u.cohortId || "2026";
 
     const { v4: uuidv4 } = require("uuid");
     const id = uuidv4();
-    const safeName = (function safeFileName(base, id) {
-      const p = require("path");
-      const ext = p.extname(base);
-      const nm = p.basename(base, ext).replace(/[^a-zA-Z0-9._-]/g, "_");
-      return `${id}-${nm}${ext}`;
-    })(file.name, id);
-
-    // Build object path: institution/program/cohort/classGroup/courseTitle/filename
-    // Sanitize each path segment
-    const institutionSeg = sanitizeSegment(u.institutionId || "upsa");
-    const programSeg = sanitizeSegment(u.programId || "general");
-    const cohortSeg = sanitizeSegment(u.cohortId || "cohort");
-    const classSeg = sanitizeSegment(u.classGroupId || "class");
-    const courseSeg = sanitizeSegment(courseTitle || "course");
-
-    // Build safe prefix
-    const prefix = [
-      institutionSeg,
-      programSeg,
-      cohortSeg,
-      classSeg,
-      courseSeg,
+    
+    // Build path: institution/program/class/course/file
+    const objectPath = [
+      sanitizeSegment(instId),
+      sanitizeSegment(progId),
+      sanitizeSegment(classId),
+      sanitizeSegment(courseTitle),
+      `${id}-${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`
     ].join("/");
 
-    // Final object path
-    const objectPath = `${prefix}/${safeName}`;
-
-    // Upload to Supabase Storage
+    // 1. Upload to Supabase Storage
     const { error: upErr } = await supabase.storage
       .from(SUPABASE_BUCKET)
-      .upload(objectPath, file.data, {
-        contentType: file.mimetype,
-        upsert: false,
-      });
+      .upload(objectPath, file.data, { contentType: file.mimetype });
 
-    if (upErr) {
-      console.error("Supabase upload error:", upErr);
-      return res
-        .status(500)
-        .json({ ok: false, message: "Upload failed (storage)" });
-    }
+    if (upErr) throw upErr;
 
-    // Save metadata in Postgres
-    await db.insertSlide({
-      id,
-      classGroupId: u.classGroupId,
-      courseTitle,
-      slideTitle,
-      objectPath,
-      originalName: file.name,
-      contentType: file.mimetype,
-      sizeBytes: file.size,
-      uploaderId: u.id,
-      institutionId: u.institutionId,
-      programId: u.programId,
-      cohortId: u.cohortId,
-    });
+    // 2. Insert into PostgreSQL (Matching your slides table exactly)
+    const { error: dbErr } = await supabase
+      .from('slides')
+      .insert([{
+        id: id,
+        class_group_id: classId,
+        course_title: courseTitle,
+        slide_title: slideTitle,
+        object_path: objectPath,
+        original_name: file.name,
+        content_type: file.mimetype,
+        size_bytes: file.size,
+        uploader_id: u.id,
+        institution_id: instId,
+        program_id: progId,
+        cohort_id: cohortId
+      }]);
 
-    // Remember course title for future
-    if (db.addCourseTitleForClassGroupId) {
-      try {
-        await db.addCourseTitleForClassGroupId(u.classGroupId, courseTitle);
-      } catch (_) {}
-    }
+    if (dbErr) throw dbErr;
 
-    return res.json({
-      ok: true,
-      message: "Uploaded",
-      id,
-      filename: objectPath,
-    });
+    return res.json({ ok: true, message: "Uploaded", id });
   } catch (e) {
-    console.error("Upload error:", e);
-    const status = e?.code === "LIMIT_FILE_SIZE" ? 413 : 500;
-    return res
-      .status(status)
-      .json({
-        ok: false,
-        message: status === 413 ? "File too large" : "Upload failed",
-      });
+    console.error("Upload process error:", e);
+    return res.status(500).json({ ok: false, message: e.message });
   }
 });
 

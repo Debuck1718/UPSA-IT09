@@ -12,43 +12,41 @@
   const addTitleBtn = document.getElementById("repDashAddTitleBtn");
   const newTitleInput = document.getElementById("repDashNewTitle");
 
+  let currentUser = null;
+
   function showAlert(type, msg) {
     if (!alertBox) return;
     alertBox.className = `alert alert-${type}`;
     alertBox.textContent = msg;
     alertBox.classList.remove("d-none");
-    // Auto-hide success messages after 5 seconds
     if (type === "success") {
       setTimeout(() => alertBox.classList.add("d-none"), 5000);
     }
   }
 
-  // Personalize header with firstName
-  (async function personalizeHeader() {
+  // 1. Personalize UI and Capture User Metadata for Uploads
+  async function initSession() {
     try {
       const data = await window.api.fetch("/api/session");
-      const user = data && data.user ? data.user : null;
-      if (!user) return;
-      const raw =
-        user.fullName || user.name || user.username || user.studentId || "Rep";
-      const firstName =
-        user.firstName || String(raw).trim().split(/\s+/)[0] || "Rep";
-      const nameEl = document.getElementById("repWelcomeName");
-      if (nameEl) nameEl.textContent = firstName;
+      currentUser = data && data.user ? data.user : null;
+      if (!currentUser) return;
+
+      const raw = currentUser.fullName || currentUser.name || currentUser.username || currentUser.studentId || "Rep";
+      const firstName = currentUser.firstName || String(raw).trim().split(/\s+/)[0] || "Rep";
+      
+      const nameEls = document.querySelectorAll("#repWelcomeName");
+      nameEls.forEach(el => el.textContent = firstName);
+      
       const av = document.getElementById("repAvatar");
       if (av) av.src = "/public/images/avatar.png";
-    } catch (_) {
-      // ignore personalization errors
+    } catch (err) {
+      console.error("Session init error:", err);
     }
-  })();
+  }
 
   function renderTitlesSelect(titles) {
     if (!selTitle) return;
-    selTitle.innerHTML = "";
-    const optPlaceholder = document.createElement("option");
-    optPlaceholder.value = "";
-    optPlaceholder.textContent = "Select a course title";
-    selTitle.appendChild(optPlaceholder);
+    selTitle.innerHTML = '<option value="">Select a course title</option>';
     (titles || []).forEach((t) => {
       const opt = document.createElement("option");
       opt.value = t;
@@ -81,14 +79,9 @@
     }
   });
 
-  async function uploadSlide(fd) {
-    return window.api.fetch("/api/upload", { method: "POST", body: fd });
-  }
-
   async function loadCourses() {
     if (!coursesSlides) return;
-    coursesSlides.innerHTML =
-      '<div class="text-center p-3 text-white-50">Loading catalog...</div>';
+    coursesSlides.innerHTML = '<div class="text-center p-3 text-white-50">Loading catalog...</div>';
     coursesEmpty.classList.add("d-none");
 
     try {
@@ -111,12 +104,8 @@
 
       for (let i = 0; i < courses.length; i++) {
         const course = courses[i];
-        const slidesResp = await window.api.fetch(
-          `/api/slides?courseTitle=${encodeURIComponent(course)}`,
-        );
-        const slides = Array.isArray(slidesResp.slides)
-          ? slidesResp.slides
-          : [];
+        const slidesResp = await window.api.fetch(`/api/slides?courseTitle=${encodeURIComponent(course)}`);
+        const slides = Array.isArray(slidesResp.slides) ? slidesResp.slides : [];
 
         totalSlides += slides.length;
         recentCount += slides.filter((s) => {
@@ -136,25 +125,19 @@
           <div id="collapse${i}" class="accordion-collapse collapse" data-bs-parent="#repDashCoursesSlides">
             <div class="accordion-body p-0">
               <ul class="list-group list-group-flush mb-0">
-                ${
-                  slides.length === 0
-                    ? `<li class="list-group-item text-muted small">No slides available.</li>`
-                    : slides
-                        .map(
-                          (s) => `
-                  <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent">
-                    <div class="text-truncate me-2">
-                      <div class="fw-semibold text-dark small">${s.slideTitle || s.originalName || "Untitled Slide"}</div>
-                      <small class="text-muted" style="font-size: 0.75rem;">${new Date(s.createdAt || s.created_at).toLocaleDateString()}</small>
-                    </div>
-                    <div class="btn-group shadow-sm">
-                      <button class="btn btn-sm btn-outline-primary" data-action="download" data-id="${s.id}"><i class="bi bi-download"></i></button>
-                      <button class="btn btn-sm btn-outline-secondary" data-action="view" data-id="${s.id}"><i class="bi bi-eye"></i></button>
-                    </div>
-                  </li>
-                `,
-                        )
-                        .join("")
+                ${slides.length === 0 
+                  ? `<li class="list-group-item text-muted small">No slides available.</li>`
+                  : slides.map((s) => `
+                    <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent">
+                      <div class="text-truncate me-2">
+                        <div class="fw-semibold text-dark small">${s.slideTitle || s.originalName || "Untitled Slide"}</div>
+                        <small class="text-muted" style="font-size: 0.75rem;">${new Date(s.createdAt || s.created_at).toLocaleDateString()}</small>
+                      </div>
+                      <div class="btn-group shadow-sm">
+                        <button class="btn btn-sm btn-outline-primary" data-action="download" data-id="${s.id}"><i class="bi bi-download"></i></button>
+                        <button class="btn btn-sm btn-outline-secondary" data-action="view" data-id="${s.id}"><i class="bi bi-eye"></i></button>
+                      </div>
+                    </li>`).join("")
                 }
               </ul>
             </div>
@@ -166,27 +149,17 @@
       statSlides.textContent = totalSlides;
       statRecent.textContent = recentCount;
 
-      // Attach button events
+      // Click handlers for download/view
       coursesSlides.querySelectorAll("button[data-action]").forEach((btn) => {
         btn.addEventListener("click", async (e) => {
-          // Added 'e' to event
-          e.preventDefault(); // Prevent jumpy behavior
-
+          e.preventDefault();
           const id = btn.getAttribute("data-id");
           const action = btn.getAttribute("data-action");
-
-          // Safety check: Ensure the ID exists
-          if (!id) {
-            return showAlert("danger", "Resource ID missing.");
-          }
+          if (!id) return showAlert("danger", "Resource ID missing.");
 
           try {
-            const resp = await window.api.fetch(
-              `/api/slides/${encodeURIComponent(id)}/url`,
-            );
-
+            const resp = await window.api.fetch(`/api/slides/${encodeURIComponent(id)}/url`);
             if (!resp || !resp.url) throw new Error("URL not found");
-
             if (action === "view") {
               window.open(resp.url, "_blank");
             } else {
@@ -197,63 +170,55 @@
               a.click();
               a.remove();
             }
-          } catch (e) {
-            console.error("Action error:", e);
-            showAlert(
-              "danger",
-              "Unable to access file. Please refresh the page.",
-            );
+          } catch (err) {
+            showAlert("danger", "Unable to access file. Please refresh.");
           }
         });
       });
     } catch (e) {
-      coursesSlides.innerHTML =
-        '<div class="text-danger p-3">Error loading catalog.</div>';
+      coursesSlides.innerHTML = '<div class="text-danger p-3">Error loading catalog.</div>';
     }
   }
 
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (!currentUser) return showAlert("danger", "Session expired. Please login again.");
 
     const selectedTitle = selTitle?.value ? String(selTitle.value).trim() : "";
-    const newTitle =
-      !newTitleInput.classList.contains("d-none") && newTitleInput.value
+    const newTitle = !newTitleInput.classList.contains("d-none") && newTitleInput.value
         ? String(newTitleInput.value).trim()
         : "";
     const finalCourseTitle = newTitle || selectedTitle;
-    const slideTitle = document
-      .getElementById("repDashSlideTitle")
-      ?.value.trim();
+    const slideTitle = document.getElementById("repDashSlideTitle")?.value.trim();
 
-    if (!finalCourseTitle)
-      return showAlert("danger", "Please select or enter a course title.");
-    if (!slideTitle)
-      return showAlert("danger", "Please provide a slide title.");
+    if (!finalCourseTitle) return showAlert("danger", "Select or enter a course title.");
+    if (!slideTitle) return showAlert("danger", "Provide a slide title.");
 
     const fd = new FormData(form);
     fd.set("courseTitle", finalCourseTitle);
-    fd.set("course", finalCourseTitle); // Backward compatibility
     fd.set("slideTitle", slideTitle);
+    
+    // Explicitly set metadata to match Postgres 'slides' table columns
+    fd.set("institution_id", currentUser.institution_id || currentUser.institutionId || "");
+    fd.set("program_id", currentUser.program || currentUser.program_id || "");
+    fd.set("class_group_id", currentUser.class_group_id || currentUser.classGroupId || "");
 
     try {
       if (newTitle) {
-        await window.api
-          .fetch("/api/courses/manage", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title: newTitle }),
-          })
-          .catch(() => {}); // Silent catch if title already exists
+        await window.api.fetch("/api/courses/manage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: newTitle }),
+        }).catch(() => {});
       }
 
-      await uploadSlide(fd);
+      await window.api.fetch("/api/upload", { method: "POST", body: fd });
       showAlert("success", "Resource uploaded successfully!");
 
       form.reset();
       newTitleInput.classList.add("d-none");
       selTitle?.removeAttribute("disabled");
 
-      // Full refresh of the UI
       await loadMyTitles();
       await loadCourses();
     } catch (err) {
@@ -261,65 +226,32 @@
     }
   });
 
-  document
-    .getElementById("repDashRefreshCourses")
-    ?.addEventListener("click", loadCourses);
-
-  // Reusable Logout Function
   async function handleLogout() {
     if (confirm("Sign out of the Rep Dashboard?")) {
       try {
         await window.api.fetch("/api/logout", { method: "POST" });
-      } catch (err) {
-        console.error("Logout error", err);
-      }
+      } catch (err) {}
       window.location.href = "/public/index.html";
     }
   }
 
-  // Attach to Sidebar Logout
-  const repLogoutBtn = document.getElementById("repLogoutBtn");
-  if (repLogoutBtn) {
-    repLogoutBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      handleLogout();
-    });
-  }
+  document.getElementById("repLogoutBtn")?.addEventListener("click", handleLogout);
+  document.getElementById("mobileLogoutBtn")?.addEventListener("click", handleLogout);
+  document.getElementById("repDashRefreshCourses")?.addEventListener("click", loadCourses);
 
-  // Attach to Mobile Navbar Logout
-  const mobileLogoutBtn = document.getElementById("mobileLogoutBtn");
-  if (mobileLogoutBtn) {
-    mobileLogoutBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      handleLogout();
-    });
-  }
-
-  // Initial Boot
-  loadMyTitles();
-  loadCourses().catch(() => {
-    coursesSlides.innerHTML =
-      '<div class="text-danger p-3">System offline.</div>';
-  });
-})();
-
-// --- Updated Initial Boot ---
-  (async function startRepDashboard() {
+  // Unified Boot Sequence
+  (async function boot() {
     try {
-      // 1. Load existing titles and course catalog
+      await initSession();
       await loadMyTitles();
       await loadCourses();
 
-      // 2. Initialize Push Notifications for the Rep
-      // This ensures you get notified of replies/announcements
       if (window.api && window.api.initPush) {
-        console.log("Acadex Rep: Syncing notification settings...");
-        await window.api.initPush();
+        await window.api.initPush().catch(() => {});
       }
     } catch (err) {
       console.error("Boot error:", err);
-      if (coursesSlides) {
-        coursesSlides.innerHTML = '<div class="text-danger p-3">System offline.</div>';
-      }
+      if (coursesSlides) coursesSlides.innerHTML = '<div class="text-danger p-3">System offline.</div>';
     }
   })();
+})();
