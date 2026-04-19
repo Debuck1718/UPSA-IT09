@@ -140,6 +140,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.getElementById("modalUserName").textContent = u.full_name || u.fullName;
         document.getElementById("editBio").value = u.bio || "";
         document.getElementById("checkIsRep").checked = !!u.is_rep;
+        document.getElementById("checkIsCreator").checked = !!u.is_creator;
         document.getElementById("checkIsLeader").checked = !!u.is_leader;
         document.getElementById("checkIsAdmin").checked = (u.role === "admin");
         
