@@ -897,7 +897,7 @@ app.post("/api/admin/promote", requireAdmin, async (req, res) => {
   const { studentId, role } = req.body;
   const allowed = [
     "student",
-    "course_rep",
+    "rep",
     "rep_assistant",
     "course_secretary",
     "admin",
