@@ -1197,28 +1197,37 @@ app.post("/api/admin/resources", requireAdmin, async (req, res) => {
     } = req.body;
     
     const u = req.session.user;
+    
+    // Initialize finalUrl with the text input (could be a website link)
     let finalUrl = url;
 
-    // Handle File Upload if present
+    // 1. Handle File Upload (Priority)
     if (req.files && req.files.file) {
       const file = req.files.file;
       const fileId = uuidv4();
-      const objectPath = `resources/${u.institutionId || 'global'}/${fileId}_${file.name}`;
+      
+      // Using your specific folder structure: resources/[institution]/[filename]
+      const instId = u.institutionId || 'global';
+      const objectPath = `resources/${instId}/${fileId}_${file.name}`;
 
       const { error: upErr } = await supabase.storage
-        .from("campus-resources") // Ensure this bucket exists in Supabase
-        .upload(objectPath, file.data, { contentType: file.mimetype });
+        .from("campus-resources")
+        .upload(objectPath, file.data, { 
+          contentType: file.mimetype,
+          upsert: true // Overwrite if same ID exists
+        });
 
       if (upErr) throw upErr;
       
-      // Construct the public URL from Supabase
       const { data: publicUrlData } = supabase.storage
         .from("campus-resources")
         .getPublicUrl(objectPath);
       
+      // Override finalUrl with the fresh Supabase link
       finalUrl = publicUrlData.publicUrl;
     }
 
+    // 2. Database Insertion
     const query = `
       INSERT INTO resources (
         title, description, url, youtube_id, category_id, 
@@ -1227,16 +1236,26 @@ app.post("/api/admin/resources", requireAdmin, async (req, res) => {
       RETURNING *
     `;
 
+    // Ensure we handle defaults for Admin-created resources
     const vals = [
-      title, description, finalUrl, youtube_id || null, category_id,
-      program_id || u.programId, u.institutionId, !!is_global, u.id, status || 'approved'
+      title, 
+      description, 
+      finalUrl || null,      
+      youtube_id || null, 
+      category_id,
+      program_id || u.programId || null, 
+      u.institutionId || null, 
+      is_global === 'true' || is_global === true, // Robust boolean check
+      u.id, 
+      status || 'approved'
     ];
 
     const { rows } = await db.pool.query(query, vals);
     res.json({ ok: true, resource: rows[0] });
+
   } catch (e) {
-    console.error("Resource creation error:", e);
-    res.status(500).json({ ok: false, message: "Failed to create resource" });
+    console.error("Admin Resource Creation Error:", e);
+    res.status(500).json({ ok: false, message: e.message || "Failed to create resource" });
   }
 });
 
