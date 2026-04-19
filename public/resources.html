@@ -1,208 +1,193 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <title>Resource Library • Campus Hub</title>
+    <title>Resource Library • Acadex</title>
+    
+    <link rel="icon" type="image/png" href="/images/favicon.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" />
-    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
-      :root {
-        --glass-bg: rgba(255, 255, 255, 0.9);
-        --accent-color: #4361ee;
-      }
+        :root {
+            --acadex-blue: #0d6efd;
+            --glass-bg: rgba(255, 255, 255, 0.9);
+        }
 
-      body {
-        background-color: #f8f9fa;
-        font-family: "Inter", sans-serif;
-      }
+        body {
+            background-color: #f0f2f5;
+            font-family: "Inter", sans-serif;
+        }
 
-      .navbar {
-        backdrop-filter: blur(10px);
-        background: rgba(33, 37, 41, 0.95) !important;
-      }
+        .navbar {
+            backdrop-filter: blur(10px);
+            background: rgba(33, 37, 41, 0.95) !important;
+        }
 
-      header {
-        background: linear-gradient(135deg, #ffffff 0%, #f1f4ff 100%);
-        border-bottom: 1px solid #e0e0e0;
-      }
+        .brand-logo {
+            width: 28px;
+            height: 28px;
+            margin-right: 10px;
+            border-radius: 4px;
+        }
 
-      .btn-back {
-        background: white;
-        border: 1px solid #dee2e6;
-        color: #555;
-        transition: 0.3s;
-        border-radius: 12px;
-      }
-      .btn-back:hover {
-        background: #f8f9fa;
-        border-color: var(--accent-color);
-        color: var(--accent-color);
-        transform: translateX(-5px);
-      }
+        header {
+            background: linear-gradient(135deg, #ffffff 0%, #f1f4ff 100%);
+            border-bottom: 1px solid #e0e0e0;
+        }
 
-      .input-group {
-        border-radius: 15px;
-        overflow: hidden;
-        border: 1px solid #dee2e6;
-        transition: 0.3s;
-      }
-      .input-group:focus-within {
-        box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.15);
-        border-color: var(--accent-color);
-      }
+        .btn-back {
+            background: white;
+            border: 1px solid #dee2e6;
+            color: #555;
+            transition: 0.3s;
+            border-radius: 12px;
+        }
+        .btn-back:hover {
+            background: #f8f9fa;
+            border-color: var(--acadex-blue);
+            color: var(--acadex-blue);
+            transform: translateX(-5px);
+        }
 
-      .resource-card {
-        border: none;
-        border-radius: 20px;
-        background: white;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
-      }
-      .resource-card:hover {
-        transform: translateY(-10px);
-        box-shadow: 0 20px 40px rgba(67, 97, 238, 0.1);
-      }
+        .input-group {
+            border-radius: 15px;
+            overflow: hidden;
+            border: 1px solid #dee2e6;
+            transition: 0.3s;
+        }
+        .input-group:focus-within {
+            box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+            border-color: var(--acadex-blue);
+        }
 
-      .category-pill {
-        cursor: pointer;
-        padding: 8px 20px !important;
-        border: 1px solid #eee !important;
-        background: white !important;
-        color: #555 !important;
-        font-weight: 500;
-        transition: 0.3s;
-      }
-      .category-pill:hover {
-        background: #f0f2ff !important;
-        border-color: var(--accent-color) !important;
-      }
-      .category-pill.active {
-        background: var(--accent-color) !important;
-        color: white !important;
-        border-color: var(--accent-color) !important;
-        box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
-      }
+        .resource-card {
+            border: none;
+            border-radius: 20px;
+            background: white;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+        }
+        .resource-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(13, 110, 253, 0.1);
+        }
 
-      .youtube-thumb {
-        position: relative;
-        border-radius: 20px 20px 0 0;
-        overflow: hidden;
-        cursor: pointer;
-        background: #000;
-      }
-      .play-overlay {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 3.5rem;
-        color: white;
-        text-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-        opacity: 0.9;
-        transition: 0.3s;
-        z-index: 2;
-      }
-      .youtube-thumb:hover .play-overlay {
-        transform: translate(-50%, -50%) scale(1.1);
-        opacity: 1;
-      }
+        .category-pill {
+            cursor: pointer;
+            padding: 8px 20px !important;
+            border: 1px solid #eee !important;
+            background: white !important;
+            color: #555 !important;
+            font-weight: 500;
+            transition: 0.3s;
+        }
+        .category-pill:hover {
+            background: #f0f2ff !important;
+            border-color: var(--acadex-blue) !important;
+        }
+        .category-pill.active {
+            background: var(--acadex-blue) !important;
+            color: white !important;
+            border-color: var(--acadex-blue) !important;
+            box-shadow: 0 4px 15px rgba(13, 110, 253, 0.2);
+        }
 
-      .skeleton-card {
-        background: #fff;
-        border-radius: 20px;
-        height: 350px;
-        overflow: hidden;
-        position: relative;
-      }
-      .skeleton-img { height: 180px; background: #e9ecef; }
-      .skeleton-text { height: 20px; background: #e9ecef; margin: 15px; border-radius: 4px; }
-      .shimmer {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
-        animation: loading 1.5s infinite;
-      }
-      @keyframes loading {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(100%); }
-      }
+        .skeleton-card {
+            background: #fff;
+            border-radius: 20px;
+            height: 350px;
+            overflow: hidden;
+            position: relative;
+        }
+        .shimmer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+            animation: loading 1.5s infinite;
+        }
+        @keyframes loading {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
     </style>
-  </head>
-  <body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
-      <div class="container">
-        <a class="navbar-brand fw-bold" href="#" id="navBrand">
-          <i class="bi bi-book-half me-2"></i>CAMPUS HUB
-        </a>
-        <div class="ms-auto text-white" id="navUserInfo"></div>
-      </div>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold d-flex align-items-center" href="/index.html">
+                <img src="/images/icon-192.png" alt="Logo" class="brand-logo bg-white">
+                ACADEX
+            </a>
+            <div class="ms-auto text-white" id="navUserInfo"></div>
+        </div>
     </nav>
 
-    <header class="bg-white border-bottom py-4 mb-4">
-      <div class="container">
-        <div class="row align-items-center">
-          <div class="col-md-7 d-flex align-items-center">
-            <a href="#" id="backBtn" class="btn btn-back me-3 px-3 py-2 shadow-sm">
-              <i class="bi bi-arrow-left"></i>
-            </a>
-            <div>
-              <h2 class="fw-bold mb-0">Resource Library</h2>
-              <p class="text-muted mb-0 small">
-                Curated study materials, past questions, and tutorials.
-              </p>
+    <header class="py-4 mb-4">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-7 d-flex align-items-center">
+                    <button onclick="window.history.back()" class="btn btn-back me-3 px-3 py-2 shadow-sm">
+                        <i class="bi bi-arrow-left"></i>
+                    </button>
+                    <div>
+                        <h2 class="fw-bold mb-0">Resource Library</h2>
+                        <p class="text-muted mb-0 small">
+                            Curated study materials, past questions, and tutorials.
+                        </p>
+                    </div>
+                    <div id="uploadAction" class="ms-3"></div>
+                </div>
+                <div class="col-md-5 mt-3 mt-md-0">
+                    <div class="input-group shadow-sm">
+                        <span class="input-group-text bg-white border-end-0 text-muted">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" id="resourceSearch" class="form-control border-start-0" placeholder="Search resources..." />
+                    </div>
+                </div>
             </div>
-            <div id="uploadAction" class="ms-3"></div>
-          </div>
-          <div class="col-md-5 mt-3 mt-md-0">
-            <div class="input-group shadow-sm">
-              <span class="input-group-text bg-white border-end-0">
-                <i class="bi bi-search"></i>
-              </span>
-              <input type="text" id="resourceSearch" class="form-control border-start-0" placeholder="Search resources..." />
-            </div>
-          </div>
         </div>
-      </div>
     </header>
 
     <div class="container pb-5">
-      <div class="d-flex flex-wrap gap-2 mb-4" id="categoryFilters">
-        <span class="badge rounded-pill bg-white text-dark border p-2 px-3 category-pill active" data-cat="all">
-            All Resources
-        </span>
-      </div>
-
-      <div class="row g-4" id="resourcesGrid">
-        <div class="col-12 text-center py-5">
-          <div class="spinner-border text-primary" role="status"></div>
-          <p class="mt-2 text-muted">Scanning the archives...</p>
+        <div class="d-flex flex-wrap gap-2 mb-4" id="categoryFilters">
+            <span class="badge rounded-pill category-pill active" data-cat="all">
+                All Resources
+            </span>
         </div>
-      </div>
+
+        <div class="row g-4" id="resourcesGrid">
+            <div class="col-12 text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2 text-muted">Scanning the archives...</p>
+            </div>
+        </div>
     </div>
 
     <div class="modal fade" id="videoModal" tabindex="-1">
-      <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content bg-dark border-0 rounded-4 overflow-hidden">
-          <div class="modal-header border-0">
-            <h5 class="modal-title text-white" id="videoTitle">Video Preview</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body p-0">
-            <div class="ratio ratio-16x9" id="videoPlayerContainer"></div>
-          </div>
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content bg-dark border-0 rounded-4 overflow-hidden">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title text-white small" id="videoTitle">Video Preview</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="ratio ratio-16x9" id="videoPlayerContainer"></div>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="./api.js"></script>
     <script src="./resources.js"></script>
-  </body>
+</body>
 </html>

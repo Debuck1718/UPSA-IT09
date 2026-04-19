@@ -1442,74 +1442,92 @@ app.post("/api/auth/reset-password", async (req, res) => {
 });
 
 // GET /api/user/profile-full
-app.get("/api/user/profile-full", async (req, res) => {
-  try {
-    const u = req.session?.user;
-    if (!u) return res.status(401).json({ ok: false, message: "Unauthorized" });
-
-    // 1. Fetch full user details from DB
-    const userRes = await db.pool.query(
-      "SELECT id, student_id, full_name, email, role, program, class_group, institution_id, bio, avatar_url FROM users_app WHERE id = $1",
-      [u.id]
-    );
-
-    if (!userRes.rowCount) {
-      return res.status(404).json({ ok: false, message: "User not found" });
+app.get('/api/user/profile-full', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ ok: false, message: "Unauthorized" });
     }
 
-    const userData = userRes.rows[0];
+    const userId = req.session.user.id;
 
-    // 2. Fetch user activity (slides/resources)
-    // Adjust table names ('slides') to match your actual schema
-    const resourcesRes = await db.pool.query(
-      "SELECT id, slide_title as title, created_at FROM slides WHERE uploader_id = $1 ORDER BY created_at DESC",
-      [u.id]
-    );
-
-    // 3. Fetch user posts (discussions)
-    // Note: Ensure you have a 'posts' or 'discussions' table
-    let posts = [];
     try {
-      const postsRes = await db.pool.query(
-        "SELECT id, title, content, created_at FROM posts WHERE author_id = $1 ORDER BY created_at DESC",
-        [u.id]
-      );
-      posts = postsRes.rows;
-    } catch (e) {
-      console.warn("Posts table might not exist yet, skipping...");
+        // Fetch data specifically from users_app
+        const [userRes, postsRes, resourcesRes] = await Promise.all([
+            db.pool.query(`
+                SELECT id, full_name, email, COALESCE(bio, '') as bio, 
+                       program, class_group, role, is_leader, is_creator, 
+                       avatar_url, institution_id 
+                FROM users_app 
+                WHERE id = $1`, [userId]),
+            db.pool.query('SELECT id, title, created_at FROM forum_posts WHERE author_id = $1 ORDER BY created_at DESC', [userId]),
+            db.pool.query('SELECT id, title, created_at FROM resources WHERE uploader_id = $1 ORDER BY created_at DESC', [userId])
+        ]);
+
+        if (userRes.rows.length === 0) {
+            return res.status(404).json({ ok: false, message: "User not found" });
+        }
+
+        res.json({
+            user: userRes.rows[0],
+            activity: {
+                posts: postsRes.rows,
+                resources: resourcesRes.rows
+            }
+        });
+    } catch (err) {
+        console.error("Profile API Error:", err);
+        res.status(500).json({ ok: false, message: "Server error" });
     }
-
-    return res.json({
-      ok: true,
-      user: userData,
-      activity: {
-        resources: resourcesRes.rows,
-        posts: posts
-      }
-    });
-
-  } catch (e) {
-    console.error("Profile full fetch error:", e);
-    return res.status(500).json({ ok: false, message: "Server error" });
-  }
 });
 
-// Also add the bio update route to prevent the next error!
-app.post("/api/user/update-bio", async (req, res) => {
-  try {
-    const u = req.session?.user;
-    if (!u) return res.status(401).json({ ok: false });
-
+app.post('/api/user/update-bio', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ ok: false });
+    
     const { bio } = req.body;
-    await db.pool.query(
-      "UPDATE users_app SET bio = $1 WHERE id = $2",
-      [bio, u.id]
-    );
+    try {
+        await db.pool.query('UPDATE users_app SET bio = $1 WHERE id = $2', [bio, req.session.user.id]);
+        res.json({ ok: true });
+    } catch (err) {
+        console.error("Bio Update Error:", err);
+        res.status(500).json({ ok: false });
+    }
+});
 
-    return res.json({ ok: true, message: "Bio updated" });
-  } catch (e) {
-    return res.status(500).json({ ok: false });
-  }
+app.post("/api/user/update-avatar", async (req, res) => {
+    if (!req.session.user) return res.status(401).send("Unauthorized");
+
+    try {
+        if (!req.files || !req.files.avatar) {
+            return res.status(400).json({ message: "No image uploaded" });
+        }
+
+        const file = req.files.avatar;
+        const userId = req.session.user.id;
+        // Path: avatars/user_123_random.png
+        const objectPath = `avatars/user_${userId}_${Date.now()}`;
+
+        // 1. Upload to Supabase
+        const { error: upErr } = await supabase.storage
+            .from("campus-resources")
+            .upload(objectPath, file.data, { 
+                contentType: file.mimetype,
+                upsert: true 
+            });
+
+        if (upErr) throw upErr;
+
+        // 2. Get Public URL
+        const { data } = supabase.storage.from("campus-resources").getPublicUrl(objectPath);
+        const publicUrl = data.publicUrl;
+
+        // 3. Update users_app table
+        await db.pool.query('UPDATE users_app SET avatar_url = $1 WHERE id = $2', [publicUrl, userId]);
+
+        res.json({ success: true, avatar_url: publicUrl });
+
+    } catch (err) {
+        console.error("Avatar Upload Error:", err);
+        res.status(500).json({ message: "Upload failed" });
+    }
 });
 
 

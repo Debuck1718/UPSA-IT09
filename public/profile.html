@@ -3,27 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Profile • Campus Hub</title>
+    <title>My Profile • ScholarHub</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
         body { background: #f8f9fa; }
         .profile-header { background: linear-gradient(135deg, #0d6efd 0%, #003d99 100%); color: white; border-radius: 0 0 25px 25px; position: relative; }
-        .profile-img { width: 120px; height: 120px; border-radius: 50%; border: 5px solid white; background: #fff; object-fit: cover; overflow: hidden; }
+        .profile-img { width: 120px; height: 120px; border-radius: 50%; border: 5px solid white; background: #fff; object-fit: cover; }
         .badge-verified { background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 20px; padding: 5px 15px; font-size: 0.8rem; }
         .stat-card { border: none; border-radius: 15px; text-align: center; padding: 20px; }
-        .activity-card { border: none; border-radius: 12px; margin-bottom: 10px; background: white; transition: 0.2s; }
-        .activity-card:hover { background: #f1f1f1; }
+        .activity-card { border: none; border-radius: 12px; margin-bottom: 10px; background: white; transition: 0.2s; border-left: 4px solid #0d6efd; }
         
-        /* Modern Back Button */
         .btn-back { 
             position: absolute; top: 20px; left: 20px; 
             background: rgba(255, 255, 255, 0.2); color: white; 
             border: none; border-radius: 50%; width: 40px; height: 40px; 
             display: flex; align-items: center; justify-content: center;
-            backdrop-filter: blur(5px); transition: 0.3s;
+            backdrop-filter: blur(5px); transition: 0.3s; z-index: 10;
         }
-        .btn-back:hover { background: rgba(255, 255, 255, 0.4); color: white; }
+        
+        /* Camera overlay button */
+        .avatar-edit-btn {
+            position: absolute; bottom: 0; right: 0;
+            background: #fff; color: #0d6efd;
+            border-radius: 50%; width: 35px; height: 35px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; border: 2px solid #0d6efd;
+        }
     </style>
 </head>
 <body>
@@ -35,14 +41,18 @@
 
         <div class="container text-center">
             <div class="mb-3 position-relative d-inline-block">
-                <div class="profile-img d-flex align-items-center justify-content-center mx-auto" id="profileImageWrapper">
-                    <i class="bi bi-person-circle text-primary display-4" id="profilePlaceholder"></i>
+                <div id="profileImageWrapper" class="mx-auto overflow-hidden rounded-circle" style="width: 120px; height: 120px;">
+                    <i class="bi bi-person-circle text-white display-1" id="profilePlaceholder"></i>
                 </div>
+                <label for="avatarInput" class="avatar-edit-btn shadow">
+                    <i class="bi bi-camera-fill"></i>
+                </label>
+                <input type="file" id="avatarInput" hidden accept="image/*">
             </div>
+            
             <h3 class="fw-bold mb-1" id="userName">Loading...</h3>
             <p class="mb-3 opacity-75" id="userProgram">Fetching details...</p>
-            
-            <div class="d-flex justify-content-center gap-2" id="badgeContainer"></div>
+            <div class="d-flex justify-content-center flex-wrap gap-2" id="badgeContainer"></div>
         </div>
     </div>
 
@@ -60,6 +70,7 @@
                         <p class="text-muted small" id="userBio">...</p>
                         <hr>
                         <div class="small">
+                            <div class="mb-2"><i class="bi bi-card-text me-2"></i> ID: <span id="userStudentId">...</span></div>
                             <div class="mb-2"><i class="bi bi-building me-2"></i> <span id="userInstitution">...</span></div>
                             <div class="mb-2"><i class="bi bi-envelope me-2"></i> <span id="userEmail">...</span></div>
                         </div>
@@ -85,22 +96,22 @@
             <div class="col-lg-8">
                 <ul class="nav nav-pills mb-4 bg-white p-2 rounded-3 shadow-sm d-inline-flex">
                     <li class="nav-item">
-                        <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#myPosts">My Discussions</button>
+                        <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#myPosts">Discussions</button>
                     </li>
                     <li class="nav-item">
-                        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#myResources">My Resources</button>
+                        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#myResources">Resources</button>
                     </li>
                 </ul>
 
                 <div class="tab-content">
                     <div class="tab-pane fade show active" id="myPosts">
                         <div id="postsList">
-                            <div class="text-center py-5 opacity-50"><i class="bi bi-chat-dots fs-1"></i><p>No posts yet.</p></div>
+                            <div class="text-center py-5 opacity-50"><p>No activity yet.</p></div>
                         </div>
                     </div>
                     <div class="tab-pane fade" id="myResources">
                         <div id="resourcesList">
-                            <div class="text-center py-5 opacity-50"><i class="bi bi-file-earmark-text fs-1"></i><p>No resources shared.</p></div>
+                            <div class="text-center py-5 opacity-50"><p>No shared resources.</p></div>
                         </div>
                     </div>
                 </div>

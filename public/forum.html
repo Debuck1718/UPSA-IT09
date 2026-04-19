@@ -3,34 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Campus Forum • Discussions</title>
+    <title>Discussions • Acadex</title>
+    
+    <link rel="icon" type="image/png" href="/images/favicon.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
-        body { background: #f0f2f5; }
-        .forum-card { border: none; border-radius: 12px; transition: 0.2s; }
-        .reply-card { border-left: 3px solid #dee2e6; margin-left: 2rem; background: #fafafa; }
-        .avatar-sm { width: 35px; height: 35px; border-radius: 50%; background: #0d6efd; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-        .post-input { border-radius: 20px; background: #e4e6eb; border: none; padding: 10px 20px; cursor: pointer; }
-        .post-input:hover { background: #d8dadf; }
-        .badge-target { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        :root {
+            --acadex-blue: #0d6efd;
+            --bg-soft: #f0f2f5;
+        }
+
+        body { 
+            background: var(--bg-soft); 
+            font-family: 'Inter', sans-serif;
+            color: #1a1d23;
+        }
+
+        /* Navbar & Branding */
+        .glass-nav {
+            background: rgba(33, 37, 41, 0.95);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .brand-logo { width: 28px; height: 28px; border-radius: 4px; margin-right: 10px; }
+
+        /* Sidebar Navigation */
+        .forum-card { border: none; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        
+        .list-group-item {
+            padding: 12px 16px;
+            font-weight: 500;
+            color: #64748b;
+            transition: 0.2s;
+        }
+        .list-group-item.active {
+            background-color: rgba(13, 110, 253, 0.1) !important;
+            color: var(--acadex-blue) !important;
+            border-left: 4px solid var(--acadex-blue) !important;
+        }
+
+        /* Post Input Area */
+        .post-input-box {
+            border-radius: 25px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: 0.2s;
+            color: #64748b;
+        }
+        .post-input-box:hover { background: #e2e8f0; }
+
+        /* Post Cards */
+        .avatar-sm { 
+            width: 40px; height: 40px; 
+            border-radius: 12px; 
+            background: var(--acadex-blue); 
+            color: white; 
+            display: flex; align-items: center; justify-content: center; 
+            font-weight: 700;
+            box-shadow: 0 4px 10px rgba(13, 110, 253, 0.2);
+        }
+
+        .reply-card { 
+            border-left: 3px solid #e2e8f0; 
+            margin-left: 2.5rem; 
+            background: #f8fafc; 
+            padding: 12px;
+            border-radius: 0 12px 12px 0;
+        }
+
+        .badge-target { 
+            font-size: 0.65rem; 
+            text-transform: uppercase; 
+            letter-spacing: 0.8px; 
+            padding: 5px 10px;
+            border-radius: 6px;
+        }
+
+        .btn-reply {
+            color: #64748b;
+            font-size: 0.85rem;
+            transition: 0.2s;
+        }
+        .btn-reply:hover { color: var(--acadex-blue); }
     </style>
 </head>
 <body>
 
-    <div class="container py-4">
+    <nav class="navbar navbar-dark glass-nav mb-4 py-3">
+        <div class="container">
+            <button onclick="window.history.back()" class="btn btn-link text-white text-decoration-none p-0">
+                <i class="bi bi-chevron-left fs-5"></i>
+            </button>
+            <span class="navbar-brand fw-bold mx-auto d-flex align-items-center">
+                <img src="/images/icon-192.png" alt="Logo" class="brand-logo bg-white">
+                Acadex Forum
+            </span>
+            <div id="userMenu"></div>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
         <div class="row">
             <div class="col-lg-3 d-none d-lg-block">
-                <div class="card forum-card p-3 sticky-top" style="top: 20px;">
-                    <h6 class="fw-bold mb-3">Feeds</h6>
-                    <div class="list-group list-group-flush">
-                        <button class="list-group-item list-group-item-action border-0 rounded active" data-filter="global">
-                            <i class="bi bi-globe me-2"></i> Global Square
+                <div class="card forum-card p-3 sticky-top" style="top: 100px;">
+                    <h6 class="fw-bold mb-3 text-muted small text-uppercase">Feeds</h6>
+                    <div class="list-group list-group-flush" id="feedFilters">
+                        <button class="list-group-item list-group-item-action border-0 rounded-3 mb-1 active" data-filter="global">
+                            <i class="bi bi-globe2 me-2"></i> Global Square
                         </button>
-                        <button class="list-group-item list-group-item-action border-0 rounded" data-filter="program">
+                        <button class="list-group-item list-group-item-action border-0 rounded-3 mb-1" data-filter="program">
                             <i class="bi bi-mortarboard me-2"></i> My Program
                         </button>
-                        <button class="list-group-item list-group-item-action border-0 rounded" data-filter="class">
+                        <button class="list-group-item list-group-item-action border-0 rounded-3 mb-1" data-filter="class">
                             <i class="bi bi-people me-2"></i> My Class
                         </button>
                     </div>
@@ -38,18 +132,18 @@
             </div>
 
             <div class="col-lg-7">
-                <div class="card forum-card mb-4">
-                    <div class="card-body d-flex align-items-center gap-3">
+                <div class="card forum-card mb-4 shadow-sm">
+                    <div class="card-body d-flex align-items-center gap-3 py-3">
                         <div class="avatar-sm" id="userInitial">U</div>
-                        <div class="post-input flex-grow-1" data-bs-toggle="modal" data-bs-target="#postModal">
-                            Start a discussion...
+                        <div class="post-input-box flex-grow-1 fw-medium" data-bs-toggle="modal" data-bs-target="#postModal">
+                            What's happening on campus?
                         </div>
                     </div>
                 </div>
 
                 <div id="forumFeed">
                     <div class="text-center p-5">
-                        <div class="spinner-border text-primary"></div>
+                        <div class="spinner-border text-primary opacity-25" role="status"></div>
                     </div>
                 </div>
             </div>
@@ -58,22 +152,23 @@
 
     <div class="modal fade" id="postModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content forum-card">
-                <div class="modal-header border-0">
-                    <h5 class="modal-title fw-bold">Create Post</h5>
+            <div class="modal-content border-0 rounded-4">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">Create Discussion</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="postForm">
-                        <select name="target_type" class="form-select mb-3 border-0 bg-light fw-bold" required>
-                            <option value="global">Post to Global Square</option>
-                            <option value="program">Post to My Program</option>
-                            <option value="class">Post to My Class</option>
-                        </select>
-                        <textarea name="content" class="form-control border-0 fs-5" rows="4" placeholder="What's on your mind?" required></textarea>
-                        <div class="text-end mt-3">
-                            <button type="submit" class="btn btn-primary px-4 fw-bold">Post</button>
+                        <div class="mb-3">
+                            <label class="small fw-bold text-muted mb-2">AUDIENCE</label>
+                            <select name="target_type" class="form-select border-0 bg-light fw-semibold py-2" required>
+                                <option value="global">Global Square (All Students)</option>
+                                <option value="program">My Program Only</option>
+                                <option value="class">My Specific Class</option>
+                            </select>
                         </div>
+                        <textarea name="content" class="form-control border-0 fs-5 mb-3" rows="4" placeholder="Share your thoughts..." required style="resize: none;"></textarea>
+                        <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-3 shadow-sm">POST DISCUSSION</button>
                     </form>
                 </div>
             </div>
@@ -82,14 +177,15 @@
 
     <div class="modal fade" id="replyModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content forum-card">
-                <div class="modal-body">
-                    <p class="text-muted small mb-2">Replying to post...</p>
+            <div class="modal-content border-0 rounded-4">
+                <div class="modal-body p-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-reply-fill me-1"></i> Writing a reply...</h6>
                     <form id="replyForm">
                         <input type="hidden" name="parent_id" id="replyParentId">
-                        <textarea name="content" class="form-control border-0" rows="3" placeholder="Write a reply..." required></textarea>
-                        <div class="text-end mt-2">
-                            <button type="submit" class="btn btn-primary btn-sm px-3">Reply</button>
+                        <textarea name="content" class="form-control border-0 bg-light mb-3" rows="3" placeholder="Add to the conversation..." required style="border-radius: 12px;"></textarea>
+                        <div class="d-flex gap-2 justify-content-end">
+                            <button type="button" class="btn btn-light px-4 fw-bold" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm">Reply</button>
                         </div>
                     </form>
                 </div>
@@ -97,6 +193,7 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="./api.js"></script>
     <script src="./forum.js"></script>
 </body>
