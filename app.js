@@ -111,6 +111,8 @@ app.use((req, res, next) => {
   next();
 });
 
+const BUCKET_SLIDES = process.env.SUPABASE_BUCKET || 'slides'; 
+const BUCKET_RESOURCES = 'campus-resources';
 // Sanitize path segments for Supabase Storage keys
 function sanitizeSegment(value, fallback = "x") {
   let v = String(value || "")
@@ -604,63 +606,59 @@ app.post("/api/upload", async (req, res) => {
   try {
     const u = req.session?.user;
     if (!u) return res.status(401).json({ ok: false, message: "Unauthorized" });
-
-    if (!req.files || !req.files.file) {
-      return res.status(400).json({ ok: false, message: "No file uploaded" });
-    }
+    if (!req.files || !req.files.file) return res.status(400).json({ ok: false, message: "No file uploaded" });
 
     const file = req.files.file;
-    const slideTitle = (req.body?.slideTitle || "").toString().trim();
-    const courseTitle = (req.body?.courseTitle || "").toString().trim();
+    const { slideTitle, courseTitle, institution_id, program_id, class_group_id } = req.body;
 
-    // Map metadata from body (frontend) or session (backup)
-    const instId = req.body.institution_id || u.institution_id || u.institutionId || "upsa";
-    const progId = req.body.program_id || u.program || u.program_id || "general";
-    const classId = req.body.class_group_id || u.class_group_id || u.classGroupId || "class";
-    const cohortId = u.cohort_id || u.cohortId || "2026";
+   
+    const targetBucket = courseTitle ? BUCKET_SLIDES : BUCKET_RESOURCES;
 
-    const { v4: uuidv4 } = require("uuid");
-    const id = uuidv4();
+    const inst  = sanitizeSegment(institution_id || u.institution_id || "upsa");
+    const prog  = sanitizeSegment(program_id || u.program_id || "it");
+    const group = sanitizeSegment(class_group_id || u.class_group_id || "general");
+    const course = sanitizeSegment(courseTitle, "general");
     
-    // Build path: institution/program/class/course/file
-    const objectPath = [
-      sanitizeSegment(instId),
-      sanitizeSegment(progId),
-      sanitizeSegment(classId),
-      sanitizeSegment(courseTitle),
-      `${id}-${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`
-    ].join("/");
+    const { v4: uuidv4 } = require("uuid");
+    const uniqueId = uuidv4();
+    const safeFileName = sanitizeSegment(file.name, "file");
 
-    // 1. Upload to Supabase Storage
+    // Structure: upsa/it/upsa_it_2026_it9/communication_skills/uuid-filename.pdf
+    const objectPath = `${inst}/${prog}/${group}/${course}/${uniqueId}-${safeFileName}`;
+
+    // 3. Upload to Supabase Storage
     const { error: upErr } = await supabase.storage
-      .from(SUPABASE_BUCKET)
-      .upload(objectPath, file.data, { contentType: file.mimetype });
+      .from(targetBucket)
+      .upload(objectPath, file.data, { 
+        contentType: file.mimetype,
+        upsert: false 
+      });
 
     if (upErr) throw upErr;
 
-    // 2. Insert into PostgreSQL (Matching your slides table exactly)
+    // 4. Insert into the 'slides' table
     const { error: dbErr } = await supabase
       .from('slides')
       .insert([{
-        id: id,
-        class_group_id: classId,
-        course_title: courseTitle,
-        slide_title: slideTitle,
+        id: uniqueId,
+        class_group_id: class_group_id || u.class_group_id,
+        course_title: courseTitle || "General",
+        slide_title: slideTitle || file.name,
         object_path: objectPath,
         original_name: file.name,
         content_type: file.mimetype,
         size_bytes: file.size,
         uploader_id: u.id,
-        institution_id: instId,
-        program_id: progId,
-        cohort_id: cohortId
+        institution_id: inst,
+        program_id: prog,
+        cohort_id: u.cohort_id || "2026"
       }]);
 
     if (dbErr) throw dbErr;
 
-    return res.json({ ok: true, message: "Uploaded", id });
+    return res.json({ ok: true, message: `Successfully uploaded to ${targetBucket}`, id: uniqueId });
   } catch (e) {
-    console.error("Upload process error:", e);
+    console.error("Upload process error:", e.message);
     return res.status(500).json({ ok: false, message: e.message });
   }
 });
