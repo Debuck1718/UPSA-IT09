@@ -302,3 +302,24 @@
       '<div class="text-danger p-3">System offline.</div>';
   });
 })();
+
+// --- Updated Initial Boot ---
+  (async function startRepDashboard() {
+    try {
+      // 1. Load existing titles and course catalog
+      await loadMyTitles();
+      await loadCourses();
+
+      // 2. Initialize Push Notifications for the Rep
+      // This ensures you get notified of replies/announcements
+      if (window.api && window.api.initPush) {
+        console.log("Acadex Rep: Syncing notification settings...");
+        await window.api.initPush();
+      }
+    } catch (err) {
+      console.error("Boot error:", err);
+      if (coursesSlides) {
+        coursesSlides.innerHTML = '<div class="text-danger p-3">System offline.</div>';
+      }
+    }
+  })();

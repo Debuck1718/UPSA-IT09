@@ -124,6 +124,52 @@ function sanitizeSegment(value, fallback = "x") {
   return v;
 }
 
+const webpush = require('web-push');
+
+// Use your VAPID keys from Render Environment Variables
+webpush.setVapidDetails(
+  'mailto:support@upsa-it09.onrender.com',
+  process.env.VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
+);
+
+async function notifyTargetGroup(payload, criteria) {
+  try {
+    let query = "SELECT push_subscription FROM users_app WHERE push_subscription IS NOT NULL";
+    let params = [];
+
+    if (criteria.type === 'institution') {
+      query += " AND institution_id = $1";
+      params.push(criteria.id);
+    } else if (criteria.type === 'program') {
+      query += " AND program_id = $1";
+      params.push(criteria.id);
+    }
+
+    const { rows } = await db.pool.query(query, params);
+
+    const pushPayload = JSON.stringify({
+      title: payload.title,
+      content: payload.content,
+      type: payload.type, 
+      url: payload.url
+    });
+
+    // 2. Send the push to each valid subscription
+    rows.forEach(row => {
+      webpush.sendNotification(row.push_subscription, pushPayload)
+        .catch(err => {
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            // Clean up expired subscriptions
+            db.pool.query("UPDATE users_app SET push_subscription = NULL WHERE push_subscription = $1", [JSON.stringify(row.push_subscription)]);
+          }
+        });
+    });
+  } catch (err) {
+    console.error("Push Notification Error:", err);
+  }
+}
+
 app.get("/dashboard", (req, res) => {
   if (!req.session.user) return res.redirect("/public/index.html");
   const role = req.session.user.role;
@@ -1314,6 +1360,32 @@ app.post("/api/admin/users/:studentId/permissions", requireAdmin, async (req, re
   }
 });
 
+// GET /api/notifications/vapid-key
+app.get('/api/notifications/vapid-key', (req, res) => {
+  res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
+});
+
+// POST /api/notifications/save-subscription
+app.post('/api/notifications/save-subscription', async (req, res) => {
+  try {
+    const { subscription } = req.body;
+    const u = req.session.user;
+
+    if (!u) return res.status(401).json({ ok: false, message: "Login required" });
+
+    // Store the JSON object directly into your JSONB column in users_app
+    await db.pool.query(
+      "UPDATE users_app SET push_subscription = $1 WHERE id = $2",
+      [JSON.stringify(subscription), u.id]
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Save subscription error:", err);
+    res.status(500).json({ ok: false });
+  }
+});
+
 // --- NEW: Forum Moderation Tools ---
 // List all posts across all threads for moderation
 app.get("/api/admin/forum/posts", requireAdmin, async (req, res) => {
@@ -1340,6 +1412,53 @@ app.delete("/api/admin/forum/posts/:id", requireAdmin, async (req, res) => {
     res.json({ ok: true, message: "Post removed by moderator" });
   } catch (e) {
     res.status(500).json({ ok: false, message: "Failed to delete post" });
+  }
+});
+
+app.post("/api/forum", async (req, res) => {
+  try {
+    const { content, target_type, target_id } = req.body;
+    const u = req.session.user;
+    if (!u) return res.status(401).json({ ok: false });
+
+    const query = `
+      INSERT INTO forum_posts (user_id, content, target_type, target_id, target_institution)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `;
+    const vals = [u.id, content, target_type || 'global', target_id || null, u.institutionId];
+    const { rows } = await db.pool.query(query, vals);
+
+    // Trigger Notification
+    broadcastNotification({
+      title: 'New Discussion',
+      content: `${u.full_name}: ${content.substring(0, 50)}...`,
+      type: 'forum',
+      url: '/forum.html'
+    }, target_type);
+
+    res.json({ ok: true, post: rows[0] });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
+
+// POST /api/forum/reply - Reply to an existing post
+app.post("/api/forum/reply", async (req, res) => {
+  try {
+    const { content, parent_id } = req.body;
+    const u = req.session.user;
+
+    const query = `
+      INSERT INTO forum_posts (user_id, content, parent_id, target_type)
+      VALUES ($1, $2, $3, (SELECT target_type FROM forum_posts WHERE id = $3))
+      RETURNING *
+    `;
+    const { rows } = await db.pool.query(query, [u.id, content, parent_id]);
+    
+    res.json({ ok: true, reply: rows[0] });
+  } catch (e) {
+    res.status(500).json({ ok: false });
   }
 });
 
@@ -1375,36 +1494,40 @@ app.post("/api/admin/announcements", requireLeader, async (req, res) => {
     const { title, content, is_global, target_program } = req.body;
     const u = req.session.user;
 
-
     const finalIsGlobal = (u.role === 'admin') ? !!is_global : false;
-    
-    // If it's a leader, we ensure the institution_id is theirs
-    // target_program remains optional (null = whole institution)
-    const finalInstitutionId = u.institution_id; 
 
     const query = `
       INSERT INTO announcements (
-        title, content, is_global, author_id, 
+        author_id, title, content, is_global, 
         target_institution, target_program
       )
       VALUES ($1, $2, $3, $4, $5, $6) 
       RETURNING *
     `;
 
-    const vals = [
-      title, 
-      content, 
-      finalIsGlobal, 
-      u.id, 
-      finalInstitutionId, 
-      target_program || null
-    ];
-
+    const vals = [u.id, title, content, finalIsGlobal, u.institutionId, target_program || null];
     const { rows } = await db.pool.query(query, vals);
+
+    // Determine target for notification
+    let targetCriteria = { type: 'all' };
+    if (target_program) {
+      targetCriteria = { type: 'program', id: target_program };
+    } else if (!finalIsGlobal) {
+      targetCriteria = { type: 'institution', id: u.institutionId };
+    }
+
+    // Trigger Notification
+    notifyTargetGroup({
+      title: `📢 ${title}`,
+      content: content.substring(0, 100),
+      type: 'announcement',
+      url: '/announcements.html'
+    }, targetCriteria);
+
     res.json({ ok: true, announcement: rows[0] });
   } catch (e) {
     console.error("Post announcement error:", e);
-    res.status(500).json({ ok: false, message: "Failed to broadcast announcement" });
+    res.status(500).json({ ok: false, message: "Failed to broadcast" });
   }
 });
 
