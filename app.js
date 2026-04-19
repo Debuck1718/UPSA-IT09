@@ -1501,6 +1501,33 @@ app.get("/api/announcements", async (req, res) => {
   }
 });
 
+// Get all unique programs for the announcement/resource targeting dropdown
+app.get('/api/programs', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('users_app')
+            .select('program')
+            .not('program', 'is', null)
+            .neq('program', '');
+
+        if (error) throw error;
+
+        // Extract unique names and sort them
+        const uniquePrograms = [...new Set(data.map(item => item.program))].sort();
+        
+        // Format for the frontend dropdown
+        const programsList = uniquePrograms.map((name, index) => ({
+            id: index + 1,
+            name: name
+        }));
+
+        res.json(programsList);
+    } catch (err) {
+        console.error('Error fetching programs:', err.message);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
 // POST /api/admin/announcements
 app.post("/api/admin/announcements", requireLeader, async (req, res) => {
   try {

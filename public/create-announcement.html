@@ -1,229 +1,340 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>New Broadcast • Acadex</title>
-    <link rel="icon" type="image/png" href="./images/favicon.ico">
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-    
+    <link rel="icon" type="image/png" href="./images/favicon.ico" />
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+    />
+
     <style>
-        :root { --accent: #0d6efd; --acadex-blue: #003d99; }
-        body { 
-            background: #f0f2f5; 
-            font-family: 'Inter', sans-serif; /* Applied 'Inter' */
-            min-height: 100vh; 
-        }
-        
-        .creation-card { 
-            border: none; 
-            border-radius: 20px; 
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 20px 50px rgba(0,0,0,0.05);
-            border-top: 5px solid var(--accent);
-        }
+      :root {
+        --accent: #0d6efd;
+        --acadex-blue: #003d99;
+      }
+      body {
+        background: #f0f2f5;
+        font-family: "Inter", sans-serif; /* Applied 'Inter' */
+        min-height: 100vh;
+      }
 
-        .form-control, .form-select {
-            border-radius: 12px;
-            padding: 12px 16px;
-            border: 1px solid #e2e8f0;
-            transition: 0.2s border-color;
-            font-weight: 400;
-        }
+      .creation-card {
+        border: none;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05);
+        border-top: 5px solid var(--accent);
+      }
 
-        .form-control:focus, .form-select:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
-        }
+      .form-control,
+      .form-select {
+        border-radius: 12px;
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+        transition: 0.2s border-color;
+        font-weight: 400;
+      }
 
-        .btn-post {
-            border-radius: 14px;
-            background: var(--accent);
-            border: none;
-            transition: 0.3s;
-            letter-spacing: 0.5px;
-            font-weight: 600;
-        }
-        .btn-post:hover { 
-            background: var(--acadex-blue); /* Hovers to brand color */
-            transform: translateY(-2px); 
-            box-shadow: 0 8px 20px rgba(13, 110, 253, 0.3); 
-        }
+      .form-control:focus,
+      .form-select:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+      }
 
-        .role-badge {
-            font-size: 0.7rem;
-            letter-spacing: 1px;
-            padding: 6px 14px;
-            border-radius: 20px;
-            text-transform: uppercase;
-            font-weight: 700;
-        }
+      .btn-post {
+        border-radius: 14px;
+        background: var(--accent);
+        border: none;
+        transition: 0.3s;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+      }
+      .btn-post:hover {
+        background: var(--acadex-blue); /* Hovers to brand color */
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(13, 110, 253, 0.3);
+      }
+
+      .role-badge {
+        font-size: 0.7rem;
+        letter-spacing: 1px;
+        padding: 6px 14px;
+        border-radius: 20px;
+        text-transform: uppercase;
+        font-weight: 700;
+      }
     </style>
-</head>
-<body>
-
+  </head>
+  <body>
     <div class="container py-5 animate__animated animate__fadeIn">
-        <div class="row justify-content-center">
-            <div class="col-lg-7">
-                <div class="mb-4 d-flex justify-content-between align-items-center">
-                    <button onclick="window.history.back()" class="btn btn-light rounded-pill px-3 text-muted border-0 shadow-sm fw-semibold">
-                        <i class="bi bi-chevron-left me-1"></i> Back
-                    </button>
-                    <div id="userBadgeArea"></div>
+      <div class="row justify-content-center">
+        <div class="col-lg-7">
+          <div class="mb-4 d-flex justify-content-between align-items-center">
+            <button
+              onclick="window.history.back()"
+              class="btn btn-light rounded-pill px-3 text-muted border-0 shadow-sm fw-semibold"
+            >
+              <i class="bi bi-chevron-left me-1"></i> Back
+            </button>
+            <div id="userBadgeArea"></div>
+          </div>
+
+          <div class="card creation-card">
+            <div class="card-body p-4 p-md-5">
+              <div class="text-center mb-5">
+                <img
+                  src="./images/web-app-manifest-192x192.png"
+                  alt="Acadex Logo"
+                  class="mb-4 shadow-sm rounded-4"
+                  style="width: 80px; height: 80px"
+                />
+                <h3 class="fw-bold text-dark">Acadex Broadcast</h3>
+                <p class="text-muted small">
+                  Publish verified updates to your institution's digital hub.
+                </p>
+              </div>
+
+              <form id="announcementForm">
+                <div class="mb-4">
+                  <label
+                    class="form-label fw-bold small text-muted text-uppercase"
+                    >Headline</label
+                  >
+                  <input
+                    type="text"
+                    name="title"
+                    class="form-control form-control-lg fw-semibold"
+                    placeholder="e.g. Mid-Semester Examination Dates"
+                    required
+                  />
                 </div>
 
-                <div class="card creation-card">
-                    <div class="card-body p-4 p-md-5">
-                        <div class="text-center mb-5">
-                            <img src="/images/icon-192.png" alt="Acadex Logo" class="mb-4 shadow-sm rounded-4" style="width: 80px; height: 80px;">
-                            <h3 class="fw-bold text-dark">Acadex Broadcast</h3>
-                            <p class="text-muted small">Publish verified updates to your institution's digital hub.</p>
-                        </div>
+                <div class="mb-4">
+                  <label
+                    class="form-label fw-bold small text-muted text-uppercase"
+                    >Message Body</label
+                  >
+                  <textarea
+                    name="content"
+                    class="form-control"
+                    rows="6"
+                    placeholder="Details about the update..."
+                    required
+                    style="line-height: 1.6"
+                  ></textarea>
+                </div>
 
-                        <form id="announcementForm">
-                            <div class="mb-4">
-                                <label class="form-label fw-bold small text-muted text-uppercase">Headline</label>
-                                <input type="text" name="title" class="form-control form-control-lg fw-semibold" placeholder="e.g. Mid-Semester Examination Dates" required>
-                            </div>
-                            
-                            <div class="mb-4">
-                                <label class="form-label fw-bold small text-muted text-uppercase">Message Body</label>
-                                <textarea name="content" class="form-control" rows="6" placeholder="Details about the update..." required style="line-height: 1.6;"></textarea>
-                            </div>
+                <div class="row g-3 mb-4">
+                  <div class="col-md-12">
+                    <label
+                      class="form-label fw-bold small text-muted text-uppercase"
+                      >Target Audience</label
+                    >
+                    <select
+                      name="target_program"
+                      class="form-select fw-medium"
+                      id="programSelect"
+                    >
+                      <option value="">Full Institution Broadcast</option>
+                    </select>
+                    <small
+                      id="scopeHint"
+                      class="text-muted mt-2 d-block"
+                    ></small>
+                  </div>
+                </div>
 
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-12">
-                                    <label class="form-label fw-bold small text-muted text-uppercase">Target Audience</label>
-                                    <select name="target_program" class="form-select fw-medium" id="programSelect">
-                                        <option value="">Full Institution Broadcast</option>
-                                        </select>
-                                    <small id="scopeHint" class="text-muted mt-2 d-block"></small>
-                                </div>
-                            </div>
-
-                            <div id="adminOptions" class="d-none mb-4 animate__animated animate__fadeIn">
-                                <div class="p-3 bg-warning bg-opacity-10 border border-warning border-opacity-20 rounded-4">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" name="is_global" id="isGlobalAnn">
-                                        <label class="form-check-label fw-bold text-warning-emphasis" for="isGlobalAnn">
-                                            ACTIVATE GLOBAL REACH
-                                        </label>
-                                    </div>
-                                    <small class="text-warning-emphasis opacity-75">This will display to every user across all institutions on Acadex.</small>
-                                </div>
-                            </div>
-
-                            <button type="submit" id="submitBtn" class="btn btn-primary w-100 btn-post py-3 fw-bold">
-                                <span id="btnText"><i class="bi bi-send-check-fill me-2"></i> PUBLISH BROADCAST</span>
-                                <span id="btnLoader" class="spinner-border spinner-border-sm d-none"></span>
-                            </button>
-                        </form>
+                <div
+                  id="adminOptions"
+                  class="d-none mb-4 animate__animated animate__fadeIn"
+                >
+                  <div
+                    class="p-3 bg-warning bg-opacity-10 border border-warning border-opacity-20 rounded-4"
+                  >
+                    <div class="form-check form-switch">
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        name="is_global"
+                        id="isGlobalAnn"
+                      />
+                      <label
+                        class="form-check-label fw-bold text-warning-emphasis"
+                        for="isGlobalAnn"
+                      >
+                        ACTIVATE GLOBAL REACH
+                      </label>
                     </div>
+                    <small class="text-warning-emphasis opacity-75"
+                      >This will display to every user across all institutions
+                      on Acadex.</small
+                    >
+                  </div>
                 </div>
+
+                <button
+                  type="submit"
+                  id="submitBtn"
+                  class="btn btn-primary w-100 btn-post py-3 fw-bold"
+                >
+                  <span id="btnText"
+                    ><i class="bi bi-send-check-fill me-2"></i> PUBLISH
+                    BROADCAST</span
+                  >
+                  <span
+                    id="btnLoader"
+                    class="spinner-border spinner-border-sm d-none"
+                  ></span>
+                </button>
+              </form>
             </div>
+          </div>
         </div>
+      </div>
     </div>
 
     <script src="./api.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            const form = document.getElementById('announcementForm');
-            const programSelect = document.getElementById('programSelect');
-            const adminOptions = document.getElementById('adminOptions');
-            const scopeHint = document.getElementById('scopeHint');
-            const badgeArea = document.getElementById('userBadgeArea');
+      document.addEventListener("DOMContentLoaded", async () => {
+        const form = document.getElementById("announcementForm");
+        const programSelect = document.getElementById("programSelect");
+        const adminOptions = document.getElementById("adminOptions");
+        const scopeHint = document.getElementById("scopeHint");
+        const badgeArea = document.getElementById("userBadgeArea");
 
-            async function init() {
-                try {
-                    const session = await window.api.fetch('/api/session');
-                    const user = session.user;
+        let currentUser = null;
 
-                    // 1. Authorization: Course Reps, Leaders, and Admins
-                    const isAuthorized = user.role === 'admin' || user.is_leader || user.is_rep;
-                    
-                    if (!isAuthorized) {
-                        alert("Unauthorized: Leadership credentials required.");
-                        window.location.href = 'index.html';
-                        return;
-                    }
+        async function init() {
+          try {
+            const session = await window.api.fetch("/api/session");
+            currentUser = session.user;
 
-                    // 2. Setup Role Badge
-                    if (user.role === 'admin') {
-                        badgeArea.innerHTML = `<span class="badge bg-dark role-badge shadow-sm">Super Admin</span>`;
-                        adminOptions.classList.remove('d-none');
-                    } else if (user.is_rep) {
-                        badgeArea.innerHTML = `<span class="badge bg-primary role-badge shadow-sm">Course Rep</span>`;
-                    } else {
-                        badgeArea.innerHTML = `<span class="badge bg-info text-dark role-badge shadow-sm">Campus Leader</span>`;
-                    }
+            // 1. Authorization Check
+            const isAuthorized =
+              currentUser.role === "admin" ||
+              currentUser.is_leader ||
+              currentUser.is_rep;
 
-                    // 3. Fetch Programs for the dropdown
-                    try {
-                        const programs = await window.api.fetch('/api/programs');
-                        if (programs && programs.length > 0) {
-                            programs.forEach(p => {
-                                const opt = document.createElement('option');
-                                opt.value = p.id;
-                                opt.innerText = p.name;
-                                programSelect.appendChild(opt);
-                            });
-                        }
-                    } catch (err) { console.warn("Could not load programs list."); }
-
-                    scopeHint.innerText = `Broadcasting to students at ${user.institution_id || 'your institution'}.`;
-
-                } catch (e) {
-                    console.error("Session fetch failed", e);
-                    window.location.href = 'login.html';
-                }
+            if (!isAuthorized) {
+              alert("Unauthorized: Leadership credentials required.");
+              window.location.href = "dashboard-modern.html";
+              return;
             }
 
-            form.onsubmit = async (e) => {
-                e.preventDefault();
-                const btnText = document.getElementById('btnText');
-                const btnLoader = document.getElementById('btnLoader');
-                const submitBtn = document.getElementById('submitBtn');
-                
-                btnText.classList.add('d-none');
-                btnLoader.classList.remove('d-none');
-                submitBtn.disabled = true;
+            // 2. UI Setup based on Role
+            if (currentUser.role === "admin") {
+              badgeArea.innerHTML = `<span class="badge bg-dark role-badge shadow-sm">Super Admin</span>`;
+              adminOptions.classList.remove("d-none");
+            } else if (currentUser.is_rep) {
+              badgeArea.innerHTML = `<span class="badge bg-primary role-badge shadow-sm">Course Rep</span>`;
+            } else {
+              badgeArea.innerHTML = `<span class="badge bg-info text-dark role-badge shadow-sm">Campus Leader</span>`;
+            }
 
-                const formData = new FormData(form);
-                const payload = Object.fromEntries(formData);
-                
-                // Handle the checkbox boolean explicitly
-                payload.is_global = document.getElementById('isGlobalAnn').checked;
+            // 3. Fetch Programs and populate dropdown
+            try {
+              // Fetching programs to allow specific targeting
+              const data = await window.api.fetch("/api/programs");
+              // Adjust based on your API response structure (e.g., data.programs or just data)
+              const programs = Array.isArray(data) ? data : data.programs || [];
 
-                try {
-                    const res = await window.api.fetch('/api/admin/announcements', {
-                        method: 'POST',
-                        body: payload
-                    });
+              programs.forEach((p) => {
+                const opt = document.createElement("option");
+                // Use p.name or p.id depending on how you store target_program in the DB
+                opt.value = p.name;
+                opt.innerText = p.name;
+                programSelect.appendChild(opt);
+              });
+            } catch (err) {
+              console.warn("Could not load programs list.");
+            }
 
-                    if (res && res.ok) {
-                        alert("Broadcast Published!");
-                        window.location.href = 'index.html'; 
-                    }
-                } catch (err) {
-                    alert("Broadcast failed: " + err.message);
-                } finally {
-                    btnText.classList.remove('d-none');
-                    btnLoader.classList.add('d-none');
-                    submitBtn.disabled = false;
-                }
-            };
+            // 4. Set Initial Scope Hint
+            updateScopeHint();
+          } catch (e) {
+            console.error("Session fetch failed", e);
+            window.location.href = "/public/index.html";
+          }
+        }
 
-            init();
-        });
+        // Update hint text when selection changes
+        programSelect.addEventListener("change", updateScopeHint);
+
+        function updateScopeHint() {
+          if (!currentUser) return;
+          const selected = programSelect.value;
+          if (selected === "") {
+            scopeHint.innerHTML = `<i class="bi bi-building me-1"></i> Broadcasting to <strong>ALL</strong> students at ${currentUser.institution_id || "the institution"}.`;
+          } else {
+            scopeHint.innerHTML = `<i class="bi bi-person-badge me-1"></i> Targeted broadcast for <strong>${selected}</strong> students only.`;
+          }
+        }
+
+        form.onsubmit = async (e) => {
+          e.preventDefault();
+          const btnText = document.getElementById("btnText");
+          const btnLoader = document.getElementById("btnLoader");
+          const submitBtn = document.getElementById("submitBtn");
+
+          btnText.classList.add("d-none");
+          btnLoader.classList.remove("d-none");
+          submitBtn.disabled = true;
+
+          const formData = new FormData(form);
+          const payload = Object.fromEntries(formData);
+
+          // Ensure values match DB expectations
+          payload.is_global = document.getElementById("isGlobalAnn").checked;
+          payload.target_institution = currentUser.institution_id;
+
+          // If "Full Institution" is selected, value is "", we send null to DB
+          if (payload.target_program === "") {
+            payload.target_program = null;
+          }
+
+          try {
+            const res = await window.api.fetch("/api/admin/announcements", {
+              method: "POST",
+              body: payload,
+            });
+
+            // Assuming your API returns { success: true } or the created object
+            if (res) {
+              alert("Broadcast Published Successfully!");
+              window.location.href = "dashboard-modern.html";
+            }
+          } catch (err) {
+            alert("Broadcast failed: " + err.message);
+          } finally {
+            btnText.classList.remove("d-none");
+            btnLoader.classList.add("d-none");
+            submitBtn.disabled = false;
+          }
+        };
+
+        init();
+      });
     </script>
-</body>
+  </body>
 </html>
