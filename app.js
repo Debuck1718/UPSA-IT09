@@ -302,7 +302,7 @@ app.post(
         : u.class_group || "";
 
       // Recompute cohort and classGroup IDs
-      const institutionId = u.institution_id || "upsa";
+      const institutionId = u.institution_id || "upsa"; 
       const cohortId = db.makeCohortId(institutionId, newProgramId, newYear);
       const classGroupId = classGroup
         ? db.makeClassGroupId(cohortId, classGroup)
@@ -444,7 +444,7 @@ app.post("/api/signup", async (req, res) => {
       program,
       classGroup,
       academicYearStart,
-      institution,
+      institutionId,
     } = req.body || {};
     if (
       !studentId ||
@@ -491,7 +491,7 @@ app.post("/api/signup", async (req, res) => {
       classGroup: db.normalizeClassGroup(classGroup),
       password, // db_pg hashes to sha256
       role: "student",
-      institutionId: institution || "upsa",
+      institutionId: institutionId || "upsa",
       academicYearStart: Number(academicYearStart),
     });
 
@@ -1332,6 +1332,40 @@ app.delete("/api/admin/forum/posts/:id", requireAdmin, async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ ok: false });
+  }
+});
+
+// GET /api/forum - Fetch the discussion feed for students
+app.get("/api/forum", async (req, res) => {
+  try {
+    const { target } = req.query; // 'global', 'program', or 'class'
+    const u = req.session.user;
+
+    let query = `
+      SELECT p.*, u.full_name 
+      FROM forum_posts p
+      JOIN users_app u ON p.user_id = u.id
+      WHERE p.target_type = $1
+    `;
+    
+    const params = [target || 'global'];
+
+    // If they want 'program' or 'class' posts, filter by their specific IDs
+    if (target === 'program' && u) {
+        query += ` AND p.target_id = $2`;
+        params.push(u.programId);
+    } else if (target === 'class' && u) {
+        query += ` AND p.target_id = $2`;
+        params.push(u.classId);
+    }
+
+    query += ` ORDER BY p.created_at DESC`;
+
+    const { rows } = await db.pool.query(query, params);
+    res.json(rows);
+  } catch (e) {
+    console.error("Feed error:", e);
+    res.status(500).json({ ok: false, message: "Could not load feed" });
   }
 });
 

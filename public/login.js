@@ -5,24 +5,24 @@
   function showAlert(msg) {
     if (!alertEl) return;
     alertEl.textContent = msg || 'Login failed';
-    alertEl.className = 'alert alert-danger';
+    alertEl.className = 'alert alert-danger shadow-sm border-0 animate__animated animate__shakeX';
     alertEl.classList.remove('d-none');
     alertEl.style.display = 'block';
   }
+
   function hideAlert() {
     if (!alertEl) return;
-    alertEl.textContent = '';
     alertEl.classList.add('d-none');
     alertEl.style.display = 'none';
   }
 
+  // FIXED: Simplified to use the api.js wrapper properly
   async function login(studentId, password) {
-    const body = await window.api.fetch('/api/login', {
+    // We pass a raw object; window.api.fetch handles JSON.stringify and Headers
+    return await window.api.fetch('/api/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ studentId, password })
+      body: { studentId, password } 
     });
-    return body || {};
   }
 
   form?.addEventListener('submit', async (e) => {
@@ -31,39 +31,43 @@
 
     const studentId = (document.getElementById('studentId')?.value || '').trim();
     const password = document.getElementById('password')?.value || '';
+
     if (!studentId || !password) {
       showAlert('Please fill in both Student ID and Password.');
       return;
     }
+
+    // Visual feedback
+    const btn = form.querySelector('button[type="submit"]');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Signing in...`;
+
     try {
       const data = await login(studentId, password);
-      const role = data?.user?.role || '';
-      // Prefer server-provided redirect; ensure same-origin path
-      let redirect = (typeof data?.redirect === 'string') ? data.redirect.trim() : '';
-      try {
-        if (!redirect || redirect.startsWith('//') || /^javascript:/i.test(redirect)) {
-          redirect = '';
-        } else if (/^https?:\/\//i.test(redirect)) {
-          const u = new URL(redirect);
-          if (u.origin === window.location.origin && !/^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(u.host)) {
-            redirect = u.pathname + u.search + u.hash;
-          } else {
-            redirect = '';
-          }
+      
+      if (data && data.user) {
+        const role = data.user.role;
+        
+        // Logical redirection based on your platform roles
+        let redirect = '';
+        if (role === 'admin') {
+          redirect = '/public/admin.html';
+        } else if (role === 'rep') {
+          redirect = '/public/rep-dashboard.html'; // Matches your file structure
         } else {
-          redirect = '/' + redirect.replace(/^\/+/, '');
+          redirect = '/public/dashboard.html';
         }
-      } catch {
-        redirect = '';
+
+        window.location.assign(redirect);
+      } else {
+        throw new Error(data.message || 'Invalid credentials');
       }
-      if (!redirect) {
-        redirect = role === 'admin' ? '/public/admin.html'
-          : role === 'rep' ? '/rep-dashboard'
-          : '/dashboard';
-      }
-      window.location.assign(redirect);
     } catch (err) {
-      showAlert(err.message || 'Login failed. Please try again.');
+      // The api.js catch block usually passes the server's {message}
+      showAlert(err.message || 'Login failed. Check your ID/Password.');
+      btn.disabled = false;
+      btn.innerHTML = originalText;
     }
   });
 })();

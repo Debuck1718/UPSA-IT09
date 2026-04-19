@@ -1,75 +1,86 @@
 (function () {
   const form = document.getElementById('signupForm');
   const alertBox = document.getElementById('alert');
+  const instSelect = document.getElementById('institution');
+  const otherInput = document.getElementById('otherInstitution');
 
-  function showError(msg) {
+  // UI Toggle for "Other" institution
+  instSelect?.addEventListener('change', () => {
+    if (instSelect.value === 'other') {
+      otherInput.classList.remove('d-none');
+      otherInput.required = true;
+      otherInput.focus();
+    } else {
+      otherInput.classList.add('d-none');
+      otherInput.required = false;
+      otherInput.value = '';
+    }
+  });
+
+  function showAlert(msg, isSuccess = false) {
     if (!alertBox) return;
-    alertBox.textContent = msg || 'Signup failed';
-    alertBox.className = 'alert alert-danger';
+    alertBox.textContent = msg;
+    alertBox.className = `alert ${isSuccess ? 'alert-success' : 'alert-danger'} shadow-sm border-0 animate__animated animate__fadeIn`;
     alertBox.classList.remove('d-none');
-    alertBox.style.display = 'block';
-  }
-  function showSuccess(msg) {
-    if (!alertBox) return;
-    alertBox.textContent = msg || 'Account created successfully.';
-    alertBox.className = 'alert alert-success';
-    alertBox.classList.remove('d-none');
-    alertBox.style.display = 'block';
-  }
-  function clearAlert() {
-    if (!alertBox) return;
-    alertBox.textContent = '';
-    alertBox.classList.add('d-none');
-    alertBox.style.display = 'none';
   }
 
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    clearAlert();
+    alertBox?.classList.add('d-none');
 
-    const studentId = (document.getElementById('studentId')?.value || '').trim();
-    const full_name = (document.getElementById('full_name')?.value || '').trim();
-    const email = (document.getElementById('email')?.value || '').trim();
-    const program = (document.getElementById('program')?.value || '').trim();
-    const classGroup = (document.getElementById('classGroup')?.value || '').trim();
-    const academicYearStartStr = (document.getElementById('academicYearStart')?.value || '').trim();
-    const password = document.getElementById('password')?.value || '';
-    const confirm = document.getElementById('confirmPassword')?.value || '';
+    const btn = form.querySelector('button[type="submit"]');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
 
-    if (!studentId || !full_name || !email || !program || !classGroup || !academicYearStartStr || !password || !confirm) {
-      return showError('Please complete all required fields.');
+    // Validation
+    if (data.password !== data.confirmPassword) {
+      return showAlert('Passwords do not match.');
     }
-    // Accept UPSA 8-digit IDs and allow other schools with varying lengths (ensure all digits)
-    if (!/^\d{6,12}$/.test(studentId)) {
-      return showError('Please enter a valid Student ID (digits only).');
-    }
-    if (password !== confirm) {
-      return showError('Passwords do not match.');
+    if (data.password.length < 6) {
+      return showAlert('Password must be at least 6 characters.');
     }
 
-    const yearNum = Number(academicYearStartStr);
-    const nowYear = new Date().getFullYear();
-    if (!Number.isInteger(yearNum) || yearNum < 2000 || yearNum > nowYear + 1) {
-      return showError('Please enter a valid Academic Year Start (e.g., 2024).');
+    // Resolve Institution Value: Use 'other' text if selected
+    const finalInstitution = data.institution === 'other' ? data.otherInstitution : data.institution;
+
+    if (!finalInstitution) {
+      return showAlert('Please select or enter your institution.');
     }
 
-    const payload = { studentId, full_name, email, password, program, classGroup, academicYearStart: yearNum };
+    const payload = {
+      studentId: data.studentId.trim(),
+      full_name: data.full_name.trim(),
+      email: data.email.trim(),
+      password: data.password,
+      program: data.program.trim(),
+      classGroup: data.classGroup.trim(),
+      institutionId: finalInstitution, // Matches your db_pg.js param name
+      academicYearStart: Number(data.academicYearStart)
+    };
+
+    btn.disabled = true;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Creating account...`;
 
     try {
+      // Passing raw object - window.api.fetch handles stringification
       const resp = await window.api.fetch('/api/signup', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: payload 
       });
-      if (resp && resp.ok) {
-        showSuccess('Account created. Redirecting to your dashboard...');
-        // Redirect directly to dashboard so users see it's successful
-        setTimeout(() => (window.location.assign('/dashboard')), 800);
+
+      if (resp && (resp.ok || resp.id)) {
+        showAlert('Account created! Redirecting...', true);
+        setTimeout(() => {
+          window.location.assign('/public/dashboard.html');
+        }, 1200);
       } else {
-        showError((resp && resp.message) || 'Signup failed');
+        throw new Error(resp.message || 'Signup failed');
       }
     } catch (err) {
-      showError(err.message || 'Signup failed. Please try again.');
+      showAlert(err.message || 'Connection error. Please try again.');
+      btn.disabled = false;
+      btn.innerHTML = originalText;
     }
   });
 })();

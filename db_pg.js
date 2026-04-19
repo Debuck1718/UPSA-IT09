@@ -136,18 +136,29 @@ async function findUserByEmail(email) {
 }
 async function createUser({ studentId, full_name, email, program, classGroup, password, role, institutionId, academicYearStart }) {
   const programId = programIdFromName(program || 'General');
-  const instId = institutionIdFromName(institutionId || 'upsa');
-  const cohortId = makeCohortId(instId, programId, academicYearStart || new Date().getFullYear());
+  
+  const instId = institutionIdFromName(institutionId || 'general');
+  
+  const academicYear = academicYearStart || new Date().getFullYear();
+  const cohortId = makeCohortId(instId, programId, academicYear);
   const classGroupCode = normalizeClassGroup(classGroup);
   const classGroupId = makeClassGroupId(cohortId, classGroupCode);
+  
   const crypto = require('crypto');
   const passwordHash = crypto.createHash('sha256').update(String(password)).digest('hex');
 
   const { rows } = await pool.query(
-    `insert into users_app (student_id, full_name, email, role, institution_id, program, program_id, cohort_id, class_group, class_group_id, password_hash)
+    `insert into users_app (
+      student_id, full_name, email, role, institution_id, 
+      program, program_id, cohort_id, class_group, class_group_id, password_hash
+    )
      values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
      returning *`,
-    [studentId, full_name, email, role || 'student', instId, program || null, programId, cohortId, classGroupCode, classGroupId, passwordHash]
+    [
+      studentId, full_name, email, role || 'student', 
+      instId, program || null, programId, cohortId, 
+      classGroupCode, classGroupId, passwordHash
+    ]
   );
   return rows[0];
 }

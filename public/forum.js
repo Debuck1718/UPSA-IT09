@@ -43,9 +43,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
 
         try {
+            // FIXED: Changed to GET request with query params
             const posts = await window.api.fetch(`/api/forum?target=${currentFilter}`);
             renderFeed(posts);
         } catch (e) {
+            console.error("Feed load error:", e);
             feed.innerHTML = `
                 <div class="alert alert-light border-danger text-danger text-center rounded-4 p-4">
                     <i class="bi bi-exclamation-triangle fs-3 d-block mb-2"></i>
@@ -56,10 +58,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    /**
-     * Render Posts and Nested Replies
-     */
     function renderFeed(posts) {
+        if (!posts || !Array.isArray(posts)) return;
+
         const mainPosts = posts.filter(p => !p.parent_id);
         const replies = posts.filter(p => p.parent_id);
 
@@ -80,7 +81,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const postReplies = replies.filter(r => r.parent_id === post.id);
             const initial = post.full_name ? post.full_name.charAt(0).toUpperCase() : 'U';
             
-            // UI logic for target badges
             const targetBadgeClass = {
                 'global': 'bg-warning-subtle text-warning-emphasis',
                 'program': 'bg-primary-subtle text-primary-emphasis',
@@ -94,7 +94,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <div class="avatar-sm me-3">${initial}</div>
                             <div class="flex-grow-1">
                                 <div class="d-flex justify-content-between align-items-start">
-                                    <h6 class="fw-bold mb-0">${post.full_name}</h6>
+                                    <h6 class="fw-bold mb-0">${post.full_name || 'Anonymous'}</h6>
                                     <span class="badge badge-target ${targetBadgeClass}">${post.target_type}</span>
                                 </div>
                                 <small class="text-muted" style="font-size: 0.75rem;">
@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             ${postReplies.map(r => `
                                 <div class="reply-card shadow-sm mx-3 mt-2">
                                     <div class="d-flex align-items-center mb-1">
-                                        <small class="fw-bold text-primary me-2">${r.full_name}</small>
+                                        <small class="fw-bold text-primary me-2">${r.full_name || 'Anonymous'}</small>
                                         <small class="text-muted" style="font-size: 0.65rem;">
                                             ${new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </small>
@@ -147,7 +147,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const data = Object.fromEntries(new FormData(postForm));
         
         try {
-            const res = await window.api.post('/api/forum', data);
+            const res = await window.api.fetch('/api/forum', {
+                method: 'POST',
+                body: data
+            });
+
             if (res.ok) {
                 postModal.hide();
                 postForm.reset();
@@ -161,9 +165,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    /**
-     * Reply Logic
-     */
+
     window.openReplyModal = (id) => {
         document.getElementById('replyParentId').value = id;
         replyModal.show();
@@ -174,33 +176,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         const submitBtn = replyForm.querySelector('button[type="submit"]');
         
         submitBtn.disabled = true;
-
         const data = Object.fromEntries(new FormData(replyForm));
         
         try {
-            const res = await window.api.post('/api/forum/reply', data);
+            // FIXED: Used window.api.fetch with method POST
+            const res = await window.api.fetch('/api/forum/reply', {
+                method: 'POST',
+                body: data
+            });
+
             if (res.ok) {
                 replyModal.hide();
                 replyForm.reset();
                 loadFeed();
             }
         } catch (err) {
-            alert("Reply failed to send.");
+            alert("Reply failed to send: " + err.message);
         } finally {
             submitBtn.disabled = false;
         }
     };
 
-    /**
-     * Sidebar Navigation / Filters
-     */
+
     document.querySelectorAll('[data-filter]').forEach(btn => {
         btn.onclick = () => {
-            // UI Toggle
             document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             
-            // Logic Toggle
             currentFilter = btn.dataset.filter;
             loadFeed();
         };
