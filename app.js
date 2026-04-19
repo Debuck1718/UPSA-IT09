@@ -980,27 +980,39 @@ app.get("/api/slides", async (req, res) => {
 });
 
 // --- API: slide download/view URL ---
+// --- API: slide download/view URL ---
 app.get("/api/slides/:id/url", async (req, res) => {
   if (!req.session.user) return res.status(401).json({ ok: false, message: "Unauthorized" });
+
   try {
     const slide = await db.getSlideById(req.params.id);
+    
     if (!slide) return res.status(404).json({ ok: false, message: "Slide not found" });
     if (!slide.object_path) return res.status(404).json({ ok: false, message: "Slide file missing" });
-
     if (!supabase) return res.status(500).json({ ok: false, message: "Supabase not configured" });
+
+    const activeBucket = (typeof SUPABASE_BUCKET !== 'undefined' ? SUPABASE_BUCKET : null) 
+                         || process.env.SUPABASE_BUCKET 
+                         || 'slides';
 
     // Generate signed URL (valid for 2 hours)
     const { data, error } = await supabase
       .storage
-      .from(SUPABASE_BUCKET)
+      .from(activeBucket)
       .createSignedUrl(slide.object_path, 60 * 60 * 2);
-    if (error || !data || !data.signedUrl) {
-      console.error("Supabase signed URL error", error);
-      return res.status(500).json({ ok: false, message: "Failed to generate download URL" });
+
+    if (error) {
+      console.error("Supabase signed URL error:", error.message);
+      return res.status(500).json({ ok: false, message: "Storage access failed: " + error.message });
     }
+
+    if (!data || !data.signedUrl) {
+      return res.status(500).json({ ok: false, message: "Signed URL was not generated" });
+    }
+
     return res.json({ ok: true, url: data.signedUrl });
   } catch (e) {
-    console.error("Slide URL error", e);
+    console.error("Slide URL error:", e);
     return res.status(500).json({ ok: false, message: "Failed to generate slide URL" });
   }
 });
