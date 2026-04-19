@@ -56,7 +56,7 @@
         } else if (role === 'rep') {
           redirect = '/public/rep-dashboard.html'; // Matches your file structure
         } else {
-          redirect = '/public/dashboard.html';
+          redirect = '/public/dashboard-modern.html';
         }
 
         window.location.assign(redirect);
