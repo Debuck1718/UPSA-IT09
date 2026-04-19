@@ -913,6 +913,7 @@ app.post("/api/admin/promote", requireAdmin, async (req, res) => {
   const updated = await db.setUserRole(u.id, role);
   return res.json({ ok: true, user: { id: updated.id, role: updated.role } });
 });
+
 app.post("/api/admin/import", requireAdmin, async (req, res) => {
   try {
     if (!req.files || !req.files.file) {
@@ -1372,26 +1373,31 @@ app.get("/api/forum", async (req, res) => {
 
 // --- NEW: User Permissions & Promotions (is_rep, is_leader, is_creator) ---
 app.post("/api/admin/users/:studentId/permissions", requireAdmin, async (req, res) => {
-  try {
-    const sid = String(req.params.studentId || "").trim();
+    const { studentId } = req.params;
     const { bio, is_rep, is_leader, is_creator, role } = req.body;
 
-    const query = `
-      UPDATE users_app 
-      SET bio = $1, is_rep = $2, is_leader = $3, is_creator = $4, role = $5
-      WHERE student_id = $6
-      RETURNING student_id, role, is_rep, is_leader, is_creator
-    `;
-    const vals = [bio, !!is_rep, !!is_leader, !!is_creator, role || "student", sid];
-    
-    const result = await db.pool.query(query, vals);
-    if (!result.rowCount) return res.status(404).json({ ok: false, message: "User not found" });
+    try {
+        // 1. Find user by student_id
+        const user = await db.pool.query('SELECT id FROM users_app WHERE student_id = $1', [studentId]);
+        if (user.rows.length === 0) return res.status(404).json({ ok: false, message: "User not found" });
 
-    return res.json({ ok: true, user: result.rows[0] });
-  } catch (e) {
-    console.error("Permissions Update Error:", e);
-    res.status(500).json({ ok: false, message: "Server error" });
-  }
+        const userId = user.rows[0].id;
+
+        // 2. Update the columns matching your users_app schema
+        const query = `
+            UPDATE users_app 
+            SET bio = $1, is_rep = $2, is_leader = $3, is_creator = $4, role = $5 
+            WHERE id = $6 
+            RETURNING id, role
+        `;
+        const values = [bio, is_rep, is_leader, is_creator || false, role, userId];
+        
+        const result = await db.pool.query(query, values);
+        res.json({ ok: true, user: result.rows[0] });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ ok: false, message: "Update failed" });
+    }
 });
 
 // GET /api/notifications/vapid-key
@@ -1607,15 +1613,15 @@ app.get('/api/user/profile-full', async (req, res) => {
     const userId = req.session.user.id;
 
     try {
-        // Fetch data specifically from users_app
         const [userRes, postsRes, resourcesRes] = await Promise.all([
             db.pool.query(`
-                SELECT id, full_name, email, COALESCE(bio, '') as bio, 
-                       program, class_group, role, is_leader, is_creator, 
+                SELECT id, student_id, full_name, email, COALESCE(bio, '') as bio, 
+                       program, class_group, role, is_leader, is_creator, is_rep,
                        avatar_url, institution_id 
                 FROM users_app 
                 WHERE id = $1`, [userId]),
-            db.pool.query('SELECT id, title, created_at FROM forum_posts WHERE author_id = $1 ORDER BY created_at DESC', [userId]),
+            // FIX: Changed author_id to user_id and added 'content' since your schema lacks 'title'
+            db.pool.query('SELECT id, content as title, created_at FROM forum_posts WHERE user_id = $1 ORDER BY created_at DESC', [userId]),
             db.pool.query('SELECT id, title, created_at FROM resources WHERE uploader_id = $1 ORDER BY created_at DESC', [userId])
         ]);
 
