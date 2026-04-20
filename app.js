@@ -119,9 +119,9 @@ function sanitizeSegment(value, fallback = "x") {
   let v = String(value || "")
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9._-]/g, "_") // replace unsafe chars
-    .replace(/_+/g, "_") // collapse multiple underscores
-    .replace(/^_+|_+$/g, ""); // trim leading/trailing underscores
+    .replace(/[^a-z0-9._-]/g, "_") 
+    .replace(/_+/g, "_") 
+    .replace(/^_+|_+$/g, ""); 
 
   if (!v) v = fallback;
   return v;
