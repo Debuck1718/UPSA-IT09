@@ -31,8 +31,9 @@ app.use(
 const db = require("./db_pg");
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-const supabase = (SUPABASE_URL && SUPABASE_SERVICE_KEY) 
-    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY) 
+const supabase =
+  SUPABASE_URL && SUPABASE_SERVICE_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
     : null;
 
 // 4. CORS CONFIG
@@ -111,8 +112,8 @@ app.use((req, res, next) => {
   next();
 });
 
-const BUCKET_SLIDES = process.env.SUPABASE_BUCKET || 'slides'; 
-const BUCKET_RESOURCES = 'campus-resources';
+const BUCKET_SLIDES = process.env.SUPABASE_BUCKET || "slides";
+const BUCKET_RESOURCES = "campus-resources";
 // Sanitize path segments for Supabase Storage keys
 function sanitizeSegment(value, fallback = "x") {
   let v = String(value || "")
@@ -126,24 +127,25 @@ function sanitizeSegment(value, fallback = "x") {
   return v;
 }
 
-const webpush = require('web-push');
+const webpush = require("web-push");
 
 // Use your VAPID keys from Render Environment Variables
 webpush.setVapidDetails(
-  'mailto:support@upsa-it09.onrender.com',
+  "mailto:support@upsa-it09.onrender.com",
   process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
+  process.env.VAPID_PRIVATE_KEY,
 );
 
 async function notifyTargetGroup(payload, criteria) {
   try {
-    let query = "SELECT push_subscription FROM users_app WHERE push_subscription IS NOT NULL";
+    let query =
+      "SELECT push_subscription FROM users_app WHERE push_subscription IS NOT NULL";
     let params = [];
 
-    if (criteria.type === 'institution') {
+    if (criteria.type === "institution") {
       query += " AND institution_id = $1";
       params.push(criteria.id);
-    } else if (criteria.type === 'program') {
+    } else if (criteria.type === "program") {
       query += " AND program_id = $1";
       params.push(criteria.id);
     }
@@ -153,17 +155,21 @@ async function notifyTargetGroup(payload, criteria) {
     const pushPayload = JSON.stringify({
       title: payload.title,
       content: payload.content,
-      type: payload.type, 
-      url: payload.url
+      type: payload.type,
+      url: payload.url,
     });
 
     // 2. Send the push to each valid subscription
-    rows.forEach(row => {
-      webpush.sendNotification(row.push_subscription, pushPayload)
-        .catch(err => {
+    rows.forEach((row) => {
+      webpush
+        .sendNotification(row.push_subscription, pushPayload)
+        .catch((err) => {
           if (err.statusCode === 410 || err.statusCode === 404) {
             // Clean up expired subscriptions
-            db.pool.query("UPDATE users_app SET push_subscription = NULL WHERE push_subscription = $1", [JSON.stringify(row.push_subscription)]);
+            db.pool.query(
+              "UPDATE users_app SET push_subscription = NULL WHERE push_subscription = $1",
+              [JSON.stringify(row.push_subscription)],
+            );
           }
         });
     });
@@ -232,7 +238,6 @@ app.get("/api/admin/users", requireAdmin, async (req, res) => {
   }
 });
 
-
 // Update program / academicYearStart / classGroup (admin only)
 app.post(
   "/api/admin/users/:studentId/update-cohort",
@@ -277,7 +282,7 @@ app.post(
         : u.class_group || "";
 
       // Recompute cohort and classGroup IDs
-      const institutionId = u.institution_id || "upsa"; 
+      const institutionId = u.institution_id || "upsa";
       const cohortId = db.makeCohortId(institutionId, newProgramId, newYear);
       const classGroupId = classGroup
         ? db.makeClassGroupId(cohortId, classGroup)
@@ -372,9 +377,9 @@ app.post("/api/login", async (req, res) => {
       classGroupId,
       fullName,
       firstName,
-      is_rep: !!user.is_rep, 
-      is_leader: !!user.is_leader, 
-      is_creator: !!user.is_creator
+      is_rep: !!user.is_rep,
+      is_leader: !!user.is_leader,
+      is_creator: !!user.is_creator,
     };
 
     // Role-based redirect hint
@@ -436,12 +441,10 @@ app.post("/api/signup", async (req, res) => {
     // Enforce Student ID 6–12 digits to support different schools (UPSA is 8)
     const idOk = /^\d{6,12}$/.test(String(studentId).trim());
     if (!idOk) {
-      return res
-        .status(400)
-        .json({
-          ok: false,
-          message: "Please enter a valid Student ID (6–12 digits).",
-        });
+      return res.status(400).json({
+        ok: false,
+        message: "Please enter a valid Student ID (6–12 digits).",
+      });
     }
 
     // Uniqueness checks
@@ -606,19 +609,27 @@ app.post("/api/upload", async (req, res) => {
   try {
     const u = req.session?.user;
     if (!u) return res.status(401).json({ ok: false, message: "Unauthorized" });
-    if (!req.files || !req.files.file) return res.status(400).json({ ok: false, message: "No file uploaded" });
+    if (!req.files || !req.files.file)
+      return res.status(400).json({ ok: false, message: "No file uploaded" });
 
     const file = req.files.file;
-    const { slideTitle, courseTitle, institution_id, program_id, class_group_id } = req.body;
+    const {
+      slideTitle,
+      courseTitle,
+      institution_id,
+      program_id,
+      class_group_id,
+    } = req.body;
 
-   
     const targetBucket = courseTitle ? BUCKET_SLIDES : BUCKET_RESOURCES;
 
-    const inst  = sanitizeSegment(institution_id || u.institution_id || "upsa");
-    const prog  = sanitizeSegment(program_id || u.program_id || "it");
-    const group = sanitizeSegment(class_group_id || u.class_group_id || "general");
+    const inst = sanitizeSegment(institution_id || u.institution_id || "upsa");
+    const prog = sanitizeSegment(program_id || u.program_id || "it");
+    const group = sanitizeSegment(
+      class_group_id || u.class_group_id || "general",
+    );
     const course = sanitizeSegment(courseTitle, "general");
-    
+
     const { v4: uuidv4 } = require("uuid");
     const uniqueId = uuidv4();
     const safeFileName = sanitizeSegment(file.name, "file");
@@ -629,17 +640,16 @@ app.post("/api/upload", async (req, res) => {
     // 3. Upload to Supabase Storage
     const { error: upErr } = await supabase.storage
       .from(targetBucket)
-      .upload(objectPath, file.data, { 
+      .upload(objectPath, file.data, {
         contentType: file.mimetype,
-        upsert: false 
+        upsert: false,
       });
 
     if (upErr) throw upErr;
 
     // 4. Insert into the 'slides' table
-    const { error: dbErr } = await supabase
-      .from('slides')
-      .insert([{
+    const { error: dbErr } = await supabase.from("slides").insert([
+      {
         id: uniqueId,
         class_group_id: class_group_id || u.class_group_id,
         course_title: courseTitle || "General",
@@ -651,18 +661,22 @@ app.post("/api/upload", async (req, res) => {
         uploader_id: u.id,
         institution_id: inst,
         program_id: prog,
-        cohort_id: u.cohort_id || "2026"
-      }]);
+        cohort_id: u.cohort_id || "2026",
+      },
+    ]);
 
     if (dbErr) throw dbErr;
 
-    return res.json({ ok: true, message: `Successfully uploaded to ${targetBucket}`, id: uniqueId });
+    return res.json({
+      ok: true,
+      message: `Successfully uploaded to ${targetBucket}`,
+      id: uniqueId,
+    });
   } catch (e) {
     console.error("Upload process error:", e.message);
     return res.status(500).json({ ok: false, message: e.message });
   }
 });
-
 
 // Email verification flow not used in current production path (skipped)
 
@@ -796,7 +810,6 @@ app.post("/api/admin/create", async (req, res) => {
     return res.status(500).json({ ok: false, message: "Server error" });
   }
 });
-
 
 app.get("/api/admin/users", requireAdmin, async (req, res) => {
   const all = await db.getAllUsers();
@@ -982,46 +995,62 @@ app.get("/api/slides", async (req, res) => {
 // --- API: slide download/view URL ---
 // --- API: slide download/view URL ---
 app.get("/api/slides/:id/url", async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ ok: false, message: "Unauthorized" });
+  if (!req.session.user)
+    return res.status(401).json({ ok: false, message: "Unauthorized" });
 
   try {
     const slide = await db.getSlideById(req.params.id);
-    
-    if (!slide) return res.status(404).json({ ok: false, message: "Slide not found" });
-    if (!slide.object_path) return res.status(404).json({ ok: false, message: "Slide file missing" });
-    if (!supabase) return res.status(500).json({ ok: false, message: "Supabase not configured" });
 
-    const activeBucket = (typeof SUPABASE_BUCKET !== 'undefined' ? SUPABASE_BUCKET : null) 
-                         || process.env.SUPABASE_BUCKET 
-                         || 'slides';
+    if (!slide)
+      return res.status(404).json({ ok: false, message: "Slide not found" });
+    if (!slide.object_path)
+      return res.status(404).json({ ok: false, message: "Slide file missing" });
+    if (!supabase)
+      return res
+        .status(500)
+        .json({ ok: false, message: "Supabase not configured" });
+
+    const activeBucket =
+      (typeof SUPABASE_BUCKET !== "undefined" ? SUPABASE_BUCKET : null) ||
+      process.env.SUPABASE_BUCKET ||
+      "slides";
 
     // Generate signed URL (valid for 2 hours)
-    const { data, error } = await supabase
-      .storage
+    const { data, error } = await supabase.storage
       .from(activeBucket)
       .createSignedUrl(slide.object_path, 60 * 60 * 2);
 
     if (error) {
       console.error("Supabase signed URL error:", error.message);
-      return res.status(500).json({ ok: false, message: "Storage access failed: " + error.message });
+      return res
+        .status(500)
+        .json({
+          ok: false,
+          message: "Storage access failed: " + error.message,
+        });
     }
 
     if (!data || !data.signedUrl) {
-      return res.status(500).json({ ok: false, message: "Signed URL was not generated" });
+      return res
+        .status(500)
+        .json({ ok: false, message: "Signed URL was not generated" });
     }
 
     return res.json({ ok: true, url: data.signedUrl });
   } catch (e) {
     console.error("Slide URL error:", e);
-    return res.status(500).json({ ok: false, message: "Failed to generate slide URL" });
+    return res
+      .status(500)
+      .json({ ok: false, message: "Failed to generate slide URL" });
   }
 });
 
 // Middleware to allow Admins, Reps, or designated Creators to upload
 const requireCreator = (req, res, next) => {
   const u = req.session.user;
-  const isAllowed = u && (u.role === 'admin' || u.is_rep || u.is_leader || u.is_creator);
-  
+  const isAllowed =
+    u && (u.role === "admin" || u.is_rep || u.is_leader || u.is_creator);
+
   if (isAllowed) return next();
   res.status(403).json({ ok: false, message: "Upload permissions required." });
 };
@@ -1029,7 +1058,9 @@ const requireCreator = (req, res, next) => {
 // GET /api/categories - For the filter pills
 app.get("/api/categories", async (req, res) => {
   try {
-    const { rows } = await db.pool.query("SELECT * FROM resource_categories ORDER BY name ASC");
+    const { rows } = await db.pool.query(
+      "SELECT * FROM resource_categories ORDER BY name ASC",
+    );
     res.json(rows);
   } catch (e) {
     res.status(500).json([]);
@@ -1056,7 +1087,10 @@ app.get("/api/resources", async (req, res) => {
 // PATCH /api/resources/:id/view - Increments view count
 app.patch("/api/resources/:id/view", async (req, res) => {
   try {
-    await db.pool.query("UPDATE resources SET view_count = view_count + 1 WHERE id = $1", [req.params.id]);
+    await db.pool.query(
+      "UPDATE resources SET view_count = view_count + 1 WHERE id = $1",
+      [req.params.id],
+    );
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ ok: false });
@@ -1065,7 +1099,8 @@ app.patch("/api/resources/:id/view", async (req, res) => {
 
 app.post("/api/resources", requireCreator, async (req, res) => {
   try {
-    const { title, description, youtube_id, category_id, is_global, url } = req.body;
+    const { title, description, youtube_id, category_id, is_global, url } =
+      req.body;
     const u = req.session.user;
     let finalUrl = url; // Use the text URL if provided (for links/websites)
 
@@ -1084,12 +1119,12 @@ app.post("/api/resources", requireCreator, async (req, res) => {
       const { data: publicUrlData } = supabase.storage
         .from("campus-resources")
         .getPublicUrl(objectPath);
-      
+
       finalUrl = publicUrlData.publicUrl;
     }
 
     // 3. Logic: Admins auto-approve, others stay pending
-    const status = (u.role === 'admin') ? 'approved' : 'pending';
+    const status = u.role === "admin" ? "approved" : "pending";
 
     const query = `
       INSERT INTO resources (
@@ -1100,17 +1135,22 @@ app.post("/api/resources", requireCreator, async (req, res) => {
     `;
 
     const vals = [
-      title, description, finalUrl, youtube_id || null, 
-      category_id, u.id, status, is_global === "true"
+      title,
+      description,
+      finalUrl,
+      youtube_id || null,
+      category_id,
+      u.id,
+      status,
+      is_global === "true",
     ];
 
     const { rows } = await db.pool.query(query, vals);
-    res.json({ 
-      ok: true, 
-      resource: rows[0], 
-      autoApproved: u.role === 'admin' 
+    res.json({
+      ok: true,
+      resource: rows[0],
+      autoApproved: u.role === "admin",
     });
-    
   } catch (e) {
     console.error("Upload error:", e);
     res.status(500).json({ ok: false, message: "Submission failed" });
@@ -1120,8 +1160,8 @@ app.post("/api/resources", requireCreator, async (req, res) => {
 // GET /api/creator/my-resources - Allows creators to see their own upload status
 app.get("/api/creator/my-resources", requireCreator, async (req, res) => {
   const { rows } = await db.pool.query(
-    "SELECT * FROM resources WHERE uploader_id = $1 ORDER BY created_at DESC", 
-    [req.session.user.id]
+    "SELECT * FROM resources WHERE uploader_id = $1 ORDER BY created_at DESC",
+    [req.session.user.id],
   );
   res.json(rows);
 });
@@ -1144,7 +1184,7 @@ app.patch("/api/admin/resources/:id/status", requireAdmin, async (req, res) => {
   try {
     const result = await db.pool.query(
       "UPDATE resources SET status = $1 WHERE id = $2 RETURNING id",
-      [status, req.params.id]
+      [status, req.params.id],
     );
     res.json({ ok: true, message: `Resource ${status}` });
   } catch (e) {
@@ -1160,13 +1200,19 @@ app.delete("/api/admin/resources/:id", requireAdmin, async (req, res) => {
 
 app.post("/api/admin/resources", requireAdmin, async (req, res) => {
   try {
-    const { 
-      title, description, url, youtube_id, 
-      category_id, program_id, is_global, status 
+    const {
+      title,
+      description,
+      url,
+      youtube_id,
+      category_id,
+      program_id,
+      is_global,
+      status,
     } = req.body;
-    
+
     const u = req.session.user;
-    
+
     // Initialize finalUrl with the text input (could be a website link)
     let finalUrl = url;
 
@@ -1174,24 +1220,24 @@ app.post("/api/admin/resources", requireAdmin, async (req, res) => {
     if (req.files && req.files.file) {
       const file = req.files.file;
       const fileId = uuidv4();
-      
+
       // Using your specific folder structure: resources/[institution]/[filename]
-      const instId = u.institutionId || 'global';
+      const instId = u.institutionId || "global";
       const objectPath = `resources/${instId}/${fileId}_${file.name}`;
 
       const { error: upErr } = await supabase.storage
         .from("campus-resources")
-        .upload(objectPath, file.data, { 
+        .upload(objectPath, file.data, {
           contentType: file.mimetype,
-          upsert: true // Overwrite if same ID exists
+          upsert: true, // Overwrite if same ID exists
         });
 
       if (upErr) throw upErr;
-      
+
       const { data: publicUrlData } = supabase.storage
         .from("campus-resources")
         .getPublicUrl(objectPath);
-      
+
       // Override finalUrl with the fresh Supabase link
       finalUrl = publicUrlData.publicUrl;
     }
@@ -1207,24 +1253,25 @@ app.post("/api/admin/resources", requireAdmin, async (req, res) => {
 
     // Ensure we handle defaults for Admin-created resources
     const vals = [
-      title, 
-      description, 
-      finalUrl || null,      
-      youtube_id || null, 
+      title,
+      description,
+      finalUrl || null,
+      youtube_id || null,
       category_id,
-      program_id || u.programId || null, 
-      u.institutionId || null, 
-      is_global === 'true' || is_global === true, // Robust boolean check
-      u.id, 
-      status || 'approved'
+      program_id || u.programId || null,
+      u.institutionId || null,
+      is_global === "true" || is_global === true, // Robust boolean check
+      u.id,
+      status || "approved",
     ];
 
     const { rows } = await db.pool.query(query, vals);
     res.json({ ok: true, resource: rows[0] });
-
   } catch (e) {
     console.error("Admin Resource Creation Error:", e);
-    res.status(500).json({ ok: false, message: e.message || "Failed to create resource" });
+    res
+      .status(500)
+      .json({ ok: false, message: e.message || "Failed to create resource" });
   }
 });
 
@@ -1251,7 +1298,10 @@ app.delete("/api/admin/forum/posts/:id", requireAdmin, async (req, res) => {
   try {
     const postId = req.params.id;
     // This query handles the tree deletion if you didn't set ON DELETE CASCADE
-    await db.pool.query("DELETE FROM forum_posts WHERE id = $1 OR parent_id = $1", [postId]);
+    await db.pool.query(
+      "DELETE FROM forum_posts WHERE id = $1 OR parent_id = $1",
+      [postId],
+    );
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ ok: false });
@@ -1270,16 +1320,16 @@ app.get("/api/forum", async (req, res) => {
       JOIN users_app u ON p.user_id = u.id
       WHERE p.target_type = $1
     `;
-    
-    const params = [target || 'global'];
+
+    const params = [target || "global"];
 
     // If they want 'program' or 'class' posts, filter by their specific IDs
-    if (target === 'program' && u) {
-        query += ` AND p.target_id = $2`;
-        params.push(u.programId);
-    } else if (target === 'class' && u) {
-        query += ` AND p.target_id = $2`;
-        params.push(u.classId);
+    if (target === "program" && u) {
+      query += ` AND p.target_id = $2`;
+      params.push(u.programId);
+    } else if (target === "class" && u) {
+      query += ` AND p.target_id = $2`;
+      params.push(u.classId);
     }
 
     query += ` ORDER BY p.created_at DESC`;
@@ -1292,53 +1342,68 @@ app.get("/api/forum", async (req, res) => {
   }
 });
 
-
 // --- NEW: User Permissions & Promotions (is_rep, is_leader, is_creator) ---
-app.post("/api/admin/users/:studentId/permissions", requireAdmin, async (req, res) => {
+app.post(
+  "/api/admin/users/:studentId/permissions",
+  requireAdmin,
+  async (req, res) => {
     const { studentId } = req.params;
     const { bio, is_rep, is_leader, is_creator, role } = req.body;
 
     try {
-        // 1. Find user by student_id
-        const user = await db.pool.query('SELECT id FROM users_app WHERE student_id = $1', [studentId]);
-        if (user.rows.length === 0) return res.status(404).json({ ok: false, message: "User not found" });
+      // 1. Find user by student_id
+      const user = await db.pool.query(
+        "SELECT id FROM users_app WHERE student_id = $1",
+        [studentId],
+      );
+      if (user.rows.length === 0)
+        return res.status(404).json({ ok: false, message: "User not found" });
 
-        const userId = user.rows[0].id;
+      const userId = user.rows[0].id;
 
-        // 2. Update the columns matching your users_app schema
-        const query = `
+      // 2. Update the columns matching your users_app schema
+      const query = `
             UPDATE users_app 
             SET bio = $1, is_rep = $2, is_leader = $3, is_creator = $4, role = $5 
             WHERE id = $6 
             RETURNING id, role
         `;
-        const values = [bio, is_rep, is_leader, is_creator || false, role, userId];
-        
-        const result = await db.pool.query(query, values);
-        res.json({ ok: true, user: result.rows[0] });
+      const values = [
+        bio,
+        is_rep,
+        is_leader,
+        is_creator || false,
+        role,
+        userId,
+      ];
+
+      const result = await db.pool.query(query, values);
+      res.json({ ok: true, user: result.rows[0] });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ ok: false, message: "Update failed" });
+      console.error(err);
+      res.status(500).json({ ok: false, message: "Update failed" });
     }
-});
+  },
+);
 
 // GET /api/notifications/vapid-key
-app.get('/api/notifications/vapid-key', (req, res) => {
+app.get("/api/notifications/vapid-key", (req, res) => {
   res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
 });
 
 // POST /api/notifications/save-subscription
-app.post('/api/notifications/save-subscription', async (req, res) => {
+app.post("/api/notifications/save-subscription", async (req, res) => {
   try {
     const { subscription } = req.body;
     const u = req.session.user;
 
-    if (!u) return res.status(401).json({ ok: false, message: "Login required" });
+    if (!u)
+      return res.status(401).json({ ok: false, message: "Login required" });
 
     // Store the JSON object directly into your JSONB column in users_app
     await db.pool.query(
       "UPDATE users_app SET push_subscription = $1 WHERE id = $2",
-      [JSON.stringify(subscription), u.id]
+      [JSON.stringify(subscription), u.id],
     );
 
     res.json({ ok: true });
@@ -1388,16 +1453,25 @@ app.post("/api/forum", async (req, res) => {
       VALUES ($1, $2, $3, $4, $5)
       RETURNING *
     `;
-    const vals = [u.id, content, target_type || 'global', target_id || null, u.institutionId];
+    const vals = [
+      u.id,
+      content,
+      target_type || "global",
+      target_id || null,
+      u.institutionId,
+    ];
     const { rows } = await db.pool.query(query, vals);
 
     // Trigger Notification
-    broadcastNotification({
-      title: 'New Discussion',
-      content: `${u.full_name}: ${content.substring(0, 50)}...`,
-      type: 'forum',
-      url: '/forum.html'
-    }, target_type);
+    broadcastNotification(
+      {
+        title: "New Discussion",
+        content: `${u.full_name}: ${content.substring(0, 50)}...`,
+        type: "forum",
+        url: "/forum.html",
+      },
+      target_type,
+    );
 
     res.json({ ok: true, post: rows[0] });
   } catch (e) {
@@ -1417,7 +1491,7 @@ app.post("/api/forum/reply", async (req, res) => {
       RETURNING *
     `;
     const { rows } = await db.pool.query(query, [u.id, content, parent_id]);
-    
+
     res.json({ ok: true, reply: rows[0] });
   } catch (e) {
     res.status(500).json({ ok: false });
@@ -1436,10 +1510,10 @@ app.get("/api/announcements", async (req, res) => {
       FROM announcements a
       LEFT JOIN users_app u ON a.author_id = u.id
       WHERE a.is_global = true 
-      ${u ? 'OR a.target_institution = $1 OR a.target_program = $2' : ''}
+      ${u ? "OR a.target_institution = $1 OR a.target_program = $2" : ""}
       ORDER BY a.created_at DESC
     `;
-    
+
     // We use the session data to filter
     const params = u ? [u.institutionId, u.programId] : [];
     const { rows } = await db.pool.query(query, params);
@@ -1451,30 +1525,32 @@ app.get("/api/announcements", async (req, res) => {
 });
 
 // Get all unique programs for the announcement/resource targeting dropdown
-app.get('/api/programs', async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('users_app')
-            .select('program')
-            .not('program', 'is', null)
-            .neq('program', '');
+app.get("/api/programs", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("users_app")
+      .select("program")
+      .not("program", "is", null)
+      .neq("program", "");
 
-        if (error) throw error;
+    if (error) throw error;
 
-        // Extract unique names and sort them
-        const uniquePrograms = [...new Set(data.map(item => item.program))].sort();
-        
-        // Format for the frontend dropdown
-        const programsList = uniquePrograms.map((name, index) => ({
-            id: index + 1,
-            name: name
-        }));
+    // Extract unique names and sort them
+    const uniquePrograms = [
+      ...new Set(data.map((item) => item.program)),
+    ].sort();
 
-        res.json(programsList);
-    } catch (err) {
-        console.error('Error fetching programs:', err.message);
-        res.status(500).json({ error: 'Database error' });
-    }
+    // Format for the frontend dropdown
+    const programsList = uniquePrograms.map((name, index) => ({
+      id: index + 1,
+      name: name,
+    }));
+
+    res.json(programsList);
+  } catch (err) {
+    console.error("Error fetching programs:", err.message);
+    res.status(500).json({ error: "Database error" });
+  }
 });
 
 // POST /api/admin/announcements
@@ -1483,7 +1559,7 @@ app.post("/api/admin/announcements", requireLeader, async (req, res) => {
     const { title, content, is_global, target_program } = req.body;
     const u = req.session.user;
 
-    const finalIsGlobal = (u.role === 'admin') ? !!is_global : false;
+    const finalIsGlobal = u.role === "admin" ? !!is_global : false;
 
     const query = `
       INSERT INTO announcements (
@@ -1494,24 +1570,34 @@ app.post("/api/admin/announcements", requireLeader, async (req, res) => {
       RETURNING *
     `;
 
-    const vals = [u.id, title, content, finalIsGlobal, u.institutionId, target_program || null];
+    const vals = [
+      u.id,
+      title,
+      content,
+      finalIsGlobal,
+      u.institutionId,
+      target_program || null,
+    ];
     const { rows } = await db.pool.query(query, vals);
 
     // Determine target for notification
-    let targetCriteria = { type: 'all' };
+    let targetCriteria = { type: "all" };
     if (target_program) {
-      targetCriteria = { type: 'program', id: target_program };
+      targetCriteria = { type: "program", id: target_program };
     } else if (!finalIsGlobal) {
-      targetCriteria = { type: 'institution', id: u.institutionId };
+      targetCriteria = { type: "institution", id: u.institutionId };
     }
 
     // Trigger Notification
-    notifyTargetGroup({
-      title: `📢 ${title}`,
-      content: content.substring(0, 100),
-      type: 'announcement',
-      url: '/announcements.html'
-    }, targetCriteria);
+    notifyTargetGroup(
+      {
+        title: `📢 ${title}`,
+        content: content.substring(0, 100),
+        type: "announcement",
+        url: "/announcements.html",
+      },
+      targetCriteria,
+    );
 
     res.json({ ok: true, announcement: rows[0] });
   } catch (e) {
@@ -1533,115 +1619,131 @@ app.post("/api/admin/categories", requireAdmin, async (req, res) => {
 
 // Step 1: Send the email
 app.post("/api/auth/forgot-password", async (req, res) => {
-    const { email } = req.body;
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://upsa-it09.onrender.com/reset-password.html',
-    });
-    
-    if (error) return res.status(400).json({ ok: false, message: error.message });
-    res.json({ ok: true });
+  const { email } = req.body;
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: "https://upsa-it09.onrender.com/public/reset-password.html",
+  });
+
+  if (error) {
+    console.error("FULL AUTH ERROR:", JSON.stringify(error, null, 2));
+    return res.status(400).json({ ok: false, message: error.message });
+  }
+  res.json({ ok: true });
 });
 
-
 app.post("/api/auth/reset-password", async (req, res) => {
-    const { password } = req.body;
-    
+  const { password } = req.body;
 
-    const { error } = await supabase.auth.updateUser({ password });
+  const { error } = await supabase.auth.updateUser({ password });
 
-    if (error) return res.status(400).json({ ok: false, message: error.message });
-    res.json({ ok: true });
+  if (error) return res.status(400).json({ ok: false, message: error.message });
+  res.json({ ok: true });
 });
 
 // GET /api/user/profile-full
-app.get('/api/user/profile-full', async (req, res) => {
-    if (!req.session.user) {
-        return res.status(401).json({ ok: false, message: "Unauthorized" });
-    }
+app.get("/api/user/profile-full", async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ ok: false, message: "Unauthorized" });
+  }
 
-    const userId = req.session.user.id;
+  const userId = req.session.user.id;
 
-    try {
-        const [userRes, postsRes, resourcesRes] = await Promise.all([
-            db.pool.query(`
+  try {
+    const [userRes, postsRes, resourcesRes] = await Promise.all([
+      db.pool.query(
+        `
                 SELECT id, student_id, full_name, email, COALESCE(bio, '') as bio, 
                        program, class_group, role, is_leader, is_creator, is_rep,
                        avatar_url, institution_id 
                 FROM users_app 
-                WHERE id = $1`, [userId]),
-            // FIX: Changed author_id to user_id and added 'content' since your schema lacks 'title'
-            db.pool.query('SELECT id, content as title, created_at FROM forum_posts WHERE user_id = $1 ORDER BY created_at DESC', [userId]),
-            db.pool.query('SELECT id, title, created_at FROM resources WHERE uploader_id = $1 ORDER BY created_at DESC', [userId])
-        ]);
+                WHERE id = $1`,
+        [userId],
+      ),
+      // FIX: Changed author_id to user_id and added 'content' since your schema lacks 'title'
+      db.pool.query(
+        "SELECT id, content as title, created_at FROM forum_posts WHERE user_id = $1 ORDER BY created_at DESC",
+        [userId],
+      ),
+      db.pool.query(
+        "SELECT id, title, created_at FROM resources WHERE uploader_id = $1 ORDER BY created_at DESC",
+        [userId],
+      ),
+    ]);
 
-        if (userRes.rows.length === 0) {
-            return res.status(404).json({ ok: false, message: "User not found" });
-        }
-
-        res.json({
-            user: userRes.rows[0],
-            activity: {
-                posts: postsRes.rows,
-                resources: resourcesRes.rows
-            }
-        });
-    } catch (err) {
-        console.error("Profile API Error:", err);
-        res.status(500).json({ ok: false, message: "Server error" });
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ ok: false, message: "User not found" });
     }
+
+    res.json({
+      user: userRes.rows[0],
+      activity: {
+        posts: postsRes.rows,
+        resources: resourcesRes.rows,
+      },
+    });
+  } catch (err) {
+    console.error("Profile API Error:", err);
+    res.status(500).json({ ok: false, message: "Server error" });
+  }
 });
 
-app.post('/api/user/update-bio', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ ok: false });
-    
-    const { bio } = req.body;
-    try {
-        await db.pool.query('UPDATE users_app SET bio = $1 WHERE id = $2', [bio, req.session.user.id]);
-        res.json({ ok: true });
-    } catch (err) {
-        console.error("Bio Update Error:", err);
-        res.status(500).json({ ok: false });
-    }
+app.post("/api/user/update-bio", async (req, res) => {
+  if (!req.session.user) return res.status(401).json({ ok: false });
+
+  const { bio } = req.body;
+  try {
+    await db.pool.query("UPDATE users_app SET bio = $1 WHERE id = $2", [
+      bio,
+      req.session.user.id,
+    ]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Bio Update Error:", err);
+    res.status(500).json({ ok: false });
+  }
 });
 
 app.post("/api/user/update-avatar", async (req, res) => {
-    if (!req.session.user) return res.status(401).send("Unauthorized");
+  if (!req.session.user) return res.status(401).send("Unauthorized");
 
-    try {
-        if (!req.files || !req.files.avatar) {
-            return res.status(400).json({ message: "No image uploaded" });
-        }
-
-        const file = req.files.avatar;
-        const userId = req.session.user.id;
-        // Path: avatars/user_123_random.png
-        const objectPath = `avatars/user_${userId}_${Date.now()}`;
-
-        // 1. Upload to Supabase
-        const { error: upErr } = await supabase.storage
-            .from("campus-resources")
-            .upload(objectPath, file.data, { 
-                contentType: file.mimetype,
-                upsert: true 
-            });
-
-        if (upErr) throw upErr;
-
-        // 2. Get Public URL
-        const { data } = supabase.storage.from("campus-resources").getPublicUrl(objectPath);
-        const publicUrl = data.publicUrl;
-
-        // 3. Update users_app table
-        await db.pool.query('UPDATE users_app SET avatar_url = $1 WHERE id = $2', [publicUrl, userId]);
-
-        res.json({ success: true, avatar_url: publicUrl });
-
-    } catch (err) {
-        console.error("Avatar Upload Error:", err);
-        res.status(500).json({ message: "Upload failed" });
+  try {
+    if (!req.files || !req.files.avatar) {
+      return res.status(400).json({ message: "No image uploaded" });
     }
-});
 
+    const file = req.files.avatar;
+    const userId = req.session.user.id;
+    // Path: avatars/user_123_random.png
+    const objectPath = `avatars/user_${userId}_${Date.now()}`;
+
+    // 1. Upload to Supabase
+    const { error: upErr } = await supabase.storage
+      .from("campus-resources")
+      .upload(objectPath, file.data, {
+        contentType: file.mimetype,
+        upsert: true,
+      });
+
+    if (upErr) throw upErr;
+
+    // 2. Get Public URL
+    const { data } = supabase.storage
+      .from("campus-resources")
+      .getPublicUrl(objectPath);
+    const publicUrl = data.publicUrl;
+
+    // 3. Update users_app table
+    await db.pool.query("UPDATE users_app SET avatar_url = $1 WHERE id = $2", [
+      publicUrl,
+      userId,
+    ]);
+
+    res.json({ success: true, avatar_url: publicUrl });
+  } catch (err) {
+    console.error("Avatar Upload Error:", err);
+    res.status(500).json({ message: "Upload failed" });
+  }
+});
 
 // health endpoint for keepalive
 app.get("/healthz", (req, res) => res.status(200).send("ok"));
@@ -1674,4 +1776,3 @@ app.get("/healthz", (req, res) => res.status(200).send("ok"));
     }
   });
 })();
-
