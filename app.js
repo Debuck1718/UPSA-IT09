@@ -1632,12 +1632,15 @@ app.post("/api/auth/forgot-password", async (req, res) => {
 });
 
 app.post("/api/auth/reset-password", async (req, res) => {
-  const { password } = req.body;
+    const { password } = req.body;
 
-  const { error } = await supabase.auth.updateUser({ password });
+    const { error } = await supabase.auth.updateUser({ password });
 
-  if (error) return res.status(400).json({ ok: false, message: error.message });
-  res.json({ ok: true });
+    if (error) {
+        return res.status(400).json({ ok: false, message: error.message });
+    }
+    
+    res.json({ ok: true, message: "Password updated successfully" });
 });
 
 // GET /api/user/profile-full
