@@ -1275,6 +1275,22 @@ app.post("/api/admin/resources", requireAdmin, async (req, res) => {
   }
 });
 
+app.post("/api/resources/:id/view", async (req, res) => {
+    const { id } = req.params;
+
+    // This calls the exact SQL function you created
+    const { error } = await supabase.rpc('increment_view_count', { 
+        row_id: id 
+    });
+
+    if (error) {
+        console.error("Database error:", error.message);
+        return res.status(500).json({ ok: false, error: error.message });
+    }
+    
+    res.json({ ok: true });
+});
+
 // Get all top-level posts and their reply counts for moderation
 app.get("/api/admin/forum/summary", requireAdmin, async (req, res) => {
   try {

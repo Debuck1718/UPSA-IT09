@@ -41,7 +41,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// --- FETCH: Network-First with Cache Fallback ---
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
 
@@ -98,8 +98,8 @@ self.addEventListener('push', (event) => {
     badge: '/images/web-app-manifest-192x192.png',
     vibrate: [100, 50, 100],
     data: { url: targetUrl },
-    tag: data.type, // Groups similar notifications
-    renotify: true  // Vibrates even if tag is the same
+    tag: data.type, 
+    renotify: true  
   };
 
   event.waitUntil(
