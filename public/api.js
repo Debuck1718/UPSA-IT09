@@ -50,50 +50,50 @@
   // --- Acadex Push Notification Logic ---
   async function initPushNotifications() {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      console.warn("Push messaging is not supported");
       return;
     }
 
     try {
-      const registration =
-        await navigator.serviceWorker.register("/public/sw.js");
-      console.log("Service Worker registered");
+      // FIX 1: Ensure the path is correct relative to your domain root
+      const registration = await navigator.serviceWorker.register("/sw.js");
+      
+      // Wait for it to be ready
+      const serviceWorker = await navigator.serviceWorker.ready;
 
-      // Wait for it to be active
-      await navigator.serviceWorker.ready;
-
-      // 1. Check for notification permission
+      // 1. Request Permission
       let permission = Notification.permission;
       if (permission === "default") {
         permission = await Notification.requestPermission();
       }
 
-      if (permission !== "granted") {
-        console.warn("Notification permission denied");
-        return;
-      }
+      if (permission !== "granted") return;
 
-      let subscription = await registration.pushManager.getSubscription();
+      // 2. Get/Create Subscription
+      let subscription = await serviceWorker.pushManager.getSubscription();
 
       if (!subscription) {
-        const { publicKey } = await safeFetch("/api/notifications/vapid-key");
+        const res = await safeFetch("/api/notifications/vapid-key");
+        if (!res || !res.publicKey) throw new Error("VAPID key not found");
 
-        subscription = await registration.pushManager.subscribe({
+        subscription = await serviceWorker.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(publicKey),
+          applicationServerKey: urlBase64ToUint8Array(res.publicKey),
         });
-
-        console.log("Acadex: New push subscription created");
       }
 
+      // 3. Save to Database
+      // Only send to server if we have a valid subscription object
       await safeFetch("/api/notifications/save-subscription", {
         method: "POST",
-        body: { subscription },
+        body: { subscription }, // This matches your users_app 'push_subscription' jsonb column
       });
+
+      console.log("Acadex: Push Registration Successful");
     } catch (err) {
       console.error("Acadex Notification Setup Failed:", err);
     }
   }
+
 
   // Export to global scope
   global.api = {

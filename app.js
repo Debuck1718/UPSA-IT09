@@ -1099,20 +1099,27 @@ app.patch("/api/resources/:id/view", async (req, res) => {
 
 app.post("/api/resources", requireCreator, async (req, res) => {
   try {
-    const { title, description, youtube_id, category_id, is_global, url } =
-      req.body;
+    const { title, description, youtube_id, category_id, is_global, url, program_id } = req.body;
     const u = req.session.user;
-    let finalUrl = url; // Use the text URL if provided (for links/websites)
+    
+    // Support both snake_case and camelCase for session property naming
+    const instId = u.institution_id || u.institutionId; 
+    let finalUrl = url;
 
-    // 2. Handle File Upload if a file exists
+    // 1. Handle File Upload with Institution-based folder isolation
     if (req.files && req.files.file) {
       const file = req.files.file;
       const fileId = uuidv4();
-      const objectPath = `resources/${fileId}_${file.name}`;
+      
+      // Crucial: Files are stored in a folder named after the school's ID
+      const objectPath = `resources/${instId}/${fileId}_${file.name}`;
 
       const { error: upErr } = await supabase.storage
         .from("campus-resources")
-        .upload(objectPath, file.data, { contentType: file.mimetype });
+        .upload(objectPath, file.data, { 
+            contentType: file.mimetype,
+            upsert: true 
+        });
 
       if (upErr) throw upErr;
 
@@ -1123,37 +1130,42 @@ app.post("/api/resources", requireCreator, async (req, res) => {
       finalUrl = publicUrlData.publicUrl;
     }
 
-    // 3. Logic: Admins auto-approve, others stay pending
-    const status = u.role === "admin" ? "approved" : "pending";
+    // 2. Status Logic: Admins/Reps auto-approve (if that's your policy), others stay pending
+    const status = (u.role === "admin" || u.is_rep) ? "approved" : "pending";
 
+    // 3. Database Insertion with Program and Institution scope
     const query = `
       INSERT INTO resources (
         title, description, url, youtube_id, category_id, 
-        uploader_id, status, is_global
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        uploader_id, status, is_global, program_id, institution_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
     `;
 
     const vals = [
       title,
       description,
-      finalUrl,
+      finalUrl || null,
       youtube_id || null,
       category_id,
       u.id,
       status,
-      is_global === "true",
+      is_global === "true" || is_global === true,
+      // If global, program is null; otherwise use selected or uploader's program
+      is_global === "true" ? null : (program_id || u.program_id || u.programId),
+      instId
     ];
 
     const { rows } = await db.pool.query(query, vals);
+    
     res.json({
       ok: true,
       resource: rows[0],
-      autoApproved: u.role === "admin",
+      autoApproved: status === "approved",
     });
   } catch (e) {
     console.error("Upload error:", e);
-    res.status(500).json({ ok: false, message: "Submission failed" });
+    res.status(500).json({ ok: false, message: "Submission failed: " + e.message });
   }
 });
 
@@ -1409,22 +1421,18 @@ app.get("/api/notifications/vapid-key", (req, res) => {
 
 // POST /api/notifications/save-subscription
 app.post("/api/notifications/save-subscription", async (req, res) => {
+  const { subscription } = req.body;
+  const userId = req.session.user?.id;
+
+  if (!userId || !subscription) return res.status(400).json({ ok: false });
+
   try {
-    const { subscription } = req.body;
-    const u = req.session.user;
-
-    if (!u)
-      return res.status(401).json({ ok: false, message: "Login required" });
-
-    // Store the JSON object directly into your JSONB column in users_app
     await db.pool.query(
       "UPDATE users_app SET push_subscription = $1 WHERE id = $2",
-      [JSON.stringify(subscription), u.id],
+      [JSON.stringify(subscription), userId]
     );
-
     res.json({ ok: true });
   } catch (err) {
-    console.error("Save subscription error:", err);
     res.status(500).json({ ok: false });
   }
 });

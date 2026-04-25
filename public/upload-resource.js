@@ -8,61 +8,73 @@ document.addEventListener("DOMContentLoaded", async () => {
   const catDropdown = document.getElementById("catDropdown");
   const adminOptions = document.getElementById("adminOptions");
   const fileNameDisplay = document.getElementById("fileNameDisplay");
+  
+  // NEW: Program Narrowing Elements
+  const isGlobalCheckbox = document.getElementById("isGlobal");
+  const programGroup = document.getElementById("programGroup"); // Ensure this ID is in your HTML
+  const programDropdown = document.getElementById("programDropdown"); // Ensure this ID is in your HTML
 
-  // Define this at the top level so goBack() can see it
   let currentUser = null;
 
   async function init() {
     try {
       const session = await window.api.fetch("/api/session");
       if (session && session.user) {
-        currentUser = session.user; // Store the user data here
+        currentUser = session.user;
 
-        // Toggle Admin/Rep options
-        if (
-          currentUser.role === "admin" ||
-          currentUser.is_leader ||
-          currentUser.is_creator
-        ) {
+        if (currentUser.role === "admin" || currentUser.is_leader || currentUser.is_creator) {
           adminOptions.classList.remove("d-none");
         }
       }
 
+      // 1. Fetch Categories
       const categories = await window.api.fetch("/api/categories");
       if (Array.isArray(categories)) {
-        catDropdown.innerHTML =
-          `<option value="" disabled selected>Select category...</option>` +
-          categories
-            .map((c) => `<option value="${c.id}">${c.name}</option>`)
-            .join("");
+        catDropdown.innerHTML = `<option value="" disabled selected>Select category...</option>` +
+          categories.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
       }
+
+      // 2. NEW: Fetch Programs to populate the dropdown
+      // This ensures the resource is tagged to a specific class/program
+      const programs = await window.api.fetch("/api/programs"); 
+      if (Array.isArray(programs)) {
+        programDropdown.innerHTML = `<option value="" disabled selected>Select target program...</option>` +
+          programs.map((p) => `<option value="${p.program_id}">${p.program_name || p.program}</option>`).join("");
+      }
+
     } catch (e) {
       console.error("Init Error:", e);
     }
   }
 
-  // Updated goBack function
+  // 3. NEW: Toggle Program Dropdown based on is_global
+  if (isGlobalCheckbox) {
+    isGlobalCheckbox.addEventListener("change", (e) => {
+      if (e.target.checked) {
+        programGroup.classList.add("d-none");
+        programDropdown.removeAttribute("required");
+        programDropdown.value = ""; // Clear selection if global
+      } else {
+        programGroup.classList.remove("d-none");
+        programDropdown.setAttribute("required", "required");
+      }
+    });
+  }
+
   window.goBack = () => {
-    // If session hasn't loaded yet, just go to default
     if (!currentUser) {
       window.location.href = "dashboard-modern.html";
       return;
     }
-
     if (currentUser.role === "admin") {
       window.location.href = "admin.html";
-    } else if (
-      currentUser.is_rep ||
-      currentUser.is_leader ||
-      currentUser.is_creator
-    ) {
+    } else if (currentUser.is_rep || currentUser.is_leader || currentUser.is_creator) {
       window.location.href = "rep-dashboard.html";
     } else {
       window.location.href = "dashboard-modern.html";
     }
   };
 
-  // UI: Show selected filename
   fileInput.addEventListener("change", (e) => {
     if (e.target.files.length > 0) {
       fileNameDisplay.textContent = `Selected: ${e.target.files[0].name}`;
@@ -70,7 +82,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // Toggle UI based on Format
   sourceType.addEventListener("change", (e) => {
     const val = e.target.value;
     const linkLabel = document.getElementById("linkLabel");
@@ -113,18 +124,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     formData.append("type", sType);
 
-    const isGlobalCheckbox = document.getElementById("isGlobal");
-    // Send as string "true"/"false" so the backend parser handles it cleanly
+    // 4. NEW: Scoping Data (Integrity)
+    // Always attach the uploader's institution so it stays within the school
+    if (currentUser) {
+      formData.append("institution_id", currentUser.institution_id);
+      formData.append("uploader_id", currentUser.id);
+    }
+
+    // Handle is_global
     formData.set("is_global", isGlobalCheckbox.checked ? "true" : "false");
 
     if (sType === "file") {
-
       formData.delete("url");
       formData.delete("youtube_id");
     } else {
-      // If it's a link, remove the file object so we don't send empty binary data
       formData.delete("file");
-
       if (sType === "youtube") {
         const ytId = extractYoutubeId(urlInput.value.trim());
         if (!ytId) {
@@ -139,18 +153,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     try {
-      // api.js handles the 'Content-Type' automatically because it sees 'FormData'
       const result = await window.api.fetch("/api/resources", {
         method: "POST",
         body: formData,
       });
 
       if (result && (result.ok || result.success)) {
-        alert(
-          result.autoApproved
-            ? "Published successfully!"
-            : "Submitted for moderation!",
-        );
+        alert(result.autoApproved ? "Published successfully!" : "Submitted for moderation!");
         window.location.href = "resources.html";
       } else {
         throw new Error(result.message || "Upload failed. Please try again.");
@@ -168,8 +177,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   function extractYoutubeId(url) {
-    const regExp =
-      /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
     return match && match[2].length === 11 ? match[2] : null;
   }
