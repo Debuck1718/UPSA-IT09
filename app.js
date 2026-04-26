@@ -137,10 +137,6 @@ webpush.setVapidDetails(
 );
 
 
-const { subscription } = req.body;
-// Ensure subscription is stored as a string or JSONB
-const subscriptionJson = JSON.stringify(subscription);
-
 async function notifyTargetGroup(payload, criteria) {
   try {
     let query =
@@ -1426,18 +1422,23 @@ app.get("/api/notifications/vapid-key", (req, res) => {
 
 // POST /api/notifications/save-subscription
 app.post("/api/notifications/save-subscription", async (req, res) => {
-  const { subscription } = req.body;
-  const userId = req.session.user?.id;
-
-  if (!userId || !subscription) return res.status(400).json({ ok: false });
-
   try {
+    // req is defined here because it's passed as an argument to the function
+    const { subscription } = req.body;
+    const userId = req.session.user?.id;
+
+    if (!userId || !subscription) {
+      return res.status(400).json({ ok: false, message: "Missing data" });
+    }
+
     await db.pool.query(
       "UPDATE users_app SET push_subscription = $1 WHERE id = $2",
       [JSON.stringify(subscription), userId]
     );
+
     res.json({ ok: true });
   } catch (err) {
+    console.error("Save Sub Error:", err);
     res.status(500).json({ ok: false });
   }
 });
