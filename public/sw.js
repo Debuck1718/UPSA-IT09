@@ -41,7 +41,6 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-
 self.addEventListener('fetch', (event) => {
   const req = event.request;
 
@@ -102,9 +101,15 @@ self.addEventListener('push', (event) => {
     renotify: true  
   };
 
-  event.waitUntil(
-    self.registration.showNotification(notificationTitle, options)
-  );
+  // FIX: Only attempt to show notification if permission is granted
+  // This prevents the Uncaught TypeError when the browser blocks the origin
+  if (Notification.permission === 'granted') {
+    event.waitUntil(
+      self.registration.showNotification(notificationTitle, options)
+    );
+  } else {
+    console.warn('Acadex: Notification permission is not granted. Cannot show alert.');
+  }
 });
 
 // --- NOTIFICATION CLICK: Intelligent Window Focus ---
@@ -114,13 +119,11 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Check if the user already has the tab open
       for (let client of windowClients) {
         if (client.url === targetUrl && 'focus' in client) {
           return client.focus();
         }
       }
-      // If not open, open a new tab
       if (clients.openWindow) {
         return clients.openWindow(targetUrl);
       }
