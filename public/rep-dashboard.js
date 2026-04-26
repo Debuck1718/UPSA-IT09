@@ -231,7 +231,7 @@
       try {
         await window.api.fetch("/api/logout", { method: "POST" });
       } catch (err) {}
-      window.location.href = "/public/index.html";
+      window.location.href = "/index.html";
     }
   }
 

@@ -10,7 +10,7 @@
             console.error("Logout request failed:", err);
         }
         // Always redirect regardless of API success to ensure user is logged out of UI
-        window.location.assign('/public/index.html');
+        window.location.assign('/index.html');
     };
 
     // --- SLIDE LOADING LOGIC ---
@@ -127,7 +127,7 @@
                 if (!data || !data.user) throw new Error('No session');
                 return data.user;
             } catch {
-                window.location.assign('/public/index.html');
+                window.location.assign('/index.html');
                 throw new Error('No session');
             }
         }
@@ -143,7 +143,7 @@
             if (avatar) {
                 if (user.avatar_url) avatar.src = user.avatar_url;
                 // Fixed: Navigate correctly to profile page
-                avatar.onclick = () => window.location.href = '/public/profile.html';
+                avatar.onclick = () => window.location.href = '/profile.html';
             }
         }
 
