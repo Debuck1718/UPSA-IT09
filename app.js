@@ -67,7 +67,7 @@ app.use(
 );
 
 // 6. STATIC FILES
-app.use("/public", express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // --- Static pages ---
 app.get("/", (req, res) => {
@@ -135,6 +135,11 @@ webpush.setVapidDetails(
   process.env.VAPID_PUBLIC_KEY,
   process.env.VAPID_PRIVATE_KEY,
 );
+
+
+const { subscription } = req.body;
+// Ensure subscription is stored as a string or JSONB
+const subscriptionJson = JSON.stringify(subscription);
 
 async function notifyTargetGroup(payload, criteria) {
   try {
