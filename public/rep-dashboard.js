@@ -38,7 +38,7 @@
       nameEls.forEach(el => el.textContent = firstName);
       
       const av = document.getElementById("repAvatar");
-      if (av) av.src = "/public/images/avatar.png";
+      if (av) av.src = "/images/avatar.png";
     } catch (err) {
       console.error("Session init error:", err);
     }
