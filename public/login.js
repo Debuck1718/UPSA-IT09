@@ -52,11 +52,11 @@
         // Logical redirection based on your platform roles
         let redirect = '';
         if (role === 'admin') {
-          redirect = '/public/admin.html';
+          redirect = '/admin.html';
         } else if (role === 'rep') {
-          redirect = '/public/rep-dashboard.html'; // Matches your file structure
+          redirect = '/rep-dashboard.html'; // Matches your file structure
         } else {
-          redirect = '/public/dashboard-modern.html';
+          redirect = '/dashboard-modern.html';
         }
 
         window.location.assign(redirect);

@@ -72,7 +72,7 @@
       if (resp && (resp.ok || resp.id)) {
         showAlert('Account created! Redirecting...', true);
         setTimeout(() => {
-          window.location.assign('/public/dashboard-modern.html');
+          window.location.assign('/dashboard-modern.html');
         }, 1200);
       } else {
         throw new Error(resp.message || 'Signup failed');
