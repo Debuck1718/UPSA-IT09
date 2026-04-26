@@ -71,7 +71,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // --- Static pages ---
 app.get("/", (req, res) => {
-  res.redirect(302, "/public/index.html");
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+   
 });
 
 // Middleware to sanitize any downstream redirect Location headers (defense-in-depth)
