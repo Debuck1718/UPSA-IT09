@@ -11,9 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentFilter = 'global';
     let currentUser = null;
 
-    /**
-     * Initialize Page & Session
-     */
+
     async function init() {
         try {
             const session = await window.api.fetch('/api/session');
@@ -21,19 +19,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             if (currentUser && userInitial) {
                 userInitial.innerText = currentUser.full_name.charAt(0).toUpperCase();
+                
+                // Trigger Push Registration Check
+                // This ensures active forum users are registered for notifications
+                if ('api' in window && typeof window.api.initPush === 'function') {
+                    console.log("Checking push status for forum user...");
+                    // We don't await this to avoid blocking the UI
+                    window.api.initPush().catch(err => console.warn("Push sync skipped:", err));
+                }
             }
             
             loadFeed();
         } catch (e) {
             console.error("Session initialization failed", e);
-            // Fallback to load feed even if session fails (public view)
             loadFeed();
         }
     }
 
-    /**
-     * Fetch and Render the Feed
-     */
+
     async function loadFeed() {
         feed.innerHTML = `
             <div class="text-center p-5">
@@ -43,7 +46,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
 
         try {
-            // FIXED: Changed to GET request with query params
             const posts = await window.api.fetch(`/api/forum?target=${currentFilter}`);
             renderFeed(posts);
         } catch (e) {
@@ -152,11 +154,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 body: data
             });
 
-            if (res.ok) {
-                postModal.hide();
-                postForm.reset();
-                loadFeed();
-            }
+            // Note: window.api.fetch usually returns the JSON body, not the response object.
+            // If it succeeded without throwing, we proceed.
+            postModal.hide();
+            postForm.reset();
+            loadFeed();
         } catch (err) {
             alert("Could not post: " + err.message);
         } finally {
@@ -164,7 +166,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             submitBtn.innerText = originalText;
         }
     };
-
 
     window.openReplyModal = (id) => {
         document.getElementById('replyParentId').value = id;
@@ -179,24 +180,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         const data = Object.fromEntries(new FormData(replyForm));
         
         try {
-            // FIXED: Used window.api.fetch with method POST
-            const res = await window.api.fetch('/api/forum/reply', {
+            await window.api.fetch('/api/forum/reply', {
                 method: 'POST',
                 body: data
             });
 
-            if (res.ok) {
-                replyModal.hide();
-                replyForm.reset();
-                loadFeed();
-            }
+            replyModal.hide();
+            replyForm.reset();
+            loadFeed();
         } catch (err) {
             alert("Reply failed to send: " + err.message);
         } finally {
             submitBtn.disabled = false;
         }
     };
-
 
     document.querySelectorAll('[data-filter]').forEach(btn => {
         btn.onclick = () => {

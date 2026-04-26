@@ -2,6 +2,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const editModalEl = document.getElementById("editBioModal");
   const editModal = new bootstrap.Modal(editModalEl);
   const wrapper = document.getElementById("profileImageWrapper");
+  const notifToggle = document.getElementById("notificationToggle");
+  const notifLabel = document.getElementById("pushStatusLabel");
 
   async function init() {
     try {
@@ -118,5 +120,62 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   };
 
+  async function checkNotificationStatus() {
+    // 1. Check if browser even supports it
+    if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+      notifToggle.disabled = true;
+      notifLabel.innerText = "Not supported on this browser";
+      return;
+    }
+
+    // 2. Check current permission
+    if (Notification.permission === "granted") {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+
+      if (subscription) {
+        notifToggle.checked = true;
+        notifLabel.innerText = "Notifications are active";
+        notifLabel.classList.add("text-success");
+      } else {
+        notifToggle.checked = false;
+        notifLabel.innerText = "Enabled in browser, but not registered";
+      }
+    } else if (Notification.permission === "denied") {
+      notifToggle.disabled = true;
+      notifLabel.innerText = "Blocked in browser settings";
+      notifLabel.classList.add("text-danger");
+    }
+  }
+
+  // Handle the toggle interaction
+  notifToggle.addEventListener("change", async () => {
+    if (notifToggle.checked) {
+      notifLabel.innerText = "Setting up...";
+      try {
+        // This calls your existing logic in api.js
+        const success = await window.api.initPush();
+        if (success) {
+          notifLabel.innerText = "Notifications are active";
+          notifLabel.classList.replace("text-muted", "text-success");
+        } else {
+          throw new Error("Registration failed");
+        }
+      } catch (err) {
+        notifToggle.checked = false;
+        notifLabel.innerText = "Setup failed. Try again.";
+        console.error("Notif Error:", err);
+      }
+    } else {
+      // Logic for unsubscription (optional but good practice)
+      notifLabel.innerText = "Refreshing page to disable...";
+      alert(
+        "To fully stop notifications, please reset site permissions in your browser settings.",
+      );
+      location.reload();
+    }
+  });
+
+  checkNotificationStatus();
   init();
 });

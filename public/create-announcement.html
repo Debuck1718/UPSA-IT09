@@ -220,6 +220,7 @@
         const form = document.getElementById("announcementForm");
         const programSelect = document.getElementById("programSelect");
         const adminOptions = document.getElementById("adminOptions");
+        const isGlobalAnn = document.getElementById("isGlobalAnn");
         const scopeHint = document.getElementById("scopeHint");
         const badgeArea = document.getElementById("userBadgeArea");
 
@@ -228,6 +229,8 @@
         async function init() {
           try {
             const session = await window.api.fetch("/api/session");
+            if (!session || !session.user) throw new Error("No session");
+
             currentUser = session.user;
 
             // 1. Authorization Check
@@ -243,26 +246,26 @@
             }
 
             // 2. UI Setup based on Role
+            let badgeHtml = "";
             if (currentUser.role === "admin") {
-              badgeArea.innerHTML = `<span class="badge bg-dark role-badge shadow-sm">Super Admin</span>`;
+              badgeHtml = `<span class="badge bg-dark role-badge shadow-sm">Super Admin</span>`;
               adminOptions.classList.remove("d-none");
             } else if (currentUser.is_rep) {
-              badgeArea.innerHTML = `<span class="badge bg-primary role-badge shadow-sm">Course Rep</span>`;
+              badgeHtml = `<span class="badge bg-primary role-badge shadow-sm">Course Rep</span>`;
             } else {
-              badgeArea.innerHTML = `<span class="badge bg-info text-dark role-badge shadow-sm">Campus Leader</span>`;
+              badgeHtml = `<span class="badge bg-info text-dark role-badge shadow-sm">Campus Leader</span>`;
             }
+            badgeArea.innerHTML = badgeHtml;
 
-            // 3. Fetch Programs and populate dropdown
             try {
-              // Fetching programs to allow specific targeting
-              const data = await window.api.fetch("/api/programs");
-              // Adjust based on your API response structure (e.g., data.programs or just data)
-              const programs = Array.isArray(data) ? data : data.programs || [];
+              const programs = await window.api.fetch("/api/programs");
+              const programList = Array.isArray(programs)
+                ? programs
+                : programs.programs || [];
 
-              programs.forEach((p) => {
+              programList.forEach((p) => {
                 const opt = document.createElement("option");
-                // Use p.name or p.id depending on how you store target_program in the DB
-                opt.value = p.name;
+                opt.value = p.name; // Or p.id 
                 opt.innerText = p.name;
                 programSelect.appendChild(opt);
               });
@@ -270,22 +273,33 @@
               console.warn("Could not load programs list.");
             }
 
-            // 4. Set Initial Scope Hint
             updateScopeHint();
           } catch (e) {
-            console.error("Session fetch failed", e);
-            window.location.href = "/public/index.html";
+            console.error("Initialization failed", e);
+            window.location.href = "index.html";
           }
         }
 
-        // Update hint text when selection changes
+        // 4. UI Interaction Logic
+        isGlobalAnn.addEventListener("change", (e) => {
+          programSelect.disabled = e.target.checked;
+          if (e.target.checked) {
+            programSelect.value = "";
+            scopeHint.innerHTML = `<i class="bi bi-globe me-1"></i> <strong>GLOBAL:</strong> Visible to everyone on Acadex across all schools.`;
+          } else {
+            updateScopeHint();
+          }
+        });
+
         programSelect.addEventListener("change", updateScopeHint);
 
         function updateScopeHint() {
-          if (!currentUser) return;
+          if (!currentUser || isGlobalAnn.checked) return;
           const selected = programSelect.value;
+          const instName = currentUser.institution_id || "your institution";
+
           if (selected === "") {
-            scopeHint.innerHTML = `<i class="bi bi-building me-1"></i> Broadcasting to <strong>ALL</strong> students at ${currentUser.institution_id || "the institution"}.`;
+            scopeHint.innerHTML = `<i class="bi bi-building me-1"></i> Broadcasting to <strong>ALL</strong> students at ${instName}.`;
           } else {
             scopeHint.innerHTML = `<i class="bi bi-person-badge me-1"></i> Targeted broadcast for <strong>${selected}</strong> students only.`;
           }
@@ -304,22 +318,18 @@
           const formData = new FormData(form);
           const payload = Object.fromEntries(formData);
 
-          // Ensure values match DB expectations
-          payload.is_global = document.getElementById("isGlobalAnn").checked;
+          // Clean payload for DB
+          payload.is_global = isGlobalAnn.checked;
           payload.target_institution = currentUser.institution_id;
-
-          // If "Full Institution" is selected, value is "", we send null to DB
-          if (payload.target_program === "") {
-            payload.target_program = null;
-          }
+          payload.target_program = payload.target_program || null;
+          payload.author_id = currentUser.id;
 
           try {
             const res = await window.api.fetch("/api/admin/announcements", {
               method: "POST",
-              body: payload,
+              body: payload, 
             });
 
-            // Assuming your API returns { success: true } or the created object
             if (res) {
               alert("Broadcast Published Successfully!");
               window.location.href = "dashboard-modern.html";
