@@ -1,7 +1,6 @@
-const CACHE_NAME = 'acadex-v3';
+const CACHE_NAME = 'acadex-v4'; // Incremented version
 const OFFLINE_URL = '/offline.html';
 
-// Corrected for your UPSA-IT09 root structure
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -17,25 +16,17 @@ const ASSETS_TO_CACHE = [
   OFFLINE_URL
 ];
 
-// --- INSTALL: Pre-cache core assets ---
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('SW: Pre-caching core shell');
-        return cache.addAll(ASSETS_TO_CACHE);
-      })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS_TO_CACHE))
   );
 });
 
-// --- ACTIVATE: Clean up old versions ---
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(
-        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-      )
+      Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))
     )
   );
   self.clients.claim();
@@ -43,8 +34,6 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-
-  // Don't intercept API calls or cross-origin requests
   if (req.method !== 'GET' || req.url.includes('/api/') || !req.url.startsWith(self.location.origin)) return;
 
   event.respondWith(
@@ -56,18 +45,16 @@ self.addEventListener('fetch', (event) => {
         }
         return res;
       })
-      .catch(() => {
-        return caches.match(req).then(res => res || caches.match(OFFLINE_URL));
-      })
+      .catch(() => caches.match(req).then(res => res || caches.match(OFFLINE_URL)))
   );
 });
 
-// --- PUSH: Smart Multi-Channel Notifications ---
+// --- UPDATED PUSH LISTENER ---
 self.addEventListener('push', (event) => {
   let data = {
     title: 'Acadex Hub',
     content: 'Check the dashboard for updates.',
-    url: '/index.html',
+    url: '/dashboard-modern.html', // Updated to your new dashboard path
     type: 'general'
   };
 
@@ -79,54 +66,49 @@ self.addEventListener('push', (event) => {
     }
   }
 
-  // Dynamic Logic based on notification type
   let notificationTitle = data.title;
   let targetUrl = data.url;
 
   if (data.type === 'forum') {
     notificationTitle = `💬 New Post: ${data.title}`;
-    targetUrl = '/forum.html';
   } else if (data.type === 'announcement') {
     notificationTitle = `📢 Notice: ${data.title}`;
-    targetUrl = '/announcements.html';
   }
 
   const options = {
     body: data.content,
     icon: '/images/web-app-manifest-192x192.png',
-    badge: '/images/web-app-manifest-192x192.png',
-    vibrate: [100, 50, 100],
+    badge: '/images/favicon-96x96.png',
+    vibrate: [200, 100, 200],
     data: { url: targetUrl },
-    tag: data.type, 
-    renotify: true  
+    tag: data.type || 'default',
+    renotify: true,
+    requireInteraction: true, // Makes it stay until clicked (like Facebook)
+    actions: [
+      { action: 'open', title: 'View Now' },
+      { action: 'close', title: 'Dismiss' }
+    ]
   };
 
-  // FIX: Only attempt to show notification if permission is granted
-  // This prevents the Uncaught TypeError when the browser blocks the origin
-  if (Notification.permission === 'granted') {
-    event.waitUntil(
-      self.registration.showNotification(notificationTitle, options)
-    );
-  } else {
-    console.warn('Acadex: Notification permission is not granted. Cannot show alert.');
-  }
+  // Removed the 'if permission' check to prevent internal SW sync issues
+  event.waitUntil(
+    self.registration.showNotification(notificationTitle, options)
+  );
 });
 
-// --- NOTIFICATION CLICK: Intelligent Window Focus ---
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = new URL(event.notification.data.url, self.location.origin).href;
+
+  if (event.action === 'close') return;
+
+  const targetUrl = new URL(event.notification.data.url || '/', self.location.origin).href;
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
       for (let client of windowClients) {
-        if (client.url === targetUrl && 'focus' in client) {
-          return client.focus();
-        }
+        if (client.url === targetUrl && 'focus' in client) return client.focus();
       }
-      if (clients.openWindow) {
-        return clients.openWindow(targetUrl);
-      }
+      if (clients.openWindow) return clients.openWindow(targetUrl);
     })
   );
 });

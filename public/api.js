@@ -1,7 +1,10 @@
 (function (global) {
+  // --- CONFIGURATION ---
   const isProd =
+    location.hostname === "evantrahub.me" || 
     location.hostname.endsWith("onrender.com") ||
     location.protocol === "https:";
+    
   const API_BASE = isProd ? "" : "http://localhost:3000";
 
   // Helper: Convert VAPID key for the browser
@@ -18,6 +21,7 @@
     return outputArray;
   }
 
+  // --- CORE FETCH ENGINE ---
   async function safeFetch(path, opts = {}) {
     const url = `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
     const headers = { Accept: "application/json", ...(opts.headers || {}) };
@@ -39,6 +43,12 @@
       data = text ? JSON.parse(text) : null;
     } catch (_) {}
 
+    // Handle session expiration (auto-redirect)
+    if (res.status === 401) {
+        window.location.assign('/index.html');
+        return;
+    }
+
     if (!res.ok || (data && data.ok === false)) {
       const msg =
         (data && (data.message || data.error)) || `Error ${res.status}`;
@@ -47,20 +57,16 @@
     return data;
   }
 
-  // --- Acadex Push Notification Logic ---
+  // --- ACADEX PUSH NOTIFICATION LOGIC ---
   async function initPushNotifications() {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
       return;
     }
 
     try {
-      // FIX 1: Ensure the path is correct relative to your domain root
       const registration = await navigator.serviceWorker.register("/sw.js");
-      
-      // Wait for it to be ready
       const serviceWorker = await navigator.serviceWorker.ready;
 
-      // 1. Request Permission
       let permission = Notification.permission;
       if (permission === "default") {
         permission = await Notification.requestPermission();
@@ -68,7 +74,6 @@
 
       if (permission !== "granted") return;
 
-      // 2. Get/Create Subscription
       let subscription = await serviceWorker.pushManager.getSubscription();
 
       if (!subscription) {
@@ -81,11 +86,9 @@
         });
       }
 
-      // 3. Save to Database
-      // Only send to server if we have a valid subscription object
       await safeFetch("/api/notifications/save-subscription", {
         method: "POST",
-        body: { subscription }, // This matches your users_app 'push_subscription' jsonb column
+        body: { subscription },
       });
 
       console.log("Acadex: Push Registration Successful");
@@ -94,13 +97,29 @@
     }
   }
 
+ 
+  async function getMyCurriculum() {
+    return safeFetch("/api/my-program-courses");
+  }
 
-  // Export to global scope
+  /**
+   * Fetches verified/compiled PDFs (Master Vault) for a course
+   */
+  async function getMasterResources(courseId) {
+    return safeFetch(`/api/resources?courseId=${courseId}&master=true`);
+  }
+
+  // --- EXPORTS ---
   global.api = {
     fetch: safeFetch,
     get: (path, opts) => safeFetch(path, { ...opts, method: "GET" }),
     post: (path, body, opts) =>
       safeFetch(path, { ...opts, method: "POST", body }),
+    
+    // Domain Specific Logic
+    getCurriculum: getMyCurriculum,
+    getMasterVault: getMasterResources,
+    
     initPush: initPushNotifications,
   };
 })(window);

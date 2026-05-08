@@ -1,84 +1,69 @@
 (function () {
-    let selectedCourse = null;
+    let selectedCourseId = null;
+    let userProgram = null;
 
-    // --- LOGOUT SHARED LOGIC ---
     const handleLogout = async (e) => {
         if (e) e.preventDefault();
         try { 
             await window.api.fetch('/api/logout', { method: 'POST' }); 
-        } catch (err) {
-            console.error("Logout request failed:", err);
-        }
-        // Always redirect regardless of API success to ensure user is logged out of UI
+        } catch (err) { console.error("Logout failed:", err); }
         window.location.assign('/index.html');
     };
 
-    // --- SLIDE LOADING LOGIC ---
+    // --- SLIDE LOADING LOGIC (Master Vault Focused) ---
     async function loadSlides() {
         const slidesList = document.getElementById('slidesList');
         const slidesEmpty = document.getElementById('slidesEmpty');
+        const masterBadge = document.getElementById('masterBadge');
         if (!slidesList || !slidesEmpty) return;
 
         slidesList.innerHTML = '';
         slidesEmpty.classList.add('d-none');
+        masterBadge.classList.add('d-none');
 
-        if (!selectedCourse) {
-            slidesEmpty.textContent = 'Select a course to view slides.';
+        if (!selectedCourseId) {
             slidesEmpty.classList.remove('d-none');
             return;
         }
 
         try {
-            const data = await window.api.fetch(`/api/slides?courseTitle=${encodeURIComponent(selectedCourse)}`);
-            const slides = Array.isArray(data.slides) ? data.slides : [];
+            // Fetch only MASTER COMPILED resources for this course
+            const data = await window.api.fetch(`/api/resources?courseId=${selectedCourseId}&master=true`);
+            const slides = Array.isArray(data.resources) ? data.resources : [];
             
             if (!slides.length) {
+                slidesEmpty.innerHTML = `<div class="py-5"><i class="bi bi-cloud-slash fs-2 d-block mb-2"></i>No master slides found for this course yet.</div>`;
                 slidesEmpty.classList.remove('d-none');
                 return;
             }
 
+            masterBadge.classList.remove('d-none');
             slides.forEach(s => {
-                const id = s.id;
-                const title = s.originalName || s.original_name || s.slideTitle || s.slide_title || s.filename || 'Slide';
                 const li = document.createElement('li');
-                li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                li.className = 'list-group-item d-flex justify-content-between align-items-center p-3 border-start border-4 border-info-subtle';
                 li.innerHTML = `
-                    <div><i class="bi bi-file-earmark-text" style="color:#6366f1;font-size:1.3rem;"></i>
-                        <span class="fw-semibold">${title}</span>
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-file-earmark-pdf-fill text-danger fs-3 me-3"></i>
+                        <div>
+                            <span class="fw-bold d-block text-dark">${s.title}</span>
+                            <small class="text-muted">Verified Compiled Resource</small>
+                        </div>
                     </div>
                     <div class="btn-group">
-                        <button class="btn btn-success btn-sm px-3" data-action="download" data-id="${id}">Download</button>
-                        <button class="btn btn-outline-secondary btn-sm px-3" data-action="view" data-id="${id}">View</button>
+                        <a href="${s.url}" target="_blank" class="btn btn-primary btn-sm px-3 rounded-pill">
+                            <i class="bi bi-eye me-1"></i> View
+                        </a>
                     </div>
                 `;
-
-                li.querySelectorAll('button').forEach(btn => {
-                    btn.addEventListener('click', async () => {
-                        try {
-                            const slideId = btn.getAttribute('data-id');
-                            const resp = await window.api.fetch(`/api/slides/${encodeURIComponent(slideId)}/url`);
-                            if (btn.getAttribute('data-action') === 'view') {
-                                window.open(resp.url, '_blank');
-                            } else {
-                                const a = document.createElement('a');
-                                a.href = resp.url;
-                                a.download = '';
-                                document.body.appendChild(a);
-                                a.click();
-                                a.remove();
-                            }
-                        } catch (err) { console.error("Action failed", err); }
-                    });
-                });
                 slidesList.appendChild(li);
             });
         } catch (err) {
-            slidesEmpty.textContent = 'Failed to load slides.';
+            slidesEmpty.textContent = 'Error connecting to the vault.';
             slidesEmpty.classList.remove('d-none');
         }
     }
 
-    // --- COURSE LOADING LOGIC ---
+    // --- COURSE LOADING LOGIC (Program-Course Mapping) ---
     async function loadCourses() {
         const coursesList = document.getElementById('coursesList');
         const coursesEmpty = document.getElementById('coursesEmpty');
@@ -86,7 +71,8 @@
 
         coursesList.innerHTML = '';
         try {
-            const data = await window.api.fetch('/api/courses');
+            // Fetches courses specifically mapped to the user's program in the DB
+            const data = await window.api.fetch(`/api/my-program-courses?programId=${userProgram}`);
             const courses = Array.isArray(data.courses) ? data.courses : [];
             
             if (!courses.length) {
@@ -94,81 +80,60 @@
                 return;
             }
 
-            courses.forEach(title => {
+            courses.forEach(course => {
                 const li = document.createElement('li');
-                li.className = 'list-group-item list-group-item-action d-flex align-items-center';
-                li.innerHTML = `<i class="bi bi-bookmark-star me-2" style="color:#06b6d4;font-size:1.2rem;"></i> <span class="fw-semibold">${title}</span>`;
-                li.style.cursor = 'pointer';
+                li.className = 'list-group-item list-group-item-action course-card d-flex align-items-center py-3';
+                li.innerHTML = `
+                    <i class="bi bi-bookmark-star-fill me-3" style="color:#06b6d4; font-size:1.2rem;"></i> 
+                    <div>
+                        <span class="fw-bold d-block mb-0">${course.course_code}</span>
+                        <small class="text-muted text-uppercase" style="font-size: 0.7rem">${course.course_name}</small>
+                    </div>
+                `;
                 li.addEventListener('click', () => {
-                    selectedCourse = title;
-                    setSlidesCourseTitle(title);
+                    selectedCourseId = course.id;
+                    setSlidesCourseTitle(course.course_name);
+                    
+                    document.querySelectorAll('.course-card').forEach(el => el.classList.remove('active'));
+                    li.classList.add('active');
+                    
                     loadSlides();
                 });
                 coursesList.appendChild(li);
             });
         } catch (err) {
-            if (coursesEmpty) coursesEmpty.textContent = 'Failed to load courses.';
+            if (coursesEmpty) coursesEmpty.textContent = 'Failed to load curriculum.';
         }
     }
 
     function setSlidesCourseTitle(title) {
         const el = document.getElementById('slidesCourseTitle');
-        if (el) {
-            el.innerHTML = `<i class="bi bi-folder2-open me-2" style="color:#6366f1;font-size:1.5rem;"></i> ${title || 'Select a course to view slides'}`;
-        }
+        if (el) el.textContent = title || 'Select a Course';
     }
 
-    // --- MAIN DOM INITIALIZATION ---
+    // --- INITIALIZATION ---
     document.addEventListener('DOMContentLoaded', function() {
-        
-        async function fetchSession() {
+        async function init() {
             try {
-                const data = await window.api.fetch('/api/session');
-                if (!data || !data.user) throw new Error('No session');
-                return data.user;
-            } catch {
-                window.location.assign('/index.html');
-                throw new Error('No session');
-            }
+                const session = await window.api.fetch('/api/session');
+                if (!session || !session.user) return window.location.assign('/index.html');
+                
+                const user = session.user;
+                userProgram = user.program; // e.g., 'informationtechnology'
+
+                // UI setup
+                document.getElementById('user-firstname').textContent = user.full_name.split(' ')[0];
+                document.getElementById('user-course').textContent = user.program;
+                if (user.avatar_url) document.getElementById('avatar').src = user.avatar_url;
+
+                await loadCourses();
+            } catch (err) { console.error("Init Error:", err); }
         }
 
-        function setUserInfo(user) {
-            const nameRaw = user.full_name || 'Student';
-            const firstName = String(nameRaw).trim().split(/\s+/)[0];
-
-            if (document.getElementById('user-firstname')) document.getElementById('user-firstname').textContent = firstName;
-            if (document.getElementById('user-course')) document.getElementById('user-course').textContent = user.program || 'No Program';
-
-            const avatar = document.getElementById('avatar');
-            if (avatar) {
-                if (user.avatar_url) avatar.src = user.avatar_url;
-                // Fixed: Navigate correctly to profile page
-                avatar.onclick = () => window.location.href = '/profile.html';
-            }
-        }
-
-        // Initialize Event Listeners
         document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
-        document.getElementById('mobileLogoutBtn')?.addEventListener('click', handleLogout);
         document.getElementById('refreshSlides')?.addEventListener('click', loadSlides);
         document.getElementById('refreshCourses')?.addEventListener('click', loadCourses);
 
-        // --- DASHBOARD STARTUP SEQUENCE ---
-        (async function init() {
-            try {
-                const user = await fetchSession();
-                setUserInfo(user);
-                await loadCourses();
-                setSlidesCourseTitle(null);
-                loadSlides();
-
-                if (window.api && window.api.initPush) {
-                    await window.api.initPush();
-                }
-            } catch (err) {
-                console.error("Dashboard Init Error:", err);
-            }
-        })();
+        init();
     });
-
 })();
