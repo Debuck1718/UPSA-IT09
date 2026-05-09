@@ -37,9 +37,8 @@ const supabase =
     : null;
 
 // 4. CORS CONFIG
-if (process.env.NODE_ENV !== "production") {
-  app.use(cors({ origin: true, credentials: true }));
-}
+app.use(cors({ origin: true, credentials: true }));
+app.options("/api/*", cors({ origin: true, credentials: true }));
 
 // 5. SESSION MANAGEMENT (After Parsers)
 const pgSession = require("connect-pg-simple")(session);
@@ -668,6 +667,20 @@ app.post("/api/upload", async (req, res) => {
     ]);
 
     if (dbErr) throw dbErr;
+
+    const notifyCriteria = program_id
+      ? { type: "program", id: program_id }
+      : { type: "institution", id: inst };
+
+    notifyTargetGroup(
+      {
+        title: "New Resource Uploaded",
+        content: `${u.full_name} uploaded ${slideTitle || file.name}`,
+        type: "resource",
+        url: "/resources.html",
+      },
+      notifyCriteria,
+    );
 
     return res.json({
       ok: true,
@@ -1424,7 +1437,6 @@ app.get("/api/notifications/vapid-key", (req, res) => {
 // POST /api/notifications/save-subscription
 app.post("/api/notifications/save-subscription", async (req, res) => {
   try {
-    // req is defined here because it's passed as an argument to the function
     const { subscription } = req.body;
     const userId = req.session.user?.id;
 
@@ -1441,6 +1453,25 @@ app.post("/api/notifications/save-subscription", async (req, res) => {
   } catch (err) {
     console.error("Save Sub Error:", err);
     res.status(500).json({ ok: false });
+  }
+});
+
+app.post("/api/notifications/unsubscribe", async (req, res) => {
+  try {
+    const userId = req.session.user?.id;
+    if (!userId) {
+      return res.status(401).json({ ok: false, message: "Unauthorized" });
+    }
+
+    await db.pool.query(
+      "UPDATE users_app SET push_subscription = NULL WHERE id = $1",
+      [userId],
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Unsubscribe error:", err);
+    res.status(500).json({ ok: false, message: "Unable to unsubscribe" });
   }
 });
 
@@ -1494,14 +1525,21 @@ app.post("/api/forum", async (req, res) => {
     const { rows } = await db.pool.query(query, vals);
 
     // Trigger Notification
-    broadcastNotification(
+    const notifyCriteria =
+      target_type === "program"
+        ? { type: "program", id: target_id || u.programId }
+        : target_type === "institution"
+        ? { type: "institution", id: target_id || u.institutionId }
+        : { type: "all" };
+
+    notifyTargetGroup(
       {
         title: "New Discussion",
         content: `${u.full_name}: ${content.substring(0, 50)}...`,
         type: "forum",
         url: "/forum.html",
       },
-      target_type,
+      notifyCriteria,
     );
 
     res.json({ ok: true, post: rows[0] });

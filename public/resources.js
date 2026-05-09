@@ -8,6 +8,23 @@ document.addEventListener("DOMContentLoaded", async () => {
   let allResources = [];
   let currentFilter = "all";
 
+  function extractYouTubeId(value) {
+    if (!value) return null;
+    const str = String(value).trim();
+    const patterns = [
+      /(?:youtu\.be\/)([A-Za-z0-9_-]{11})/,
+      /(?:youtube\.com\/watch\?v=)([A-Za-z0-9_-]{11})/,
+      /(?:youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/,
+      /(?:youtube\.com\/v\/)([A-Za-z0-9_-]{11})/,
+      /([A-Za-z0-9_-]{11})/
+    ];
+    for (const re of patterns) {
+      const match = str.match(re);
+      if (match && match[1]) return match[1];
+    }
+    return null;
+  }
+
   async function init() {
     renderSkeletons();
 
@@ -90,13 +107,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       let actionBtn = "";
       let mediaPreview = "";
 
-      if (res.youtube_id) {
+      const youTubeId = extractYouTubeId(res.youtube_id);
+      if (youTubeId) {
+        const safeTitle = String(res.title || "Video").replace(/'/g, "\\'");
         mediaPreview = `
-          <div class="youtube-thumb" onclick="playVideo('${res.youtube_id}', '${res.title.replace(/'/g, "\\'")}', '${res.id}')">
-              <img src="https://img.youtube.com/vi/${res.youtube_id}/hqdefault.jpg" class="card-img-top" style="height: 160px; object-fit: cover;">
+          <div class="youtube-thumb" onclick="playVideo('${youTubeId}', '${safeTitle}', '${res.id}')">
+              <img src="https://img.youtube.com/vi/${encodeURIComponent(youTubeId)}/hqdefault.jpg" class="card-img-top" style="height: 160px; object-fit: cover;">
               <i class="bi bi-play-circle-fill play-overlay"></i>
           </div>`;
-        actionBtn = `<button class="btn btn-sm btn-outline-danger w-100" onclick="playVideo('${res.youtube_id}', '${res.title.replace(/'/g, "\\'")}', '${res.id}')">Watch Now</button>`;
+        actionBtn = `<button class="btn btn-sm btn-outline-danger w-100" onclick="playVideo('${youTubeId}', '${safeTitle}', '${res.id}')">Watch Now</button>`;
       } else {
         mediaPreview = `<div class="p-4 text-center bg-light border-bottom"><i class="bi ${getFileIcon(res.url)} display-5 text-primary"></i></div>`;
         actionBtn = `<a href="${res.url}" target="_blank" class="btn btn-sm btn-outline-primary w-100">Open Resource</a>`;
@@ -126,10 +145,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   window.playVideo = async (id, title, resourceId) => {
+    const videoId = extractYouTubeId(id);
+    if (!videoId) {
+      console.warn("Invalid YouTube ID:", id);
+      return;
+    }
+
     document.getElementById("videoTitle").textContent = title;
-    document.getElementById("videoPlayerContainer").innerHTML = `<iframe src="https://www.youtube.com/embed/${id}?autoplay=1" allowfullscreen allow="autoplay" style="width:100%; height:100%; border:0;"></iframe>`;
+    document.getElementById("videoPlayerContainer").innerHTML = `<iframe src="https://www.youtube.com/embed/${encodeURIComponent(videoId)}?autoplay=1&rel=0" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture" style="width:100%; height:100%; border:0;"></iframe>`;
     videoModal.show();
-    window.api.post(`/api/resources/${resourceId}/view`);
+
+    try {
+      await window.api.post(`/api/resources/${resourceId}/view`);
+    } catch (err) {
+      console.debug("View count update skipped:", err);
+    }
   };
 
   function getFileIcon(url) {

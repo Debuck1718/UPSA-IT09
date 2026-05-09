@@ -1,4 +1,4 @@
-const CACHE_NAME = 'acadex-v4'; // Incremented version
+const CACHE_NAME = 'evantrahub-v4'; // Incremented version
 const OFFLINE_URL = '/offline.html';
 
 const ASSETS_TO_CACHE = [
@@ -52,7 +52,7 @@ self.addEventListener('fetch', (event) => {
 // --- UPDATED PUSH LISTENER ---
 self.addEventListener('push', (event) => {
   let data = {
-    title: 'Acadex Hub',
+    title: 'Evantrahub Hub',
     content: 'Check the dashboard for updates.',
     url: '/dashboard-modern.html', // Updated to your new dashboard path
     type: 'general'

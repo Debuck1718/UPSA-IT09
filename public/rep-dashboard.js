@@ -246,8 +246,8 @@
       await loadMyTitles();
       await loadCourses();
 
-      if (window.api && window.api.initPush) {
-        await window.api.initPush().catch(() => {});
+      if (window.api && window.api.initPush && Notification.permission === 'granted') {
+        await window.api.initPush({ prompt: false }).catch(() => {});
       }
     } catch (err) {
       console.error("Boot error:", err);

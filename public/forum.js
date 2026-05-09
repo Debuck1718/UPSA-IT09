@@ -22,10 +22,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 // Trigger Push Registration Check
                 // This ensures active forum users are registered for notifications
-                if ('api' in window && typeof window.api.initPush === 'function') {
+                if (
+                  'api' in window &&
+                  typeof window.api.initPush === 'function' &&
+                  Notification.permission === 'granted'
+                ) {
                     console.log("Checking push status for forum user...");
-                    // We don't await this to avoid blocking the UI
-                    window.api.initPush().catch(err => console.warn("Push sync skipped:", err));
+                    window.api.initPush({ prompt: false }).catch(err =>
+                      console.warn("Push sync skipped:", err),
+                    );
                 }
             }
             
@@ -54,7 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="alert alert-light border-danger text-danger text-center rounded-4 p-4">
                     <i class="bi bi-exclamation-triangle fs-3 d-block mb-2"></i>
                     <span class="fw-bold">Connection Error</span><br>
-                    Could not sync with the Acadex servers.
+                    Could not sync with the Evantrahub servers.
                 </div>
             `;
         }

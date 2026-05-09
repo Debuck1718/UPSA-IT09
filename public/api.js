@@ -1,11 +1,11 @@
 (function (global) {
   // --- CONFIGURATION ---
   const isProd =
-    location.hostname === "evantrahub.me" || 
+    location.hostname === "evantrahub.me" ||
     location.hostname.endsWith("onrender.com") ||
     location.protocol === "https:";
-    
-  const API_BASE = isProd ? "" : "http://localhost:3000";
+
+  const API_BASE = isProd ? location.origin : "http://localhost:3000";
 
   // Helper: Convert VAPID key for the browser
   function urlBase64ToUint8Array(base64String) {
@@ -57,10 +57,11 @@
     return data;
   }
 
-  // --- ACADEX PUSH NOTIFICATION LOGIC ---
-  async function initPushNotifications() {
+  // --- EVANTRAHUB PUSH NOTIFICATION LOGIC ---
+  async function initPushNotifications(options = {}) {
+    const { prompt = false } = options || {};
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      return;
+      return false;
     }
 
     try {
@@ -69,10 +70,17 @@
 
       let permission = Notification.permission;
       if (permission === "default") {
+        if (!prompt) {
+          console.info("Evantrahub push: permission not requested until user interaction.");
+          return false;
+        }
         permission = await Notification.requestPermission();
       }
 
-      if (permission !== "granted") return;
+      if (permission !== "granted") {
+        console.warn("Evantrahub push: permission not granted", permission);
+        return false;
+      }
 
       let subscription = await serviceWorker.pushManager.getSubscription();
 
@@ -91,9 +99,11 @@
         body: { subscription },
       });
 
-      console.log("Acadex: Push Registration Successful");
+      console.log("Evantrahub: Push Registration Successful");
+      return true;
     } catch (err) {
-      console.error("Acadex Notification Setup Failed:", err);
+      console.error("Evantrahub Notification Setup Failed:", err);
+      return false;
     }
   }
 
@@ -115,6 +125,7 @@
     get: (path, opts) => safeFetch(path, { ...opts, method: "GET" }),
     post: (path, body, opts) =>
       safeFetch(path, { ...opts, method: "POST", body }),
+    unsubscribePush: () => safeFetch("/api/notifications/unsubscribe", { method: "POST" }),
     
     // Domain Specific Logic
     getCurriculum: getMyCurriculum,

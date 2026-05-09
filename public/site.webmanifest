@@ -1,7 +1,7 @@
 {
   "id": "/index.html",
-  "name": "Acadex: Student Resource Hub",
-  "short_name": "Acadex",
+  "name": "Evantrahub: Student Resource Hub",
+  "short_name": "Evantrahub",
   "description": "The central hub for course materials, announcements, and discussions.",
   "start_url": "/index.html",
   "scope": "/",
@@ -30,17 +30,17 @@
   ],
   "screenshots": [
     {
-      "src": "/images/screenshot-desktop.png",
+      "src": "images/screenshot-desktop.png",
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Acadex Desktop Dashboard"
+      "label": "Evantrahub Desktop Dashboard"
     },
     {
-      "src": "/images/screenshot-mobile.png",
+      "src": "images/screenshot-mobile.png",
       "sizes": "750x1334",
       "type": "image/png",
-      "label": "Acadex Mobile View"
+      "label": "Evantrahub Mobile View"
     }
   ]
 }

@@ -121,58 +121,95 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   async function checkNotificationStatus() {
-    // 1. Check if browser even supports it
     if (!("Notification" in window) || !("serviceWorker" in navigator)) {
       notifToggle.disabled = true;
       notifLabel.innerText = "Not supported on this browser";
       return;
     }
 
-    // 2. Check current permission
     if (Notification.permission === "granted") {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-
-      if (subscription) {
+      const enabled = await window.api.initPush({ prompt: false });
+      if (enabled) {
         notifToggle.checked = true;
         notifLabel.innerText = "Notifications are active";
+        notifLabel.classList.remove("text-muted", "text-danger");
         notifLabel.classList.add("text-success");
       } else {
         notifToggle.checked = false;
-        notifLabel.innerText = "Enabled in browser, but not registered";
+        notifLabel.innerText = "Enabled in browser; click toggle to activate";
+        notifLabel.classList.remove("text-danger", "text-success");
+        notifLabel.classList.add("text-muted");
       }
     } else if (Notification.permission === "denied") {
       notifToggle.disabled = true;
+      notifToggle.checked = false;
       notifLabel.innerText = "Blocked in browser settings";
+      notifLabel.classList.remove("text-success", "text-muted");
       notifLabel.classList.add("text-danger");
+    } else {
+      notifToggle.checked = false;
+      notifLabel.innerText = "Click the toggle to enable notifications";
+      notifLabel.classList.remove("text-success", "text-danger");
+      notifLabel.classList.add("text-muted");
     }
   }
 
   // Handle the toggle interaction
   notifToggle.addEventListener("change", async () => {
     if (notifToggle.checked) {
-      notifLabel.innerText = "Setting up...";
+      notifLabel.innerText = "Requesting permission...";
+      notifLabel.classList.remove("text-danger", "text-success");
+      notifLabel.classList.add("text-muted");
       try {
-        // This calls your existing logic in api.js
-        const success = await window.api.initPush();
+        const success = await window.api.initPush({ prompt: true });
         if (success) {
+          notifToggle.checked = true;
           notifLabel.innerText = "Notifications are active";
-          notifLabel.classList.replace("text-muted", "text-success");
+          notifLabel.classList.remove("text-muted", "text-danger");
+          notifLabel.classList.add("text-success");
         } else {
-          throw new Error("Registration failed");
+          notifToggle.checked = false;
+          if (Notification.permission === "denied") {
+            notifLabel.innerText = "Notifications blocked by browser. Update browser settings to enable.";
+            notifLabel.classList.remove("text-muted", "text-success");
+            notifLabel.classList.add("text-danger");
+          } else {
+            notifLabel.innerText = "Setup failed. Try again.";
+            notifLabel.classList.remove("text-danger", "text-success");
+            notifLabel.classList.add("text-muted");
+          }
         }
       } catch (err) {
         notifToggle.checked = false;
         notifLabel.innerText = "Setup failed. Try again.";
+        notifLabel.classList.remove("text-danger", "text-success");
+        notifLabel.classList.add("text-muted");
         console.error("Notif Error:", err);
       }
     } else {
-      // Logic for unsubscription (optional but good practice)
-      notifLabel.innerText = "Refreshing page to disable...";
-      alert(
-        "To fully stop notifications, please reset site permissions in your browser settings.",
-      );
-      location.reload();
+      notifLabel.innerText = "Disabling notifications...";
+      notifLabel.classList.remove("text-success", "text-danger");
+      notifLabel.classList.add("text-muted");
+      try {
+        if ("serviceWorker" in navigator) {
+          const registration = await navigator.serviceWorker.ready;
+          const subscription = await registration.pushManager.getSubscription();
+          if (subscription) {
+            await subscription.unsubscribe();
+          }
+        }
+        await window.api.fetch("/api/notifications/unsubscribe", {
+          method: "POST",
+        });
+        notifLabel.innerText = "Notifications are disabled";
+        notifLabel.classList.remove("text-success", "text-danger");
+        notifLabel.classList.add("text-muted");
+      } catch (err) {
+        notifLabel.innerText = "Unable to disable fully. Change browser permissions if needed.";
+        notifLabel.classList.remove("text-success", "text-muted");
+        notifLabel.classList.add("text-danger");
+        console.error("Unsubscribe error:", err);
+      }
     }
   });
 

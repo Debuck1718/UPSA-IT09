@@ -111,6 +111,82 @@
         if (el) el.textContent = title || 'Select a Course';
     }
 
+    function getBannerElements() {
+        return {
+            banner: document.getElementById('notificationBanner'),
+            enableBtn: document.getElementById('enableNotificationsBtn'),
+            dismissBtn: document.getElementById('dismissNotificationsBtn'),
+        };
+    }
+
+    function showBanner(message, showEnable = true) {
+        const { banner, enableBtn, dismissBtn } = getBannerElements();
+        if (!banner) return;
+        banner.style.display = 'flex';
+        banner.querySelector('p').textContent = message;
+        if (enableBtn) enableBtn.style.display = showEnable ? 'inline-flex' : 'none';
+        if (dismissBtn) dismissBtn.style.display = 'inline-flex';
+    }
+
+    function hideBanner() {
+        const { banner } = getBannerElements();
+        if (banner) banner.style.display = 'none';
+    }
+
+    async function updateNotificationBanner() {
+        if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+            showBanner('Browser notifications are not supported here.', false);
+            return;
+        }
+
+        if (Notification.permission === 'granted') {
+            const enabled = await window.api.initPush({ prompt: false });
+            if (enabled) {
+                hideBanner();
+                return;
+            }
+            showBanner('Notifications are enabled in your browser. Click enable to complete setup.', true);
+            return;
+        }
+
+        if (Notification.permission === 'denied') {
+            showBanner('Notifications are blocked. Please allow them in your browser settings to stay updated.', false);
+            return;
+        }
+
+        showBanner('Enable browser notifications to receive announcements, upload alerts, and forum activity instantly.', true);
+    }
+
+    async function handleEnableNotifications() {
+        const { enableBtn } = getBannerElements();
+        if (enableBtn) {
+            enableBtn.disabled = true;
+            enableBtn.textContent = 'Enabling...';
+        }
+        try {
+            const success = await window.api.initPush({ prompt: true });
+            if (success) {
+                hideBanner();
+            } else if (Notification.permission === 'denied') {
+                showBanner('Notifications are blocked. Please update your browser permissions.', false);
+            } else {
+                showBanner('Notification permission declined. You can try again later.', true);
+            }
+        } catch (err) {
+            console.error('Notification enable error:', err);
+            showBanner('Could not enable notifications. Try again later.', true);
+        } finally {
+            if (enableBtn) {
+                enableBtn.disabled = false;
+                enableBtn.textContent = 'Enable Notifications';
+            }
+        }
+    }
+
+    function handleDismissNotificationBanner() {
+        hideBanner();
+    }
+
     // --- INITIALIZATION ---
     document.addEventListener('DOMContentLoaded', function() {
         async function init() {
@@ -127,12 +203,15 @@
                 if (user.avatar_url) document.getElementById('avatar').src = user.avatar_url;
 
                 await loadCourses();
+                updateNotificationBanner();
             } catch (err) { console.error("Init Error:", err); }
         }
 
         document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
         document.getElementById('refreshSlides')?.addEventListener('click', loadSlides);
         document.getElementById('refreshCourses')?.addEventListener('click', loadCourses);
+        document.getElementById('enableNotificationsBtn')?.addEventListener('click', handleEnableNotifications);
+        document.getElementById('dismissNotificationsBtn')?.addEventListener('click', handleDismissNotificationBanner);
 
         init();
     });
