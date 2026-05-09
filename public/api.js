@@ -5,7 +5,9 @@
     location.hostname.endsWith("onrender.com") ||
     location.protocol === "https:";
 
-  const API_BASE = isProd ? location.origin : "http://localhost:3000";
+  const API_BASE = isProd
+    ? "https://evantrahub.onrender.com/"
+    : "http://localhost:3000";
 
   // Helper: Convert VAPID key for the browser
   function urlBase64ToUint8Array(base64String) {
