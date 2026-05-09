@@ -32,9 +32,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       // Using the window.api.fetch helper
       const [cats, resources, session] = await Promise.all([
-        window.api.fetch("categories"),
-        window.api.fetch("resources"),
-        window.api.fetch("session"),
+        window.api.fetch("/api/categories"),
+        window.api.fetch("/api/resources"),
+        window.api.fetch("/api/session"),
       ]);
 
       const u = session?.user;
@@ -169,7 +169,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     try {
       // FIX: Removed leading slash to prevent double-slash in API URL
-      await window.api.post(`resources/${resourceId}/view`);
+      await window.api.post(`/api/resources/${resourceId}/view`);
     } catch (err) {
       console.debug("View count update skipped:", err);
     }

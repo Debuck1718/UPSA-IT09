@@ -23,7 +23,8 @@
 
   // --- CORE FETCH ENGINE ---
   async function safeFetch(path, opts = {}) {
-    const url = `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+    const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+    const url = new URL(normalizedPath, `${API_BASE}/`).href;
     const headers = { Accept: "application/json", ...(opts.headers || {}) };
 
     if (opts.body && !(opts.body instanceof FormData)) {
