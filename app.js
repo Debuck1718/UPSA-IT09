@@ -94,13 +94,13 @@ app.use((req, res, next) => {
             /^localhost$/i.test(u.hostname) ||
             /^127\.0\.0\.1$/i.test(u.hostname)
           ) {
-            url = "/public/index.html";
+            url = "/index.html";
           } else {
             // Convert any absolute URL to a relative path to stay same-origin
             url = u.pathname + (u.search || "") + (u.hash || "");
           }
         } catch {
-          url = "/public/index.html";
+          url = "/index.html";
         }
       } else {
         const safe = path.posix.normalize(url);
@@ -180,10 +180,10 @@ async function notifyTargetGroup(payload, criteria) {
 }
 
 app.get("/dashboard", (req, res) => {
-  if (!req.session.user) return res.redirect("/public/index.html");
+  if (!req.session.user) return res.redirect("/index.html");
   const role = req.session.user.role;
   if (role === "admin") {
-    return res.redirect("/public/admin.html");
+    return res.redirect("/admin.html");
   }
   if (role === "rep") {
     return res.redirect("/rep-dashboard");
@@ -194,9 +194,9 @@ app.get("/dashboard", (req, res) => {
 
 // Rep dashboard route
 app.get("/rep-dashboard", (req, res) => {
-  if (!req.session.user) return res.redirect("/public/index.html");
+  if (!req.session.user) return res.redirect("/index.html");
   const role = req.session.user.role;
-  if (role === "admin") return res.redirect("/public/admin.html");
+  if (role === "admin") return res.redirect("/admin.html");
   if (role !== "rep") return res.redirect("/dashboard");
   return res.sendFile(path.join(__dirname, "public", "rep-dashboard.html"));
 });
@@ -385,7 +385,7 @@ app.post("/api/login", async (req, res) => {
 
     // Role-based redirect hint
     let redirect = "/dashboard";
-    if (sessionUser.role === "admin") redirect = "/public/admin.html";
+    if (sessionUser.role === "admin") redirect = "/admin.html";
     else if (sessionUser.role === "rep") redirect = "/rep-dashboard";
     else if (sessionUser.role === "student") redirect = "/dashboard";
 
@@ -1690,7 +1690,7 @@ app.post("/api/admin/categories", requireAdmin, async (req, res) => {
 app.post("/api/auth/forgot-password", async (req, res) => {
   const { email } = req.body;
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: "https://upsa-it09.onrender.com/public/reset-password.html",
+    redirectTo: "https://upsa-it09.onrender.com/reset-password.html",
   });
 
   if (error) {
