@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentUser = session.user;
             
             if (currentUser && userInitial) {
-                userInitial.innerText = currentUser.full_name.charAt(0).toUpperCase();
+                userInitial.innerText = (currentUser.fullName || currentUser.firstName || 'U').charAt(0).toUpperCase();
                 
                 // Trigger Push Registration Check
                 // This ensures active forum users are registered for notifications
@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         feed.innerHTML = mainPosts.map(post => {
             const postReplies = replies.filter(r => r.parent_id === post.id);
-            const initial = post.full_name ? post.full_name.charAt(0).toUpperCase() : 'U';
+            const initial = (post.fullName || 'U').charAt(0).toUpperCase();
             
             const targetBadgeClass = {
                 'global': 'bg-warning-subtle text-warning-emphasis',
@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <div class="avatar-sm me-3">${initial}</div>
                             <div class="flex-grow-1">
                                 <div class="d-flex justify-content-between align-items-start">
-                                    <h6 class="fw-bold mb-0">${post.full_name || 'Anonymous'}</h6>
+                                    <h6 class="fw-bold mb-0">${post.fullName || 'Anonymous'}</h6>
                                     <span class="badge badge-target ${targetBadgeClass}">${post.target_type}</span>
                                 </div>
                                 <small class="text-muted" style="font-size: 0.75rem;">
@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             ${postReplies.map(r => `
                                 <div class="reply-card shadow-sm mx-3 mt-2">
                                     <div class="d-flex align-items-center mb-1">
-                                        <small class="fw-bold text-primary me-2">${r.full_name || 'Anonymous'}</small>
+                                        <small class="fw-bold text-primary me-2">${r.fullName || 'Anonymous'}</small>
                                         <small class="text-muted" style="font-size: 0.65rem;">
                                             ${new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </small>

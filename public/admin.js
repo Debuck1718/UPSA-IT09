@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const session = await checkAdmin();
         if (!session) return;
 
-        document.getElementById("adminHeaderName").textContent = session.full_name || session.fullName || "Admin";
+        document.getElementById("adminHeaderName").textContent = session.fullName || "Admin";
 
         // Initial data load
         loadUsers();
@@ -105,7 +105,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!usersBody) return;
         usersBody.innerHTML = items.map(u => {
             const sid = u.student_id || u.studentId;
-            const name = u.full_name || u.fullName;
+            const name = u.fullName || u.studentId;
             return `
                 <tr>
                     <td class="ps-4">
@@ -137,7 +137,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!u) return;
 
         document.getElementById("editStudentId").value = sid;
-        document.getElementById("modalUserName").textContent = u.full_name || u.fullName;
+        document.getElementById("modalUserName").textContent = u.fullName;
         document.getElementById("editBio").value = u.bio || "";
         document.getElementById("checkIsRep").checked = !!u.is_rep;
         document.getElementById("checkIsCreator").checked = !!u.is_creator;
@@ -217,7 +217,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("userSearch").addEventListener("input", (e) => {
         const q = e.target.value.toLowerCase();
         const filtered = allUsers.filter(u => 
-            (u.full_name || u.fullName || "").toLowerCase().includes(q) ||
+            (u.fullName || "").toLowerCase().includes(q) ||
             (u.student_id || u.studentId || "").toLowerCase().includes(q) ||
             (u.class_group || "").toLowerCase().includes(q)
         );

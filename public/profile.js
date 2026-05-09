@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const { user, activity } = data;
 
     // 1. Text Info
-    document.getElementById("userName").innerText = user.full_name || "Member";
+    document.getElementById("userName").innerText = (user.fullName || user.firstName || "Member");
     document.getElementById("userProgram").innerText =
       `${user.program || "Student"} • ${user.class_group || ""}`;
     document.getElementById("userBio").innerText =

@@ -198,7 +198,7 @@
                 userProgram = user.program; // e.g., 'informationtechnology'
 
                 // UI setup
-                document.getElementById('user-firstname').textContent = user.full_name.split(' ')[0];
+                document.getElementById('user-firstname').textContent = (user.fullName || '').split(' ')[0];
                 document.getElementById('user-course').textContent = user.program;
                 if (user.avatar_url) document.getElementById('avatar').src = user.avatar_url;
 
