@@ -31,11 +31,16 @@
       opts.body = JSON.stringify(opts.body);
     }
 
-    const res = await fetch(url, {
+    const fetchOpts = {
       credentials: "include",
+      method: opts.method || "GET",
       ...opts,
       headers: headers,
-    });
+    };
+
+    console.debug(`[API] ${fetchOpts.method} ${url}`);
+
+    const res = await fetch(url, fetchOpts);
 
     let data = null;
     try {
