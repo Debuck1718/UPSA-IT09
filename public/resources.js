@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let allResources = [];
   let currentFilter = "all";
 
+  // Improved extraction to handle varied YouTube URL formats
   function extractYouTubeId(value) {
     if (!value) return null;
     const str = String(value).trim();
@@ -29,10 +30,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderSkeletons();
 
     try {
+      // Using the window.api.fetch helper
       const [cats, resources, session] = await Promise.all([
-        window.api.fetch("/api/categories"),
-        window.api.fetch("/api/resources"),
-        window.api.fetch("/api/session"),
+        window.api.fetch("categories"),
+        window.api.fetch("resources"),
+        window.api.fetch("session"),
       ]);
 
       const u = session?.user;
@@ -48,7 +50,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (navBrand) navBrand.href = dashboardUrl;
       if (backBtn) backBtn.href = dashboardUrl;
 
-      // Upload Permission
+      // Upload Permission check
       if (u.role === "admin" || u.is_rep || u.is_leader || u.is_creator) {
         if (uploadAction) {
           uploadAction.innerHTML = `
@@ -58,7 +60,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       }
 
-      // Categories
+      // Render Categories
       if (cats && Array.isArray(cats)) {
         cats.forEach((cat) => {
           const span = document.createElement("span");
@@ -152,11 +154,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     document.getElementById("videoTitle").textContent = title;
-    document.getElementById("videoPlayerContainer").innerHTML = `<iframe src="https://www.youtube.com/embed/${encodeURIComponent(videoId)}?autoplay=1&rel=0" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture" style="width:100%; height:100%; border:0;"></iframe>`;
+    
+    // FIX: Added referrerpolicy="no-referrer-when-downgrade" to solve Error 153
+    document.getElementById("videoPlayerContainer").innerHTML = `
+      <iframe 
+        src="https://www.youtube.com/embed/${encodeURIComponent(videoId)}?autoplay=1&rel=0" 
+        allowfullscreen 
+        allow="autoplay; encrypted-media; picture-in-picture" 
+        referrerpolicy="no-referrer-when-downgrade"
+        style="width:100%; height:100%; border:0;">
+      </iframe>`;
+    
     videoModal.show();
 
     try {
-      await window.api.post(`/api/resources/${resourceId}/view`);
+      // FIX: Removed leading slash to prevent double-slash in API URL
+      await window.api.post(`resources/${resourceId}/view`);
     } catch (err) {
       console.debug("View count update skipped:", err);
     }
@@ -166,7 +179,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!url) return "bi-link-45deg";
     const lower = url.toLowerCase();
     if (lower.includes(".pdf")) return "bi-file-earmark-pdf";
-    if (lower.includes(".ppt")) return "bi-file-earmark-ppt";
+    if (lower.includes(".ppt") || lower.includes(".pptx")) return "bi-file-earmark-ppt";
     return "bi-file-earmark-text";
   }
 
@@ -185,11 +198,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       return matchesSearch && matchesCat;
     });
     
-    // When searching or filtering, we use a single grid instead of the "Trending/All" split layout
     renderResources(filtered, "resourcesGrid");
   }
 
   searchInput.addEventListener("input", applyFilters);
+  
+  // Cleanup video when modal closes
   document.getElementById("videoModal").addEventListener("hidden.bs.modal", () => {
     document.getElementById("videoPlayerContainer").innerHTML = "";
   });
