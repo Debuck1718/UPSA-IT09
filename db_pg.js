@@ -134,7 +134,18 @@ async function findUserByEmail(email) {
   const { rows } = await pool.query('select * from users_app where email=$1', [email]);
   return rows[0] || null;
 }
-async function createUser({ studentId, full_name, email, program, classGroup, password, role, institutionId, academicYearStart }) {
+async function createUser({ 
+  studentId, 
+  full_name, 
+  email, 
+  program, 
+  classGroup, 
+  password, 
+  role, 
+  institutionId, 
+  academicYearStart,
+  current_level // <-- 1. Accept the dynamically calculated level from the route
+}) {
   const programId = programIdFromName(program || 'General');
   
   const instId = institutionIdFromName(institutionId || 'general');
@@ -147,22 +158,24 @@ async function createUser({ studentId, full_name, email, program, classGroup, pa
   const crypto = require('crypto');
   const passwordHash = crypto.createHash('sha256').update(String(password)).digest('hex');
 
+  // 2. Added current_level to the insert statement columns and added $12 to values
   const { rows } = await pool.query(
     `insert into users_app (
       student_id, full_name, email, role, institution_id, 
-      program, program_id, cohort_id, class_group, class_group_id, password_hash
+      program, program_id, cohort_id, class_group, class_group_id, password_hash,
+      current_level
     )
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
      returning *`,
     [
       studentId, full_name, email, role || 'student', 
       instId, program || null, programId, cohortId, 
-      classGroupCode, classGroupId, passwordHash
+      classGroupCode, classGroupId, passwordHash,
+      current_level || 100 // <-- 3. Append to query parameters with a safe level 100 fallback
     ]
   );
   return rows[0];
 }
-
 // Course titles
 async function listCourseTitlesForClassGroupId(classGroupId) {
   const { rows } = await pool.query('select title from course_titles where class_group_id=$1 order by title asc', [classGroupId]);

@@ -462,6 +462,22 @@ app.post("/api/signup", async (req, res) => {
         .status(409)
         .json({ ok: false, message: "Email already registered." });
 
+    // DYNAMIC LEVEL CALCULATION
+    const currentYear = 2026; 
+    const startYear = Number(academicYearStart);
+    let calculatedLevel = 100; // Baseline fallback
+
+    // Calculate level based on cohort year progression
+    if (startYear <= currentYear) {
+      calculatedLevel = (currentYear - startYear + 1) * 100;
+    }
+    
+    // Safety clamp to avoid rendering level 500+ for normal undergraduate tracks 
+    if (calculatedLevel > 400) {
+      calculatedLevel = 400;
+    }
+
+    // Pass the calculated level into the DB creation function
     const user = await db.createUser({
       studentId,
       full_name,
@@ -471,7 +487,8 @@ app.post("/api/signup", async (req, res) => {
       password, // db_pg hashes to sha256
       role: "student",
       institutionId: institutionId || "upsa",
-      academicYearStart: Number(academicYearStart),
+      academicYearStart: startYear,
+      current_level: calculatedLevel, // Make sure your db.createUser helper maps this parameter to the table insert column!
     });
 
     // Auto-login: set session so the user can access /dashboard immediately after signup
@@ -488,7 +505,7 @@ app.post("/api/signup", async (req, res) => {
       id: user.id,
       role: user.role,
       studentId: user.student_id || studentId,
-      institutionId: user.institution_id || institution || "upsa",
+      institutionId: user.institution_id || "upsa",
       program: user.program || program || null,
       programId: user.program_id,
       cohortId: user.cohort_id,
@@ -496,13 +513,13 @@ app.post("/api/signup", async (req, res) => {
       classGroupId,
       fullName,
       firstName,
+      currentLevel: user.current_level || calculatedLevel // Pushing accurate level to session memory
     };
     req.session.user = sessionUser;
 
     // Provide a redirect hint to the client
     return res.json({ ok: true, user: sessionUser, redirect: "/dashboard" });
   } catch (e) {
-    // Handle unique constraint gracefully if it still happens (race)
     if (e && e.code === "23505") {
       const msg =
         e.detail && /Key \(email\)/.test(e.detail)
