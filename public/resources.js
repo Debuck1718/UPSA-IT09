@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let allResources = [];
   let currentFilter = "all";
 
-  // Improved extraction to handle varied YouTube URL formats
+
   function extractYouTubeId(value) {
     if (!value) return null;
     const str = String(value).trim();
@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderSkeletons();
 
     try {
-      // Using the window.api.fetch helper
+     
       const [cats, resources, session] = await Promise.all([
         window.api.fetch("/api/categories"),
         window.api.fetch("/api/resources"),
@@ -43,14 +43,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-      // Dynamic Routing based on user role
+   
       const dashboardUrl = u.role === "admin" ? "admin.html" : (u.is_rep ? "rep-dashboard.html" : "dashboard-modern.html");
       const navBrand = document.getElementById("navBrand");
       const backBtn = document.getElementById("backBtn");
       if (navBrand) navBrand.href = dashboardUrl;
       if (backBtn) backBtn.href = dashboardUrl;
 
-      // Upload Permission check
+    
       if (u.role === "admin" || u.is_rep || u.is_leader || u.is_creator) {
         if (uploadAction) {
           uploadAction.innerHTML = `
@@ -60,7 +60,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       }
 
-      // Render Categories
+      
       if (cats && Array.isArray(cats)) {
         cats.forEach((cat) => {
           const span = document.createElement("span");
@@ -72,7 +72,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
       }
 
-      allResources = Array.isArray(resources) ? resources : [];
+
+      const rawResources = Array.isArray(resources) ? resources : [];
+      allResources = rawResources.filter(res => !res.is_master_compiled);
+      
       renderLayout(allResources);
     } catch (e) {
       console.error("Initialization Error:", e);
@@ -155,7 +158,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     document.getElementById("videoTitle").textContent = title;
     
-    // FIX: Added referrerpolicy="no-referrer-when-downgrade" to solve Error 153
+
     document.getElementById("videoPlayerContainer").innerHTML = `
       <iframe 
         src="https://www.youtube.com/embed/${encodeURIComponent(videoId)}?autoplay=1&rel=0" 
@@ -168,8 +171,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     videoModal.show();
 
     try {
-      // FIX: Removed leading slash to prevent double-slash in API URL
-      await window.api.post(`/api/resources/${resourceId}/view`);
+      
+      await window.api.post(`resources/${resourceId}/view`);
     } catch (err) {
       console.debug("View count update skipped:", err);
     }
@@ -203,7 +206,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   searchInput.addEventListener("input", applyFilters);
   
-  // Cleanup video when modal closes
+
   document.getElementById("videoModal").addEventListener("hidden.bs.modal", () => {
     document.getElementById("videoPlayerContainer").innerHTML = "";
   });

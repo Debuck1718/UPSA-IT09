@@ -10,7 +10,7 @@
         window.location.assign('/index.html');
     };
 
-    // --- SLIDE LOADING LOGIC (Master Vault Focused) ---
+  
     async function loadSlides() {
         const slidesList = document.getElementById('slidesList');
         const slidesEmpty = document.getElementById('slidesEmpty');
@@ -27,7 +27,7 @@
         }
 
         try {
-            // Fetch only MASTER COMPILED resources for this course
+
             const data = await window.api.fetch(`/api/resources?courseId=${selectedCourseId}&master=true`);
             const slides = Array.isArray(data.resources) ? data.resources : [];
             
@@ -63,7 +63,7 @@
         }
     }
 
-    // --- COURSE LOADING LOGIC (Program-Course Mapping) ---
+
     async function loadCourses() {
         const coursesList = document.getElementById('coursesList');
         const coursesEmpty = document.getElementById('coursesEmpty');
@@ -71,7 +71,7 @@
 
         coursesList.innerHTML = '';
         try {
-            // Fetches courses specifically mapped to the user's program in the DB
+
             const data = await window.api.fetch(`/api/my-program-courses?programId=${userProgram}`);
             const courses = Array.isArray(data.courses) ? data.courses : [];
             
@@ -187,7 +187,7 @@
         hideBanner();
     }
 
-    // --- INITIALIZATION ---
+    
     document.addEventListener('DOMContentLoaded', function() {
         async function init() {
             try {
@@ -195,7 +195,7 @@
                 if (!session || !session.user) return window.location.assign('/index.html');
                 
                 const user = session.user;
-                userProgram = user.program; // e.g., 'informationtechnology'
+                userProgram = user.program; 
 
                 // UI setup
                 document.getElementById('user-firstname').textContent = (user.fullName || '').split(' ')[0];
