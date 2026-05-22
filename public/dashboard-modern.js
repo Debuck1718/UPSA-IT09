@@ -55,41 +55,36 @@
         return;
       }
 
-      // Update sidebar text context elements safely
-      const profileNameEl = document.querySelector(
-        ".sidebar .fw-bold, #profileName, .user-name",
-      );
-      const profileBadgeEl = document.querySelector(
-        ".sidebar .badge, #profileBadge, .user-program",
-      );
+      // --- FIX: EXACT USERNAME TRACKING & FIRST NAME PARSING ---
+      const raw = u.fullName || u.full_name || u.name || u.username || u.studentId || "Student";
+      const firstName = u.firstName || u.first_name || String(raw).trim().split(/\s+/)[0] || "Student";
 
-      if (profileNameEl) {
-        profileNameEl.textContent =
-          u.name || u.full_name || u.username || "Andy";
-      }
+      // Dynamically locate and update the name fields across the UI text nodes
+      const profileNameEls = document.querySelectorAll(".sidebar .fw-bold, #profileName, .user-name, #repWelcomeName");
+      profileNameEls.forEach(el => {
+         el.textContent = firstName;
+      });
+
+      // Handle the program display element context update
+      const profileBadgeEl = document.querySelector(".sidebar .badge, #profileBadge, .user-program");
       if (profileBadgeEl) {
-        // Keep it clean for the user display UI
         profileBadgeEl.textContent = u.program || "Information Technology";
       }
 
       // --- FIX: FORMAT STRING FOR EXACT DATABASE MATCHING ---
-      // 1. Grab raw string from session or fallback
       let rawProgram = u.program_id || u.program || "informationtechnology";
 
-      // 2. Convert to lowercase and strip out spaces to match 'informationtechnology' entry format
       let dbProgramId = String(rawProgram)
         .toLowerCase()
         .replace(/\s+/g, "")
         .trim();
 
-      // Re-verify if empty after formatting string
       if (!dbProgramId) {
         dbProgramId = "informationtechnology";
       }
 
       const currentLevel = u.current_level || u.level || 100;
 
-      // Fire request with precise lowercase query parameter string matching database schema
       const masterUrl = `/api/resources?master=true&programId=${encodeURIComponent(dbProgramId)}&level=${encodeURIComponent(currentLevel)}`;
       const masterData = await apiFetch(masterUrl);
       const masterResources = Array.isArray(masterData.resources)
