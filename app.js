@@ -1657,6 +1657,54 @@ app.get("/api/programs", async (req, res) => {
   }
 });
 
+// Express Backend Endpoint (/api/my-program-courses)
+app.get('/api/my-program-courses', async (req, res) => {
+    try {
+        const { programId } = req.query;
+
+        if (!programId) {
+            return res.status(400).json({ error: 'Missing programId query parameter.' });
+        }
+
+        // Query joining your program_courses table map to the primary courses definitions
+        const { data, error } = await supabase
+            .from('program_courses')
+            .select(`
+                id,
+                program_id,
+                semester,
+                is_required,
+                courses (
+                    id,
+                    course_code,
+                    course_name
+                )
+            `)
+            .eq('program_id', programId);
+
+        if (error) throw error;
+
+        // Flatten the data structure so it fits exactly what dashboard-modern.js expects
+        const formattedCourses = (data || []).map(item => {
+            if (!item.courses) return null;
+            return {
+                id: item.courses.id, // target course ID for resources mapping
+                course_code: item.courses.course_code,
+                course_name: item.courses.course_name,
+                semester: item.semester,
+                is_required: item.is_required
+            };
+        }).filter(Boolean);
+
+        // Send back a clear dictionary mapping
+        return res.json({ courses: formattedCourses });
+
+    } catch (err) {
+        console.error('Error fetching program curriculum:', err.message);
+        return res.status(500).json({ error: 'Internal server lookup error.' });
+    }
+});
+
 // POST /api/admin/announcements
 app.post("/api/admin/announcements", requireLeader, async (req, res) => {
   try {
@@ -1725,7 +1773,7 @@ app.post("/api/admin/categories", requireAdmin, async (req, res) => {
 app.post("/api/auth/forgot-password", async (req, res) => {
   const { email } = req.body;
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: "https://upsa-it09.onrender.com/reset-password.html",
+    redirectTo: "https://www.evantrahub.me/reset-password.html",
   });
 
   if (error) {

@@ -95,8 +95,8 @@
                 
                 // Route attributes normalize discrepancies between standard upload structures and table maps
                 const cleanTitle = s.title || s.slideTitle || s.originalName || "Untitled Document";
-                const downloadUrl = s.url || "#";
                 const metaCaption = isMasterCompiledSource ? "Verified Compiled Resource" : `Class Rep Contribution • ${new Date(s.createdAt || s.created_at).toLocaleDateString()}`;
+                const slideId = s.id;
 
                 li.innerHTML = `
                     <div class="d-flex align-items-center overflow-hidden me-2">
@@ -107,11 +107,44 @@
                         </div>
                     </div>
                     <div class="btn-group flex-shrink-0">
-                        <a href="${downloadUrl}" target="_blank" class="btn ${isMasterCompiledSource ? 'btn-success' : 'btn-primary'} btn-sm px-3 rounded-pill">
+                        <button type="button" class="btn ${isMasterCompiledSource ? 'btn-success' : 'btn-primary'} btn-sm px-3 rounded-pill view-resource-btn">
                             <i class="bi bi-eye me-1"></i> View
-                        </a>
+                        </button>
                     </div>
                 `;
+
+                // Secure context loader event mapping context orchestration
+                const viewBtn = li.querySelector('.view-resource-btn');
+                viewBtn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    
+                    // If it is an explicitly compiled master resource with a static URL payload, open it directly
+                    if (isMasterCompiledSource && s.url) {
+                        window.open(s.url, '_blank');
+                        return;
+                    }
+
+                    // Otherwise, safely generate a signed storage connection route string context via our backend
+                    const originalText = viewBtn.innerHTML;
+                    try {
+                        viewBtn.disabled = true;
+                        viewBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Loading...`;
+                        
+                        const linkResolution = await apiFetch(`/api/slides/${slideId}/url`);
+                        if (linkResolution && linkResolution.ok && linkResolution.url) {
+                            window.open(linkResolution.url, '_blank');
+                        } else {
+                            alert(linkResolution.message || "Failed to resolve secure download pathway mapping.");
+                        }
+                    } catch (fetchResolutionErr) {
+                        console.error("Link translation failure resolution processing context:", fetchResolutionErr);
+                        alert("Secure vault storage tracking link failure token lookup mapping issue.");
+                    } finally {
+                        viewBtn.disabled = false;
+                        viewBtn.innerHTML = originalText;
+                    }
+                });
+
                 slidesList.appendChild(li);
             });
         } catch (err) {
