@@ -136,8 +136,9 @@
       </div>
 
       <div id="academic-section" class="content-section">
-        <div class="row g-4">
-          <div class="col-lg-4">
+        <div class="row g-3 g-lg-4">
+          
+          <div id="coursesPanelColumn" class="col-12 col-lg-4">
             <div class="card border-0 shadow-sm rounded-4 h-100">
               <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center py-3">
                 <span class="fw-bold">My Courses</span>
@@ -150,10 +151,13 @@
             </div>
           </div>
           
-          <div class="col-lg-8">
+          <div id="slidesPanelColumn" class="col-12 col-lg-8">
             <div class="card border-0 shadow-sm rounded-4 h-100">
               <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center py-3">
                 <div class="d-flex align-items-center overflow-hidden">
+                    <button id="mobileBackToCourses" class="btn btn-sm btn-light rounded-pill me-2 d-lg-none">
+                      <i class="bi bi-arrow-left"></i>
+                    </button>
                     <span id="slidesCourseTitle" class="fw-bold text-truncate">Select a Course</span>
                     <span id="masterBadge" class="badge bg-success-subtle text-success ms-2 d-none master-badge">
                         <i class="bi bi-patch-check-fill me-1"></i>MASTER VAULT
@@ -164,12 +168,14 @@
               <div class="card-body p-0">
                 <ul id="slidesList" class="list-group list-group-flush slide-list"></ul>
                 <div id="slidesEmpty" class="text-muted text-center py-5">
-                    <i class="bi bi-arrow-left-circle fs-2 mb-3 d-block text-secondary"></i>
-                    Click a course on the left to view compiled master slides.
+                    <i class="bi bi-arrow-left-circle fs-2 mb-3 d-block text-secondary d-none d-lg-block"></i>
+                    <i class="bi bi-bookmark-star fs-2 mb-3 d-block text-secondary d-lg-none"></i>
+                    <span id="slidesEmptyMessage">Click a course to view available slides.</span>
                 </div>
               </div>
             </div>
           </div>
+
         </div>
       </div>
     </main>
@@ -179,5 +185,5 @@
     <script src="/dashboard-modern.js"></script>
   
     <footer class="text-center py-3 text-muted small">Powered by Evantra DeBuckman Ventures</footer>
-</body>
+  </body>
 </html>

@@ -1,5 +1,6 @@
 (function () {
     let selectedCourseId = null;
+    let selectedCourseName = "";
     let userProgram = null;
 
     const handleLogout = async (e) => {
@@ -10,10 +11,31 @@
         window.location.assign('/index.html');
     };
 
-  
+    // Unified Mobile Window Layout Toggle Orchestration
+    function toggleMobilePanels(showSlides) {
+        const coursesCol = document.getElementById('coursesPanelColumn');
+        const slidesCol = document.getElementById('slidesPanelColumn');
+        if (!coursesCol || !slidesCol) return;
+
+        if (window.innerWidth < 992) {
+            if (showSlides) {
+                coursesCol.classList.add('d-none');
+                slidesCol.classList.remove('d-none');
+            } else {
+                coursesCol.classList.remove('d-none');
+                slidesCol.classList.add('d-none');
+            }
+        } else {
+            // Force reset when resizing back onto desktop browser footprints
+            coursesCol.classList.remove('d-none');
+            slidesCol.classList.remove('d-none');
+        }
+    }
+
     async function loadSlides() {
         const slidesList = document.getElementById('slidesList');
         const slidesEmpty = document.getElementById('slidesEmpty');
+        const slidesEmptyMessage = document.getElementById('slidesEmptyMessage');
         const masterBadge = document.getElementById('masterBadge');
         if (!slidesList || !slidesEmpty) return;
 
@@ -22,35 +44,54 @@
         masterBadge.classList.add('d-none');
 
         if (!selectedCourseId) {
+            if (slidesEmptyMessage) slidesEmptyMessage.textContent = 'Click a course to view available slides.';
             slidesEmpty.classList.remove('d-none');
             return;
         }
 
         try {
+            // Strategy Route A: Query primary high-priority Verified Master compiled files
+            const masterData = await window.api.fetch(`/api/resources?courseId=${selectedCourseId}&master=true`);
+            let slides = Array.isArray(masterData.resources) ? masterData.resources : [];
+            let isMasterCompiledSource = true;
 
-            const data = await window.api.fetch(`/api/resources?courseId=${selectedCourseId}&master=true`);
-            const slides = Array.isArray(data.resources) ? data.resources : [];
-            
+            // Strategy Route B: If Master Vault query returns dry, fall back to standard Rep uploads
             if (!slides.length) {
-                slidesEmpty.innerHTML = `<div class="py-5"><i class="bi bi-cloud-slash fs-2 d-block mb-2"></i>No master slides found for this course yet.</div>`;
+                isMasterCompiledSource = false;
+                const fallbackData = await window.api.fetch(`/api/slides?courseTitle=${encodeURIComponent(selectedCourseName)}`);
+                slides = Array.isArray(fallbackData.slides) ? fallbackData.slides : [];
+            }
+
+            if (!slides.length) {
+                slidesEmpty.innerHTML = `<div class="py-5 px-3 text-center text-muted"><i class="bi bi-cloud-slash fs-2 d-block mb-2"></i>No shared reference resources or master slides found for this course yet.</div>`;
                 slidesEmpty.classList.remove('d-none');
                 return;
             }
 
-            masterBadge.classList.remove('d-none');
+            // Dynamically flag the header badge if verified master compiles are present
+            if (isMasterCompiledSource) {
+                masterBadge.classList.remove('d-none');
+            }
+
             slides.forEach(s => {
                 const li = document.createElement('li');
-                li.className = 'list-group-item d-flex justify-content-between align-items-center p-3 border-start border-4 border-info-subtle';
+                li.className = `list-group-item d-flex justify-content-between align-items-center p-3 border-start border-4 ${isMasterCompiledSource ? 'border-success' : 'border-info-subtle'}`;
+                
+                // Route attributes normalize discrepancies between standard upload structures and table maps
+                const cleanTitle = s.title || s.slideTitle || s.originalName || "Untitled Document";
+                const downloadUrl = s.url || "#";
+                const metaCaption = isMasterCompiledSource ? "Verified Compiled Resource" : `Class Rep Contribution • ${new Date(s.createdAt || s.created_at).toLocaleDateString()}`;
+
                 li.innerHTML = `
-                    <div class="d-flex align-items-center">
-                        <i class="bi bi-file-earmark-pdf-fill text-danger fs-3 me-3"></i>
-                        <div>
-                            <span class="fw-bold d-block text-dark">${s.title}</span>
-                            <small class="text-muted">Verified Compiled Resource</small>
+                    <div class="d-flex align-items-center overflow-hidden me-2">
+                        <i class="bi bi-file-earmark-pdf-fill text-danger fs-3 me-3 flex-shrink-0"></i>
+                        <div class="text-truncate">
+                            <span class="fw-bold d-block text-dark text-truncate" title="${cleanTitle}">${cleanTitle}</span>
+                            <small class="text-muted d-block text-truncate">${metaCaption}</small>
                         </div>
                     </div>
-                    <div class="btn-group">
-                        <a href="${s.url}" target="_blank" class="btn btn-primary btn-sm px-3 rounded-pill">
+                    <div class="btn-group flex-shrink-0">
+                        <a href="${downloadUrl}" target="_blank" class="btn ${isMasterCompiledSource ? 'btn-success' : 'btn-primary'} btn-sm px-3 rounded-pill">
                             <i class="bi bi-eye me-1"></i> View
                         </a>
                     </div>
@@ -58,11 +99,11 @@
                 slidesList.appendChild(li);
             });
         } catch (err) {
-            slidesEmpty.textContent = 'Error connecting to the vault.';
+            console.error("Vault mapping connection issue:", err);
+            slidesEmpty.innerHTML = `<div class="py-5 text-center text-danger">Error connecting to resource channels.</div>`;
             slidesEmpty.classList.remove('d-none');
         }
     }
-
 
     async function loadCourses() {
         const coursesList = document.getElementById('coursesList');
@@ -71,7 +112,6 @@
 
         coursesList.innerHTML = '';
         try {
-
             const data = await window.api.fetch(`/api/my-program-courses?programId=${userProgram}`);
             const courses = Array.isArray(data.courses) ? data.courses : [];
             
@@ -85,18 +125,21 @@
                 li.className = 'list-group-item list-group-item-action course-card d-flex align-items-center py-3';
                 li.innerHTML = `
                     <i class="bi bi-bookmark-star-fill me-3" style="color:#06b6d4; font-size:1.2rem;"></i> 
-                    <div>
-                        <span class="fw-bold d-block mb-0">${course.course_code}</span>
-                        <small class="text-muted text-uppercase" style="font-size: 0.7rem">${course.course_name}</small>
+                    <div class="overflow-hidden">
+                        <span class="fw-bold d-block mb-0 text-truncate">${course.course_code}</span>
+                        <small class="text-muted text-uppercase text-truncate d-block" style="font-size: 0.7rem">${course.course_name}</small>
                     </div>
                 `;
                 li.addEventListener('click', () => {
                     selectedCourseId = course.id;
+                    selectedCourseName = course.course_name;
                     setSlidesCourseTitle(course.course_name);
                     
                     document.querySelectorAll('.course-card').forEach(el => el.classList.remove('active'));
                     li.classList.add('active');
                     
+                    // Route focus panel toggle forward on Mobile views
+                    toggleMobilePanels(true);
                     loadSlides();
                 });
                 coursesList.appendChild(li);
@@ -187,7 +230,6 @@
         hideBanner();
     }
 
-    
     document.addEventListener('DOMContentLoaded', function() {
         async function init() {
             try {
@@ -197,10 +239,17 @@
                 const user = session.user;
                 userProgram = user.program; 
 
-                // UI setup
                 document.getElementById('user-firstname').textContent = (user.fullName || '').split(' ')[0];
                 document.getElementById('user-course').textContent = user.program;
                 if (user.avatar_url) document.getElementById('avatar').src = user.avatar_url;
+
+                // Configure viewports layout state mapping upon entry execution
+                toggleMobilePanels(false);
+                window.addEventListener('resize', () => {
+                    if (window.innerWidth >= 992) {
+                        toggleMobilePanels(false);
+                    }
+                });
 
                 await loadCourses();
                 updateNotificationBanner();
@@ -212,6 +261,12 @@
         document.getElementById('refreshCourses')?.addEventListener('click', loadCourses);
         document.getElementById('enableNotificationsBtn')?.addEventListener('click', handleEnableNotifications);
         document.getElementById('dismissNotificationsBtn')?.addEventListener('click', handleDismissNotificationBanner);
+
+        // Bind Mobile panel back-navigation triggers cleanly
+        document.getElementById('mobileBackToCourses')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleMobilePanels(false);
+        });
 
         init();
     });
