@@ -8,7 +8,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   let allResources = [];
   let currentFilter = "all";
 
-
   function extractYouTubeId(value) {
     if (!value) return null;
     const str = String(value).trim();
@@ -30,7 +29,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderSkeletons();
 
     try {
-     
       const [cats, resources, session] = await Promise.all([
         window.api.fetch("/api/categories"),
         window.api.fetch("/api/resources"),
@@ -43,14 +41,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-   
       const dashboardUrl = u.role === "admin" ? "admin.html" : (u.is_rep ? "rep-dashboard.html" : "dashboard-modern.html");
       const navBrand = document.getElementById("navBrand");
       const backBtn = document.getElementById("backBtn");
       if (navBrand) navBrand.href = dashboardUrl;
       if (backBtn) backBtn.href = dashboardUrl;
 
-    
       if (u.role === "admin" || u.is_rep || u.is_leader || u.is_creator) {
         if (uploadAction) {
           uploadAction.innerHTML = `
@@ -60,8 +56,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       }
 
-      
       if (cats && Array.isArray(cats)) {
+        // Prevent duplication bugs on hot-reloading loops
+        catContainer.innerHTML = `<span class="badge rounded-pill category-pill active" data-cat="all">All Resources</span>`;
+        catContainer.querySelector('.category-pill').onclick = (e) => filterByCategory("all", e);
+
         cats.forEach((cat) => {
           const span = document.createElement("span");
           span.className = "badge rounded-pill category-pill";
@@ -72,37 +71,63 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
       }
 
-
       const rawResources = Array.isArray(resources) ? resources : [];
-      allResources = rawResources.filter(res => !res.is_master_compiled);
       
-      renderLayout(allResources);
+      // Strict sanitization across case formatting styles and type evaluations
+      allResources = rawResources.filter(res => {
+        const isMaster = 
+          res.is_master_compiled === true || 
+          res.is_master_compiled === 'true' || 
+          res.isMasterCompiled === true ||
+          res.isMasterCompiled === 'true';
+        return !isMaster;
+      });
+      
+      applyFilters();
     } catch (e) {
       console.error("Initialization Error:", e);
       grid.innerHTML = `<div class="text-center p-5 text-danger">Connection Error. Please refresh.</div>`;
     }
   }
 
-  function renderLayout(items) {
-    if (!items || !items.length) return renderResources([], "resourcesGrid");
+  function applyFilters() {
+    const query = searchInput.value.toLowerCase();
+    
+    const filtered = allResources.filter((r) => {
+      const matchesSearch = r.title.toLowerCase().includes(query) || (r.description && r.description.toLowerCase().includes(query));
+      const matchesCat = currentFilter === "all" || r.category_id == currentFilter;
+      return matchesSearch && matchesCat;
+    });
+    
+    // Completely resets layout container logic if filters are active
+    if (currentFilter !== "all" || query.length > 0) {
+      grid.innerHTML = `
+        <div class="col-12 mb-2"><h5 class="fw-bold"><i class="bi bi-collection me-2"></i>Filtered Results</h5></div>
+        <div class="row g-4" id="filteredResourcesRow"></div>
+      `;
+      renderResources(filtered, "filteredResourcesRow");
+    } else {
+      // Normal state distribution layout loops
+      const topResources = [...filtered]
+        .sort((a, b) => (b.view_count || 0) - (a.view_count || 0))
+        .slice(0, 4);
 
-    const topResources = [...items]
-      .sort((a, b) => (b.view_count || 0) - (a.view_count || 0))
-      .slice(0, 4);
+      grid.innerHTML = `
+          <div class="col-12 mb-2"><h5 class="fw-bold"><i class="bi bi-fire text-danger me-2"></i>Trending</h5></div>
+          <div class="row g-4 mb-4" id="topResourcesRow"></div>
+          <div class="col-12 mb-2"><h5 class="fw-bold"><i class="bi bi-collection me-2"></i>All Resources</h5></div>
+          <div class="row g-4" id="allResourcesRow"></div>
+      `;
 
-    grid.innerHTML = `
-        <div class="col-12 mb-2"><h5 class="fw-bold"><i class="bi bi-fire text-danger me-2"></i>Trending</h5></div>
-        <div class="row g-4 mb-4" id="topResourcesRow"></div>
-        <div class="col-12 mb-2"><h5 class="fw-bold"><i class="bi bi-collection me-2"></i>All Resources</h5></div>
-        <div class="row g-4" id="allResourcesRow"></div>
-    `;
-
-    renderResources(topResources, "topResourcesRow");
-    renderResources(items, "allResourcesRow");
+      renderResources(topResources, "topResourcesRow");
+      renderResources(filtered, "allResourcesRow");
+    }
   }
 
   function renderResources(items, targetId) {
-    const container = document.getElementById(targetId) || grid;
+    const container = document.getElementById(targetId);
+    if (!container) return;
+
     if (!items || !items.length) {
       container.innerHTML = `<div class="col-12 text-center py-5 text-muted">No items found matching your criteria.</div>`;
       return;
@@ -112,7 +137,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       let actionBtn = "";
       let mediaPreview = "";
 
-      const youTubeId = extractYouTubeId(res.youtube_id);
+      const youTubeId = extractYouTubeId(res.youtube_id || res.youtubeId);
       if (youTubeId) {
         const safeTitle = String(res.title || "Video").replace(/'/g, "\\'");
         mediaPreview = `
@@ -131,7 +156,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             <div class="card h-100 shadow-sm resource-card border-0">
                 ${mediaPreview}
                 <div class="card-body">
-                    <h6 class="fw-bold mb-1 text-truncate">${res.title}</h6>
+                    <h6 class="fw-bold mb-1 text-truncate" title="${res.title}">${res.title}</h6>
                     <div class="d-flex justify-content-between align-items-center mb-3" style="font-size: 0.7rem;">
                         <span class="text-muted"><i class="bi bi-eye me-1"></i>${res.view_count || 0}</span>
                         <span class="text-muted">${new Date(res.created_at).toLocaleDateString()}</span>
@@ -151,13 +176,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   window.playVideo = async (id, title, resourceId) => {
     const videoId = extractYouTubeId(id);
-    if (!videoId) {
-      console.warn("Invalid YouTube ID:", id);
-      return;
-    }
+    if (!videoId) return;
 
     document.getElementById("videoTitle").textContent = title;
-    
 
     document.getElementById("videoPlayerContainer").innerHTML = `
       <iframe 
@@ -171,7 +192,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     videoModal.show();
 
     try {
-      
       await window.api.post(`resources/${resourceId}/view`);
     } catch (err) {
       console.debug("View count update skipped:", err);
@@ -193,19 +213,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     applyFilters();
   }
 
-  function applyFilters() {
-    const query = searchInput.value.toLowerCase();
-    const filtered = allResources.filter((r) => {
-      const matchesSearch = r.title.toLowerCase().includes(query) || (r.description && r.description.toLowerCase().includes(query));
-      const matchesCat = currentFilter === "all" || r.category_id == currentFilter;
-      return matchesSearch && matchesCat;
-    });
-    
-    renderResources(filtered, "resourcesGrid");
-  }
-
   searchInput.addEventListener("input", applyFilters);
-  
 
   document.getElementById("videoModal").addEventListener("hidden.bs.modal", () => {
     document.getElementById("videoPlayerContainer").innerHTML = "";

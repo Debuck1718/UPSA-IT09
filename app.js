@@ -1103,7 +1103,24 @@ app.get("/api/categories", async (req, res) => {
 app.get("/api/resources", async (req, res) => {
   try {
     const query = `
-      SELECT r.*, c.name as category_name 
+      SELECT 
+        r.id,
+        r.title,
+        r.description,
+        r.url,
+        r.youtube_id,
+        r.category_id,
+        r.program_id,
+        r.institution_id,
+        r.is_global,
+        r.uploader_id,
+        r.status,
+        r.view_count,
+        r.created_at,
+        r.level,
+        r.is_master_compiled,
+        r.course_id,
+        c.name as category_name 
       FROM resources r
       LEFT JOIN resource_categories c ON r.category_id = c.id
       WHERE r.status = 'approved'
@@ -1112,6 +1129,7 @@ app.get("/api/resources", async (req, res) => {
     const { rows } = await db.pool.query(query);
     res.json(rows);
   } catch (e) {
+    console.error("Backend resource extraction error:", e);
     res.status(500).json({ ok: false, message: "Failed to fetch library" });
   }
 });

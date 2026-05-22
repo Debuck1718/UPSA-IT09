@@ -29,7 +29,7 @@ async function run(){
   const vres = await fetch(`${API}/api/verify-email?token=${token}`);
   console.log('Verify status', vres.status);
 
-  // wait
+  // wait re_ReeobVSS_39nQGYWRW1THMYm3fJiNKcKd
   await sleep(300);
 
   const u2 = await db.getUserById(testId);
