@@ -131,7 +131,7 @@
                         viewBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Loading...`;
                         
                         const linkResolution = await apiFetch(`/api/slides/${slideId}/url`);
-                        if (linkResolution && linkResolution.ok && linkResolution.url) {
+                        if (linkResolution && linkResolution.url) {
                             window.open(linkResolution.url, '_blank');
                         } else {
                             alert(linkResolution.message || "Failed to resolve secure download pathway mapping.");
@@ -163,37 +163,41 @@
         if (coursesEmpty) coursesEmpty.classList.add('d-none');
 
         try {
-            // Secure Query Handling using valid search parameter encoding definitions
-            const params = new URLSearchParams();
-            if (userProgram) params.append('programId', userProgram);
-
-            const data = await apiFetch(`/api/my-program-courses?${params.toString()}`);
+            // Target the unified active course catalog endpoint matching rep-dashboard logic
+            const data = await apiFetch('/api/courses');
             const courses = Array.isArray(data.courses) ? data.courses : [];
             
             if (!courses.length) {
                 if (coursesEmpty) {
-                    coursesEmpty.textContent = 'No courses found.';
+                    coursesEmpty.textContent = 'No active courses found.';
                     coursesEmpty.classList.remove('d-none');
                 }
                 return;
             }
 
-            courses.forEach(course => {
+            courses.forEach(courseTitle => {
                 const li = document.createElement('li');
                 li.className = 'list-group-item list-group-item-action course-card d-flex align-items-center py-3';
-                if (selectedCourseId === course.id) li.classList.add('active');
+                if (selectedCourseId === courseTitle) li.classList.add('active');
+
+                // Parse the string title (e.g., "BBA204 Data Management") safely to split standard code prefixes
+                const spaceIndex = courseTitle.indexOf(' ');
+                const displayCode = spaceIndex !== -1 ? courseTitle.substring(0, spaceIndex) : 'COURSE';
+                const displayName = spaceIndex !== -1 ? courseTitle.substring(spaceIndex + 1) : courseTitle;
 
                 li.innerHTML = `
                     <i class="bi bi-bookmark-star-fill me-3" style="color:#06b6d4; font-size:1.2rem;"></i> 
                     <div class="overflow-hidden">
-                        <span class="fw-bold d-block mb-0 text-truncate">${course.course_code || 'COURSE'}</span>
-                        <small class="text-muted text-uppercase text-truncate d-block" style="font-size: 0.7rem">${course.course_name || ''}</small>
+                        <span class="fw-bold d-block mb-0 text-truncate">${displayCode}</span>
+                        <small class="text-muted text-uppercase text-truncate d-block" style="font-size: 0.7rem">${displayName}</small>
                     </div>
                 `;
+
                 li.addEventListener('click', () => {
-                    selectedCourseId = course.id;
-                    selectedCourseName = course.course_name;
-                    setSlidesCourseTitle(course.course_name);
+                    // Set both parameters directly to the matching string title key 
+                    selectedCourseId = courseTitle;
+                    selectedCourseName = courseTitle;
+                    setSlidesCourseTitle(courseTitle);
                     
                     document.querySelectorAll('.course-card').forEach(el => el.classList.remove('active'));
                     li.classList.add('active');
@@ -205,9 +209,9 @@
                 coursesList.appendChild(li);
             });
         } catch (err) {
-            console.error("Failed to load curriculum details:", err);
+            console.error("Failed to load active courses data catalog:", err);
             if (coursesEmpty) {
-                coursesEmpty.textContent = 'Failed to load curriculum.';
+                coursesEmpty.textContent = 'Failed to load active catalog.';
                 coursesEmpty.classList.remove('d-none');
             }
         }
