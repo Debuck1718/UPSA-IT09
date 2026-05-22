@@ -36,27 +36,17 @@
         return "bi-file-earmark-text";
     }
 
-    async function loadSlides() {
-        const slidesList = document.getElementById('slidesList');
-        const slidesEmpty = document.getElementById('slidesEmpty');
+    // --- LIFECYCLE 1: LOAD MASTER VAULT GLOBALLY FOR THE STUDENT ---
+    async function loadMasterVault() {
         const masterVaultGrid = document.getElementById('masterVaultGrid');
-        if (!slidesList || !slidesEmpty || !masterVaultGrid) return;
+        if (!masterVaultGrid) return;
 
-        // Reset elements
-        slidesList.innerHTML = '';
-        slidesEmpty.classList.add('d-none');
         masterVaultGrid.innerHTML = `
             <div class="col-12 text-center py-4 text-white-50">
-                <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div> Loading catalog assets...
+                <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div> Loading your Master Vault catalog...
             </div>`;
 
-        if (!selectedCourseId) {
-            slidesEmpty.classList.remove('d-none');
-            return;
-        }
-
         try {
-            // 1. Fetch current authenticated session profile context
             const session = await apiFetch("/api/session");
             const u = session?.user;
             if (!u) {
@@ -64,20 +54,14 @@
                 return;
             }
 
-            // Extract programmatic context filtering fields linked to public.users_app schema
             const programId = u.program_id || "";
             const currentLevel = u.current_level || 100;
 
-            // 2. Fetch Master Compiled Resources (Filtered by Course, Master Status, Program, and Level)
-            const masterUrl = `/api/resources?courseId=${encodeURIComponent(selectedCourseId)}&master=true&programId=${encodeURIComponent(programId)}&level=${encodeURIComponent(currentLevel)}`;
+            // Notice: No courseId parameter used here. Fetches all master compiled materials for this student's cohort level
+            const masterUrl = `/api/resources?master=true&programId=${encodeURIComponent(programId)}&level=${encodeURIComponent(currentLevel)}`;
             const masterData = await apiFetch(masterUrl);
             const masterResources = Array.isArray(masterData.resources) ? masterData.resources : [];
 
-            // 3. Fetch Class Rep Contributions (Rendered as standard List Rows)
-            const fallbackData = await apiFetch(`/api/slides?courseTitle=${encodeURIComponent(selectedCourseName)}`);
-            const standardSlides = Array.isArray(fallbackData.slides) ? fallbackData.slides : [];
-
-            // --- RENDER MASTER VAULT GRID ---
             if (masterResources.length > 0) {
                 masterVaultGrid.innerHTML = masterResources.map((res, index) => {
                     let actionBtn = "";
@@ -111,11 +95,33 @@
                 masterVaultGrid.innerHTML = `
                     <div class="col-12 text-center py-5 text-white-50 bg-dark bg-opacity-10 rounded-4 border border-secondary border-opacity-10">
                         <i class="bi bi-folder-x fs-3 d-block mb-2 text-muted"></i>
-                        No core verified master reference items populated for this course profile matching your program profile or level.
+                        No verified core master reference items matching your program or level track.
                     </div>`;
             }
+        } catch (err) {
+            console.error("Master Vault processing breakdown:", err);
+            masterVaultGrid.innerHTML = `<div class="col-12 text-center text-danger py-4">Error fetching core vault track assets.</div>`;
+        }
+    }
 
-            // --- RENDER CLASS REP SLIDES LIST ---
+    // --- LIFECYCLE 2: LOAD COURSE SLIDES ONLY (WHEN A STUDENT CLICKS A COURSE) ---
+    async function loadSlides() {
+        const slidesList = document.getElementById('slidesList');
+        const slidesEmpty = document.getElementById('slidesEmpty');
+        if (!slidesList || !slidesEmpty) return;
+
+        slidesList.innerHTML = '';
+        slidesEmpty.classList.add('d-none');
+
+        if (!selectedCourseId) {
+            slidesEmpty.classList.remove('d-none');
+            return;
+        }
+
+        try {
+            const fallbackData = await apiFetch(`/api/slides?courseTitle=${encodeURIComponent(selectedCourseName)}`);
+            const standardSlides = Array.isArray(fallbackData.slides) ? fallbackData.slides : [];
+
             if (standardSlides.length > 0) {
                 standardSlides.forEach(s => {
                     const li = document.createElement('li');
@@ -149,10 +155,9 @@
             } else {
                 slidesEmpty.classList.remove('d-none');
             }
-
         } catch (err) {
-            console.error("Vault pipeline resolution processing breakdown:", err);
-            masterVaultGrid.innerHTML = `<div class="col-12 text-center text-danger py-4">Error fetching dashboard resource grids.</div>`;
+            console.error("Class Rep Contribution pipeline error:", err);
+            slidesList.innerHTML = `<li class="list-group-item text-center text-danger p-3">Error fetching course slides context.</li>`;
         }
     }
 
@@ -170,7 +175,7 @@
                 return;
             }
 
-            coursesList.innerHTML = ''; // Guard against duplication appending loops
+            coursesList.innerHTML = '';
             courses.forEach(courseTitle => {
                 const li = document.createElement('li');
                 li.className = 'list-group-item list-group-item-action course-card d-flex align-items-center py-3';
@@ -197,6 +202,7 @@
                     document.querySelectorAll('.course-card').forEach(el => el.classList.remove('active'));
                     li.classList.add('active');
                     
+                    // Clicking here updates slides ONLY. It does not touch or refresh the main Master Vault Grid.
                     loadSlides();
                 });
                 coursesList.appendChild(li);
@@ -206,8 +212,9 @@
         }
     }
 
-    // Fixed trailing parenthesis initialization layout bug causing script breakdown
     document.addEventListener("DOMContentLoaded", () => {
+        // Initial setup completely decoupled
+        loadMasterVault(); 
         loadCourses();
         
         const refreshCourses = document.getElementById('refreshCourses');
