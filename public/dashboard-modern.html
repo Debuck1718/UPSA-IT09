@@ -136,45 +136,58 @@
       </div>
 
       <div id="academic-section" class="content-section">
-        <div class="row g-3 g-lg-4">
-          
-          <div id="coursesPanelColumn" class="col-12 col-lg-4">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-              <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center py-3">
-                <span class="fw-bold">My Courses</span>
-                <button id="refreshCourses" class="btn btn-sm btn-light rounded-circle"><i class="bi bi-arrow-clockwise"></i></button>
-              </div>
-              <div class="card-body p-0 overflow-auto" style="max-height: 70vh">
-                <ul id="coursesList" class="list-group list-group-flush course-list"></ul>
-                <div id="coursesEmpty" class="text-muted text-center py-4 d-none">No courses found.</div>
-              </div>
-            </div>
+  <div class="row g-3 g-lg-4 mb-5">
+    
+    <div id="coursesPanelColumn" class="col-12 col-lg-4">
+      <div class="card border-0 shadow-sm rounded-4 h-100">
+        <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center py-3">
+          <span class="fw-bold"><i class="bi bi-journal-bookmark me-2 text-primary"></i>My Courses</span>
+          <button id="refreshCourses" class="btn btn-sm btn-light rounded-circle"><i class="bi bi-arrow-clockwise"></i></button>
+        </div>
+        <div class="card-body p-0 overflow-auto" style="max-height: 50vh">
+          <ul id="coursesList" class="list-group list-group-flush course-list"></ul>
+          <div id="coursesEmpty" class="text-muted text-center py-4 d-none">No active courses found.</div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="slidesPanelColumn" class="col-12 col-lg-8">
+      <div class="card border-0 shadow-sm rounded-4 h-100">
+        <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center py-3">
+          <div class="d-flex align-items-center overflow-hidden">
+            <span id="slidesCourseTitle" class="fw-bold text-truncate">Select a Course</span>
+            <span class="badge bg-primary-subtle text-primary ms-2 small">Class Materials</span>
           </div>
-          
-          <div id="slidesPanelColumn" class="col-12 col-lg-8">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-              <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center py-3">
-                <div class="d-flex align-items-center overflow-hidden">
-                    <button id="mobileBackToCourses" class="btn btn-sm btn-light rounded-pill me-2 d-lg-none">
-                      <i class="bi bi-arrow-left"></i>
-                    </button>
-                    <span id="slidesCourseTitle" class="fw-bold text-truncate">Select a Course</span>
-                    <span id="masterBadge" class="badge bg-success-subtle text-success ms-2 d-none master-badge">
-                        <i class="bi bi-patch-check-fill me-1"></i>MASTER VAULT
-                    </span>
-                </div>
-                <button id="refreshSlides" class="btn btn-sm btn-light rounded-circle"><i class="bi bi-arrow-clockwise"></i></button>
-              </div>
-              <div class="card-body p-0">
-                <ul id="slidesList" class="list-group list-group-flush slide-list"></ul>
-                <div id="slidesEmpty" class="text-muted text-center py-5">
-                    <i class="bi bi-arrow-left-circle fs-2 mb-3 d-block text-secondary d-none d-lg-block"></i>
-                    <i class="bi bi-bookmark-star fs-2 mb-3 d-block text-secondary d-lg-none"></i>
-                    <span id="slidesEmptyMessage">Click a course to view available slides.</span>
-                </div>
-              </div>
-            </div>
+          <button id="refreshSlides" class="btn btn-sm btn-light rounded-circle"><i class="bi bi-arrow-clockwise"></i></button>
+        </div>
+        <div class="card-body p-0">
+          <ul id="slidesList" class="list-group list-group-flush slide-list"></ul>
+          <div id="slidesEmpty" class="text-muted text-center py-5">
+            <i class="bi bi-bookmark-star fs-2 mb-3 d-block text-secondary"></i>
+            <span id="slidesEmptyMessage">Click a course to view representative shared files.</span>
           </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="row">
+    <div class="col-12 mb-3">
+      <h4 class="text-white fw-bold d-flex align-items-center">
+        <i class="bi bi-patch-check-fill text-success me-2"></i> Master Reference Vault
+      </h4>
+      <p class="text-white-50 small mb-0">Compiled structured core resources matching your selected course context.</p>
+    </div>
+  </div>
+
+  <div class="row g-4" id="masterVaultGrid">
+    <div class="col-12 text-center py-5 text-white-50 bg-dark bg-opacity-25 rounded-4 border border-secondary border-opacity-10">
+      <i class="bi bi-arrow-up-circle fs-3 mb-2 d-block text-muted"></i>
+      Select an active course layout block from above to unlock its reference repository items.
+    </div>
+  </div>
+</div>
 
         </div>
       </div>

@@ -1,9 +1,7 @@
 (function () {
     let selectedCourseId = null;
     let selectedCourseName = "";
-    let userProgram = null;
 
-    // Direct helper to determine if we are running in an api wrapper or standard environment
     const apiFetch = async (url, options = {}) => {
         if (window.api && typeof window.api.fetch === 'function') {
             return window.api.fetch(url, options);
@@ -13,144 +11,135 @@
         return response.json();
     };
 
-    const handleLogout = async (e) => {
-        if (e) e.preventDefault();
-        try { 
-            await apiFetch('/api/logout', { method: 'POST' }); 
-        } catch (err) { 
-            console.error("Logout failed:", err); 
+    function extractYouTubeId(value) {
+        if (!value) return null;
+        const str = String(value).trim();
+        const patterns = [
+            /(?:youtu\.be\/)([A-Za-z0-9_-]{11})/,
+            /(?:youtube\.com\/watch\?v=)([A-Za-z0-9_-]{11})/,
+            /(?:youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/,
+            /(?:youtube\.com\/v\/)([A-Za-z0-9_-]{11})/,
+            /([A-Za-z0-9_-]{11})/
+        ];
+        for (const re of patterns) {
+            const match = str.match(re);
+            if (match && match[1]) return match[1];
         }
-        window.location.assign('/index.html');
-    };
+        return null;
+    }
 
-    // Unified Mobile Window Layout Toggle Orchestration
-    function toggleMobilePanels(showSlides) {
-        const coursesCol = document.getElementById('coursesPanelColumn');
-        const slidesCol = document.getElementById('slidesPanelColumn');
-        if (!coursesCol || !slidesCol) return;
-
-        if (window.innerWidth < 992) {
-            if (showSlides) {
-                coursesCol.classList.add('d-none');
-                slidesCol.classList.remove('d-none');
-            } else {
-                coursesCol.classList.remove('d-none');
-                slidesCol.classList.add('d-none');
-            }
-        } else {
-            // Ensure both panels display clearly side-by-side on desktop layouts
-            coursesCol.classList.remove('d-none');
-            slidesCol.classList.remove('d-none');
-        }
+    function getFileIcon(url) {
+        if (!url) return "bi-link-45deg";
+        const lower = url.toLowerCase();
+        if (lower.includes(".pdf")) return "bi-file-earmark-pdf";
+        if (lower.includes(".ppt") || lower.includes(".pptx")) return "bi-file-earmark-ppt";
+        return "bi-file-earmark-text";
     }
 
     async function loadSlides() {
         const slidesList = document.getElementById('slidesList');
         const slidesEmpty = document.getElementById('slidesEmpty');
-        const slidesEmptyMessage = document.getElementById('slidesEmptyMessage');
-        const masterBadge = document.getElementById('masterBadge');
-        if (!slidesList || !slidesEmpty) return;
+        const masterVaultGrid = document.getElementById('masterVaultGrid');
+        if (!slidesList || !slidesEmpty || !masterVaultGrid) return;
 
+        // Reset elements
         slidesList.innerHTML = '';
         slidesEmpty.classList.add('d-none');
-        if (masterBadge) masterBadge.classList.add('d-none');
+        masterVaultGrid.innerHTML = `
+            <div class="col-12 text-center py-4 text-white-50">
+                <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div> Loading catalog assets...
+            </div>`;
 
         if (!selectedCourseId) {
-            if (slidesEmptyMessage) slidesEmptyMessage.textContent = 'Click a course to view available slides.';
             slidesEmpty.classList.remove('d-none');
             return;
         }
 
         try {
-            // Strategy Route A: Query primary high-priority Verified Master compiled files
+            // 1. Fetch Master Compiled Resources (Rendered as Grid Cards)
             const masterData = await apiFetch(`/api/resources?courseId=${encodeURIComponent(selectedCourseId)}&master=true`);
-            let slides = Array.isArray(masterData.resources) ? masterData.resources : [];
-            let isMasterCompiledSource = true;
+            const masterResources = Array.isArray(masterData.resources) ? masterData.resources : [];
 
-            // Strategy Route B: If Master Vault query returns dry, fall back to standard Rep uploads
-            if (!slides.length) {
-                isMasterCompiledSource = false;
-                const fallbackData = await apiFetch(`/api/slides?courseTitle=${encodeURIComponent(selectedCourseName)}`);
-                slides = Array.isArray(fallbackData.slides) ? fallbackData.slides : [];
-            }
+            // 2. Fetch Class Rep Contributions (Rendered as standard List Rows)
+            const fallbackData = await apiFetch(`/api/slides?courseTitle=${encodeURIComponent(selectedCourseName)}`);
+            const standardSlides = Array.isArray(fallbackData.slides) ? fallbackData.slides : [];
 
-            if (!slides.length) {
-                slidesEmpty.innerHTML = `
-                    <div class="py-5 px-3 text-center text-muted">
-                        <i class="bi bi-cloud-slash fs-2 d-block mb-2"></i>
-                        No shared reference resources or master slides found for this course yet.
+            // --- RENDER MASTER VAULT GRID ---
+            if (masterResources.length > 0) {
+                masterVaultGrid.innerHTML = masterResources.map((res, index) => {
+                    let actionBtn = "";
+                    let mediaPreview = "";
+                    const youTubeId = extractYouTubeId(res.youtube_id || res.youtubeId);
+
+                    if (youTubeId) {
+                        mediaPreview = `
+                            <div class="youtube-thumb position-relative" style="cursor:pointer;" onclick="window.open('https://youtube.com/watch?v=${youTubeId}', '_blank')">
+                                <img src="https://img.youtube.com/vi/${youTubeId}/hqdefault.jpg" class="card-img-top rounded-top-4" style="height: 140px; object-fit: cover;">
+                                <div class="position-absolute top-50 start-50 translate-middle text-white"><i class="bi bi-play-circle-fill display-6 text-danger"></i></div>
+                            </div>`;
+                        actionBtn = `<button class="btn btn-sm btn-outline-danger w-100 rounded-pill" onclick="window.open('https://youtube.com/watch?v=${youTubeId}', '_blank')"><i class="bi bi-youtube me-1"></i>Watch Now</button>`;
+                    } else {
+                        mediaPreview = `<div class="p-4 text-center bg-light border-bottom rounded-top-4"><i class="bi ${getFileIcon(res.url)} display-6 text-success"></i></div>`;
+                        actionBtn = `<a href="${res.url}" target="_blank" class="btn btn-sm btn-success w-100 rounded-pill"><i class="bi bi-cloud-arrow-down me-1"></i>Open Master Resource</a>`;
+                    }
+
+                    return `
+                        <div class="col-12 col-md-4 col-lg-3 animate__animated animate__fadeInUp" style="animation-delay: ${index * 0.05}s">
+                            <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden">
+                                ${mediaPreview}
+                                <div class="card-body d-flex flex-column justify-content-between">
+                                    <h6 class="fw-bold mb-2 text-truncate" title="${res.title}">${res.title}</h6>
+                                    <div class="mt-2">${actionBtn}</div>
+                                </div>
+                            </div>
+                        </div>`;
+                }).join("");
+            } else {
+                masterVaultGrid.innerHTML = `
+                    <div class="col-12 text-center py-5 text-white-50 bg-dark bg-opacity-10 rounded-4 border border-secondary border-opacity-10">
+                        <i class="bi bi-folder-x fs-3 d-block mb-2 text-muted"></i>
+                        No core verified master reference items populated for this course profile.
                     </div>`;
-                slidesEmpty.classList.remove('d-none');
-                return;
             }
 
-            // Dynamically flag the header badge if verified master compiles are present
-            if (isMasterCompiledSource && masterBadge) {
-                masterBadge.classList.remove('d-none');
-            }
-
-            slides.forEach(s => {
-                const li = document.createElement('li');
-                li.className = `list-group-item d-flex justify-content-between align-items-center p-3 border-start border-4 ${isMasterCompiledSource ? 'border-success' : 'border-info-subtle'}`;
-                
-                // Route attributes normalize discrepancies between standard upload structures and table maps
-                const cleanTitle = s.title || s.slideTitle || s.originalName || "Untitled Document";
-                const metaCaption = isMasterCompiledSource ? "Verified Compiled Resource" : `Class Rep Contribution • ${new Date(s.createdAt || s.created_at).toLocaleDateString()}`;
-                const slideId = s.id;
-
-                li.innerHTML = `
-                    <div class="d-flex align-items-center overflow-hidden me-2">
-                        <i class="bi bi-file-earmark-pdf-fill text-danger fs-3 me-3 flex-shrink-0"></i>
-                        <div class="text-truncate">
-                            <span class="fw-bold d-block text-dark text-truncate" title="${cleanTitle}">${cleanTitle}</span>
-                            <small class="text-muted d-block text-truncate">${metaCaption}</small>
-                        </div>
-                    </div>
-                    <div class="btn-group flex-shrink-0">
-                        <button type="button" class="btn ${isMasterCompiledSource ? 'btn-success' : 'btn-primary'} btn-sm px-3 rounded-pill view-resource-btn">
-                            <i class="bi bi-eye me-1"></i> View
-                        </button>
-                    </div>
-                `;
-
-                // Secure context loader event mapping context orchestration
-                const viewBtn = li.querySelector('.view-resource-btn');
-                viewBtn.addEventListener('click', async (e) => {
-                    e.preventDefault();
+            // --- RENDER CLASS REP SLIDES LIST ---
+            if (standardSlides.length > 0) {
+                standardSlides.forEach(s => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center p-3 border-start border-4 border-info-subtle';
                     
-                    // If it is an explicitly compiled master resource with a static URL payload, open it directly
-                    if (isMasterCompiledSource && s.url) {
-                        window.open(s.url, '_blank');
-                        return;
-                    }
+                    const cleanTitle = s.title || s.slideTitle || s.originalName || "Untitled Document";
+                    const metaCaption = `Class Rep Contribution • ${new Date(s.createdAt || s.created_at).toLocaleDateString()}`;
 
-                    // Otherwise, safely generate a signed storage connection route string context via our backend
-                    const originalText = viewBtn.innerHTML;
-                    try {
-                        viewBtn.disabled = true;
-                        viewBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Loading...`;
-                        
-                        const linkResolution = await apiFetch(`/api/slides/${slideId}/url`);
-                        if (linkResolution && linkResolution.url) {
-                            window.open(linkResolution.url, '_blank');
-                        } else {
-                            alert(linkResolution.message || "Failed to resolve secure download pathway mapping.");
+                    li.innerHTML = `
+                        <div class="d-flex align-items-center overflow-hidden me-2">
+                            <i class="bi bi-file-earmark-pdf-fill text-danger fs-3 me-3 flex-shrink-0"></i>
+                            <div class="text-truncate">
+                                <span class="fw-bold d-block text-dark text-truncate" title="${cleanTitle}">${cleanTitle}</span>
+                                <small class="text-muted d-block text-truncate">${metaCaption}</small>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-sm px-3 rounded-pill view-btn"><i class="bi bi-eye me-1"></i> View</button>
+                    `;
+
+                    li.querySelector('.view-btn').addEventListener('click', async () => {
+                        try {
+                            const linkResolution = await apiFetch(`/api/slides/${s.id}/url`);
+                            if (linkResolution?.url) window.open(linkResolution.url, '_blank');
+                        } catch (err) {
+                            alert("Failed to securely open target item file pathway.");
                         }
-                    } catch (fetchResolutionErr) {
-                        console.error("Link translation failure resolution processing context:", fetchResolutionErr);
-                        alert("Secure vault storage tracking link failure token lookup mapping issue.");
-                    } finally {
-                        viewBtn.disabled = false;
-                        viewBtn.innerHTML = originalText;
-                    }
-                });
+                    });
 
-                slidesList.appendChild(li);
-            });
+                    slidesList.appendChild(li);
+                });
+            } else {
+                slidesEmpty.classList.remove('d-none');
+            }
+
         } catch (err) {
-            console.error("Vault mapping connection issue:", err);
-            slidesEmpty.innerHTML = `<div class="py-5 text-center text-danger">Error connecting to resource channels.</div>`;
-            slidesEmpty.classList.remove('d-none');
+            console.error("Vault pipeline resolution processing breakdown:", err);
+            masterVaultGrid.innerHTML = `<div class="col-12 text-center text-danger py-4">Error fetching dashboard resource grids.</div>`;
         }
     }
 
@@ -159,28 +148,19 @@
         const coursesEmpty = document.getElementById('coursesEmpty');
         if (!coursesList) return;
 
-        coursesList.innerHTML = '';
-        if (coursesEmpty) coursesEmpty.classList.add('d-none');
-
         try {
-            // Target the unified active course catalog endpoint matching rep-dashboard logic
             const data = await apiFetch('/api/courses');
             const courses = Array.isArray(data.courses) ? data.courses : [];
             
             if (!courses.length) {
-                if (coursesEmpty) {
-                    coursesEmpty.textContent = 'No active courses found.';
-                    coursesEmpty.classList.remove('d-none');
-                }
+                if (coursesEmpty) coursesEmpty.classList.remove('d-none');
                 return;
             }
 
             courses.forEach(courseTitle => {
                 const li = document.createElement('li');
                 li.className = 'list-group-item list-group-item-action course-card d-flex align-items-center py-3';
-                if (selectedCourseId === courseTitle) li.classList.add('active');
-
-                // Parse the string title (e.g., "BBA204 Data Management") safely to split standard code prefixes
+                
                 const spaceIndex = courseTitle.indexOf(' ');
                 const displayCode = spaceIndex !== -1 ? courseTitle.substring(0, spaceIndex) : 'COURSE';
                 const displayName = spaceIndex !== -1 ? courseTitle.substring(spaceIndex + 1) : courseTitle;
@@ -194,173 +174,30 @@
                 `;
 
                 li.addEventListener('click', () => {
-                    // Set both parameters directly to the matching string title key 
                     selectedCourseId = courseTitle;
                     selectedCourseName = courseTitle;
-                    setSlidesCourseTitle(courseTitle);
                     
+                    const titleEl = document.getElementById('slidesCourseTitle');
+                    if (titleEl) titleEl.textContent = courseTitle;
+
                     document.querySelectorAll('.course-card').forEach(el => el.classList.remove('active'));
                     li.classList.add('active');
                     
-                    // Route focus panel toggle forward on Mobile views
-                    toggleMobilePanels(true);
                     loadSlides();
                 });
                 coursesList.appendChild(li);
             });
         } catch (err) {
-            console.error("Failed to load active courses data catalog:", err);
-            if (coursesEmpty) {
-                coursesEmpty.textContent = 'Failed to load active catalog.';
-                coursesEmpty.classList.remove('d-none');
-            }
+            console.error(err);
         }
     }
 
-    function setSlidesCourseTitle(title) {
-        const el = document.getElementById('slidesCourseTitle');
-        if (el) el.textContent = title || 'Select a Course';
-    }
-
-    function getBannerElements() {
-        return {
-            banner: document.getElementById('notificationBanner'),
-            enableBtn: document.getElementById('enableNotificationsBtn'),
-            dismissBtn: document.getElementById('dismissNotificationsBtn'),
-        };
-    }
-
-    function showBanner(message, showEnable = true) {
-        const { banner, enableBtn, dismissBtn } = getBannerElements();
-        if (!banner) return;
-        banner.style.display = 'flex';
-        const pEl = banner.querySelector('p');
-        if (pEl) pEl.textContent = message;
+    document.addEventListener("DOMContentLoaded", () => {
+        loadCourses();
         
-        if (enableBtn) enableBtn.style.display = showEnable ? 'inline-flex' : 'none';
-        if (dismissBtn) dismissBtn.style.display = 'inline-flex';
-    }
-
-    function hideBanner() {
-        const { banner } = getBannerElements();
-        if (banner) banner.style.display = 'none';
-    }
-
-    async function updateNotificationBanner() {
-        if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-            showBanner('Browser notifications are not supported here.', false);
-            return;
-        }
-
-        if (Notification.permission === 'granted') {
-            if (window.api && typeof window.api.initPush === 'function') {
-                const enabled = await window.api.initPush({ prompt: false });
-                if (enabled) {
-                    hideBanner();
-                    return;
-                }
-            }
-            showBanner('Notifications are enabled in your browser. Click enable to complete setup.', true);
-            return;
-        }
-
-        if (Notification.permission === 'denied') {
-            showBanner('Notifications are blocked. Please allow them in your browser settings to stay updated.', false);
-            return;
-        }
-
-        showBanner('Enable browser notifications to receive announcements, upload alerts, and forum activity instantly.', true);
-    }
-
-    async function handleEnableNotifications() {
-        const { enableBtn } = getBannerElements();
-        if (enableBtn) {
-            enableBtn.disabled = true;
-            enableBtn.textContent = 'Enabling...';
-        }
-        try {
-            if (window.api && typeof window.api.initPush === 'function') {
-                const success = await window.api.initPush({ prompt: true });
-                if (success) {
-                    hideBanner();
-                } else if (Notification.permission === 'denied') {
-                    showBanner('Notifications are blocked. Please update your browser permissions.', false);
-                } else {
-                    showBanner('Notification permission declined. You can try again later.', true);
-                }
-            } else {
-                // Fallback to standard request permission signature syntax
-                const permission = await Notification.requestPermission();
-                if (permission === 'granted') hideBanner();
-                else updateNotificationBanner();
-            }
-        } catch (err) {
-            console.error('Notification enable error:', err);
-            showBanner('Could not enable notifications. Try again later.', true);
-        } finally {
-            if (enableBtn) {
-                enableBtn.disabled = false;
-                enableBtn.textContent = 'Enable Notifications';
-            }
-        }
-    }
-
-    function handleDismissNotificationBanner() {
-        hideBanner();
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        async function init() {
-            try {
-                const session = await apiFetch('/api/session');
-                if (!session || !session.user) return window.location.assign('/index.html');
-                
-                const user = session.user;
-                userProgram = user.program; 
-
-                const nameEl = document.getElementById('user-firstname');
-                if (nameEl) nameEl.textContent = (user.fullName || 'Student').split(' ')[0];
-                
-                const courseEl = document.getElementById('user-course');
-                if (courseEl) courseEl.textContent = user.program || 'Program';
-                
-                const avatarEl = document.getElementById('avatar');
-                if (avatarEl && user.avatar_url) avatarEl.src = user.avatar_url;
-
-                // Handle screen scaling conditions natively
-                toggleMobilePanels(!!selectedCourseId);
-                window.addEventListener('resize', () => {
-                    if (window.innerWidth >= 992) {
-                        toggleMobilePanels(false);
-                    } else {
-                        toggleMobilePanels(!!selectedCourseId);
-                    }
-                });
-
-                await loadCourses();
-                updateNotificationBanner();
-            } catch (err) { 
-                console.error("Init Error:", err); 
-                window.location.assign('/index.html');
-            }
-        }
-
-        document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
-        document.getElementById('mobileLogoutBtn')?.addEventListener('click', handleLogout);
-        document.getElementById('refreshSlides')?.addEventListener('click', loadSlides);
-        document.getElementById('refreshCourses')?.addEventListener('click', loadCourses);
-        document.getElementById('enableNotificationsBtn')?.addEventListener('click', handleEnableNotifications);
-        document.getElementById('dismissNotificationsBtn')?.addEventListener('click', handleDismissNotificationBanner);
-
-        // Bind Mobile panel back-navigation triggers cleanly
-        document.getElementById('mobileBackToCourses')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            selectedCourseId = null;
-            selectedCourseName = "";
-            setSlidesCourseTitle('Select a Course');
-            toggleMobilePanels(false);
-        });
-
-        init();
-    });
+        const refreshCourses = document.getElementById('refreshCourses');
+        const refreshSlides = document.getElementById('refreshSlides');
+        if(refreshCourses) refreshCourses.addEventListener('click', loadCourses);
+        if(refreshSlides) refreshSlides.addEventListener('click', loadSlides);
+    })();
 })();
