@@ -55,23 +55,22 @@
         return;
       }
 
-      // --- FIX: EXACT USERNAME TRACKING & FIRST NAME PARSING ---
+
       const raw = u.fullName || u.full_name || u.name || u.username || u.studentId || "Student";
       const firstName = u.firstName || u.first_name || String(raw).trim().split(/\s+/)[0] || "Student";
 
-      // Dynamically locate and update the name fields across the UI text nodes
-      const profileNameEls = document.querySelectorAll(".sidebar .fw-bold, #profileName, .user-name, #repWelcomeName");
+      const profileNameEls = document.querySelectorAll(".sidebar .fw-bold, #profileName, .user-name, #repWelcomeName, #user-firstname");
       profileNameEls.forEach(el => {
          el.textContent = firstName;
       });
 
-      // Handle the program display element context update
-      const profileBadgeEl = document.querySelector(".sidebar .badge, #profileBadge, .user-program");
+  
+      const profileBadgeEl = document.querySelector(".sidebar .badge, #profileBadge, .user-program, #user-course");
       if (profileBadgeEl) {
         profileBadgeEl.textContent = u.program || "Information Technology";
       }
 
-      // --- FIX: FORMAT STRING FOR EXACT DATABASE MATCHING ---
+
       let rawProgram = u.program_id || u.program || "informationtechnology";
 
       let dbProgramId = String(rawProgram)
@@ -256,7 +255,17 @@
     }
   }
 
-  // --- UNIFIED BOOT SEQUENCE CONDITIONAL ---
+
+  async function handleLogout() {
+    try {
+      await apiFetch("/api/logout", { method: "POST" });
+    } catch (e) {
+      console.warn("API logout context fallback redirecting manually.");
+    }
+    window.location.replace("index.html");
+  }
+
+  // --- UNIFIED BOOT SEQUENCE ---
   function initializeDashboard() {
     loadMasterVault();
     loadCourses();
@@ -265,8 +274,15 @@
     const refreshSlides = document.getElementById("refreshSlides");
     if (refreshCourses) refreshCourses.addEventListener("click", loadCourses);
     if (refreshSlides) refreshSlides.addEventListener("click", loadSlides);
+
+
+    const dskLogout = document.getElementById("logoutBtn");
+    const mobLogout = document.getElementById("mobileLogoutBtn");
+    if (dskLogout) dskLogout.addEventListener("click", handleLogout);
+    if (mobLogout) mobLogout.addEventListener("click", handleLogout);
   }
 
+  // Safe Lifecycle initialization check
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initializeDashboard);
   } else {
