@@ -3,6 +3,7 @@
   const alertBox = document.getElementById("alert");
   const coursesSlides = document.getElementById("repDashCoursesSlides");
   const coursesEmpty = document.getElementById("repDashCoursesEmpty");
+  const masterVaultGrid = document.getElementById("masterVaultGrid");
 
   const statCourses = document.getElementById("statCourses");
   const statSlides = document.getElementById("statSlides");
@@ -14,6 +15,15 @@
 
   let currentUser = null;
 
+  const apiFetch = async (url, options = {}) => {
+    if (window.api && typeof window.api.fetch === "function") {
+      return window.api.fetch(url, options);
+    }
+    const response = await fetch(url, options);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    return response.json();
+  };
+
   function showAlert(type, msg) {
     if (!alertBox) return;
     alertBox.className = `alert alert-${type}`;
@@ -24,23 +34,118 @@
     }
   }
 
-  // 1. Personalize UI and Capture User Metadata for Uploads
+  function extractYouTubeId(value) {
+    if (!value) return null;
+    const str = String(value).trim();
+    const patterns = [
+      /(?:youtu\.be\/)([A-Za-z0-9_-]{11})/,
+      /(?:youtube\.com\/watch\?v=)([A-Za-z0-9_-]{11})/,
+      /(?:youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/,
+      /(?:youtube\.com\/v\/)([A-Za-z0-9_-]{11})/,
+      /([A-Za-z0-9_-]{11})/,
+    ];
+    for (const re of patterns) {
+      const match = str.match(re);
+      if (match && match[1]) return match[1];
+    }
+    return null;
+  }
+
+  function getFileIcon(url) {
+    if (!url) return "bi-link-45deg";
+    const lower = url.toLowerCase();
+    if (lower.includes(".pdf")) return "bi-file-earmark-pdf";
+    if (lower.includes(".ppt") || lower.includes(".pptx"))
+      return "bi-file-earmark-ppt";
+    return "bi-file-earmark-text";
+  }
+
+  // 1. Core Profile Sync
   async function initSession() {
     try {
-      const data = await window.api.fetch("/api/session");
+      const data = await apiFetch("/api/session");
       currentUser = data && data.user ? data.user : null;
-      if (!currentUser) return;
+      if (!currentUser) {
+        window.location.replace("index.html");
+        return;
+      }
 
       const raw = currentUser.fullName || currentUser.name || currentUser.username || currentUser.studentId || "Rep";
       const firstName = currentUser.firstName || String(raw).trim().split(/\s+/)[0] || "Rep";
       
-      const nameEls = document.querySelectorAll("#repWelcomeName");
+      const nameEls = document.querySelectorAll("#repWelcomeName, .sidebar .fw-bold, #profileName");
       nameEls.forEach(el => el.textContent = firstName);
       
       const av = document.getElementById("repAvatar");
       if (av) av.src = "/images/avatar.png";
     } catch (err) {
       console.error("Session init error:", err);
+    }
+  }
+
+  // 2. Global Core Master Vault Sync
+  async function loadMasterVault() {
+    if (!masterVaultGrid) return;
+
+    masterVaultGrid.innerHTML = `
+        <div class="col-12 text-center py-4 text-white-50">
+            <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div> Loading Master Vault catalogs...
+        </div>`;
+
+    try {
+      if (!currentUser) return;
+
+      let rawProgram = currentUser.program_id || currentUser.program || "informationtechnology";
+      let dbProgramId = String(rawProgram).toLowerCase().replace(/\s+/g, "").trim();
+      if (!dbProgramId) dbProgramId = "informationtechnology";
+
+      const currentLevel = currentUser.current_level || currentUser.level || 100;
+
+      const masterUrl = `/api/resources?master=true&programId=${encodeURIComponent(dbProgramId)}&level=${encodeURIComponent(currentLevel)}`;
+      const masterData = await apiFetch(masterUrl);
+      const masterResources = Array.isArray(masterData.resources) ? masterData.resources : [];
+
+      if (masterResources.length > 0) {
+        masterVaultGrid.innerHTML = masterResources
+          .map((res, index) => {
+            let actionBtn = "";
+            let mediaPreview = "";
+            const youTubeId = extractYouTubeId(res.youtube_id || res.youtubeId);
+
+            if (youTubeId) {
+              mediaPreview = `
+                <div class="youtube-thumb position-relative" style="cursor:pointer;" onclick="window.open('https://youtube.com/watch?v=${youTubeId}', '_blank')">
+                    <img src="https://img.youtube.com/vi/${youTubeId}/hqdefault.jpg" class="card-img-top rounded-top-4" style="height: 140px; object-fit: cover;">
+                    <div class="position-absolute top-50 start-50 translate-middle text-white"><i class="bi bi-play-circle-fill display-6 text-danger"></i></div>
+                </div>`;
+              actionBtn = `<button class="btn btn-sm btn-outline-danger w-100 rounded-pill" onclick="window.open('https://youtube.com/watch?v=${youTubeId}', '_blank')"><i class="bi bi-youtube me-1"></i>Watch Now</button>`;
+            } else {
+              mediaPreview = `<div class="p-4 text-center bg-light border-bottom rounded-top-4"><i class="bi ${getFileIcon(res.url)} display-6 text-success"></i></div>`;
+              actionBtn = `<a href="${res.url}" target="_blank" class="btn btn-sm btn-success w-100 rounded-pill"><i class="bi bi-cloud-arrow-down me-1"></i>Open Resource</a>`;
+            }
+
+            return `
+                <div class="col-12 col-md-4 col-lg-3 animate__animated animate__fadeInUp" style="animation-delay: ${index * 0.05}s">
+                    <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden">
+                        ${mediaPreview}
+                        <div class="card-body d-flex flex-column justify-content-between">
+                            <h6 class="fw-bold mb-2 text-truncate text-dark" title="${res.title}">${res.title}</h6>
+                            <div class="mt-2">${actionBtn}</div>
+                        </div>
+                    </div>
+                </div>`;
+          })
+          .join("");
+      } else {
+        masterVaultGrid.innerHTML = `
+            <div class="col-12 text-center py-5 text-white-50 bg-dark bg-opacity-10 rounded-4 border border-secondary border-opacity-10">
+                <i class="bi bi-folder-x fs-3 d-block mb-2 text-muted"></i>
+                No core tracking reference resources found on target identifier pathway: "${dbProgramId}".
+            </div>`;
+      }
+    } catch (err) {
+      console.error("Master Vault execution breakdown:", err);
+      masterVaultGrid.innerHTML = `<div class="col-12 text-center text-danger py-4">Error sync updating tracking track pathway assets.</div>`;
     }
   }
 
@@ -57,7 +162,7 @@
 
   async function loadMyTitles() {
     try {
-      const data = await window.api.fetch("/api/courses/mine");
+      const data = await apiFetch("/api/courses/mine");
       const titles = Array.isArray(data.titles) ? data.titles : [];
       renderTitlesSelect(titles);
     } catch (e) {
@@ -85,7 +190,7 @@
     coursesEmpty.classList.add("d-none");
 
     try {
-      const data = await window.api.fetch("/api/courses");
+      const data = await apiFetch("/api/courses");
       const courses = Array.isArray(data.courses) ? data.courses : [];
 
       if (!courses.length) {
@@ -104,7 +209,7 @@
 
       for (let i = 0; i < courses.length; i++) {
         const course = courses[i];
-        const slidesResp = await window.api.fetch(`/api/slides?courseTitle=${encodeURIComponent(course)}`);
+        const slidesResp = await apiFetch(`/api/slides?courseTitle=${encodeURIComponent(course)}`);
         const slides = Array.isArray(slidesResp.slides) ? slidesResp.slides : [];
 
         totalSlides += slides.length;
@@ -118,12 +223,12 @@
         card.innerHTML = `
           <h2 class="accordion-header" id="heading${i}">
             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${i}">
-              <span class="fw-semibold">${course}</span> 
+              <span class="fw-semibold text-dark">${course}</span> 
               <span class="badge rounded-pill bg-primary ms-2">${slides.length}</span>
             </button>
           </h2>
           <div id="collapse${i}" class="accordion-collapse collapse" data-bs-parent="#repDashCoursesSlides">
-            <div class="accordion-body p-0">
+            <div class="accordion-body p-0 text-dark">
               <ul class="list-group list-group-flush mb-0">
                 ${slides.length === 0 
                   ? `<li class="list-group-item text-muted small">No slides available.</li>`
@@ -149,7 +254,6 @@
       statSlides.textContent = totalSlides;
       statRecent.textContent = recentCount;
 
-      // Click handlers for download/view
       coursesSlides.querySelectorAll("button[data-action]").forEach((btn) => {
         btn.addEventListener("click", async (e) => {
           e.preventDefault();
@@ -158,7 +262,7 @@
           if (!id) return showAlert("danger", "Resource ID missing.");
 
           try {
-            const resp = await window.api.fetch(`/api/slides/${encodeURIComponent(id)}/url`);
+            const resp = await apiFetch(`/api/slides/${encodeURIComponent(id)}/url`);
             if (!resp || !resp.url) throw new Error("URL not found");
             if (action === "view") {
               window.open(resp.url, "_blank");
@@ -198,21 +302,20 @@
     fd.set("courseTitle", finalCourseTitle);
     fd.set("slideTitle", slideTitle);
     
-    // Explicitly set metadata to match Postgres 'slides' table columns
     fd.set("institution_id", currentUser.institution_id || currentUser.institutionId || "");
     fd.set("program_id", currentUser.program || currentUser.program_id || "");
     fd.set("class_group_id", currentUser.class_group_id || currentUser.classGroupId || "");
 
     try {
       if (newTitle) {
-        await window.api.fetch("/api/courses/manage", {
+        await apiFetch("/api/courses/manage", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title: newTitle }),
         }).catch(() => {});
       }
 
-      await window.api.fetch("/api/upload", { method: "POST", body: fd });
+      await apiFetch("/api/upload", { method: "POST", body: fd });
       showAlert("success", "Resource uploaded successfully!");
 
       form.reset();
@@ -229,7 +332,7 @@
   async function handleLogout() {
     if (confirm("Sign out of the Rep Dashboard?")) {
       try {
-        await window.api.fetch("/api/logout", { method: "POST" });
+        await apiFetch("/api/logout", { method: "POST" });
       } catch (err) {}
       window.location.href = "/index.html";
     }
@@ -238,11 +341,12 @@
   document.getElementById("repLogoutBtn")?.addEventListener("click", handleLogout);
   document.getElementById("mobileLogoutBtn")?.addEventListener("click", handleLogout);
   document.getElementById("repDashRefreshCourses")?.addEventListener("click", loadCourses);
+  document.getElementById("refreshMasterVault")?.addEventListener("click", loadMasterVault);
 
-  // Unified Boot Sequence
-  (async function boot() {
+  async function runBootSequence() {
     try {
       await initSession();
+      await loadMasterVault();
       await loadMyTitles();
       await loadCourses();
 
@@ -253,5 +357,11 @@
       console.error("Boot error:", err);
       if (coursesSlides) coursesSlides.innerHTML = '<div class="text-danger p-3">System offline.</div>';
     }
-  })();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", runBootSequence);
+  } else {
+    runBootSequence();
+  }
 })();

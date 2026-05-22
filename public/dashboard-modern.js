@@ -256,7 +256,8 @@
     }
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
+  // --- UNIFIED BOOT SEQUENCE CONDITIONAL ---
+  function initializeDashboard() {
     loadMasterVault();
     loadCourses();
 
@@ -264,5 +265,11 @@
     const refreshSlides = document.getElementById("refreshSlides");
     if (refreshCourses) refreshCourses.addEventListener("click", loadCourses);
     if (refreshSlides) refreshSlides.addEventListener("click", loadSlides);
-  });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeDashboard);
+  } else {
+    initializeDashboard();
+  }
 })();
