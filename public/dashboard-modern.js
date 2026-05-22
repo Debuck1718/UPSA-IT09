@@ -3,11 +3,23 @@
     let selectedCourseName = "";
     let userProgram = null;
 
+    // Direct helper to determine if we are running in an api wrapper or standard environment
+    const apiFetch = async (url, options = {}) => {
+        if (window.api && typeof window.api.fetch === 'function') {
+            return window.api.fetch(url, options);
+        }
+        const response = await fetch(url, options);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return response.json();
+    };
+
     const handleLogout = async (e) => {
         if (e) e.preventDefault();
         try { 
-            await window.api.fetch('/api/logout', { method: 'POST' }); 
-        } catch (err) { console.error("Logout failed:", err); }
+            await apiFetch('/api/logout', { method: 'POST' }); 
+        } catch (err) { 
+            console.error("Logout failed:", err); 
+        }
         window.location.assign('/index.html');
     };
 
@@ -26,7 +38,7 @@
                 slidesCol.classList.add('d-none');
             }
         } else {
-            // Force reset when resizing back onto desktop browser footprints
+            // Ensure both panels display clearly side-by-side on desktop layouts
             coursesCol.classList.remove('d-none');
             slidesCol.classList.remove('d-none');
         }
@@ -41,7 +53,7 @@
 
         slidesList.innerHTML = '';
         slidesEmpty.classList.add('d-none');
-        masterBadge.classList.add('d-none');
+        if (masterBadge) masterBadge.classList.add('d-none');
 
         if (!selectedCourseId) {
             if (slidesEmptyMessage) slidesEmptyMessage.textContent = 'Click a course to view available slides.';
@@ -51,25 +63,29 @@
 
         try {
             // Strategy Route A: Query primary high-priority Verified Master compiled files
-            const masterData = await window.api.fetch(`/api/resources?courseId=${selectedCourseId}&master=true`);
+            const masterData = await apiFetch(`/api/resources?courseId=${encodeURIComponent(selectedCourseId)}&master=true`);
             let slides = Array.isArray(masterData.resources) ? masterData.resources : [];
             let isMasterCompiledSource = true;
 
             // Strategy Route B: If Master Vault query returns dry, fall back to standard Rep uploads
             if (!slides.length) {
                 isMasterCompiledSource = false;
-                const fallbackData = await window.api.fetch(`/api/slides?courseTitle=${encodeURIComponent(selectedCourseName)}`);
+                const fallbackData = await apiFetch(`/api/slides?courseTitle=${encodeURIComponent(selectedCourseName)}`);
                 slides = Array.isArray(fallbackData.slides) ? fallbackData.slides : [];
             }
 
             if (!slides.length) {
-                slidesEmpty.innerHTML = `<div class="py-5 px-3 text-center text-muted"><i class="bi bi-cloud-slash fs-2 d-block mb-2"></i>No shared reference resources or master slides found for this course yet.</div>`;
+                slidesEmpty.innerHTML = `
+                    <div class="py-5 px-3 text-center text-muted">
+                        <i class="bi bi-cloud-slash fs-2 d-block mb-2"></i>
+                        No shared reference resources or master slides found for this course yet.
+                    </div>`;
                 slidesEmpty.classList.remove('d-none');
                 return;
             }
 
             // Dynamically flag the header badge if verified master compiles are present
-            if (isMasterCompiledSource) {
+            if (isMasterCompiledSource && masterBadge) {
                 masterBadge.classList.remove('d-none');
             }
 
@@ -111,23 +127,34 @@
         if (!coursesList) return;
 
         coursesList.innerHTML = '';
+        if (coursesEmpty) coursesEmpty.classList.add('d-none');
+
         try {
-            const data = await window.api.fetch(`/api/my-program-courses?programId=${userProgram}`);
+            // Secure Query Handling using valid search parameter encoding definitions
+            const params = new URLSearchParams();
+            if (userProgram) params.append('programId', userProgram);
+
+            const data = await apiFetch(`/api/my-program-courses?${params.toString()}`);
             const courses = Array.isArray(data.courses) ? data.courses : [];
             
             if (!courses.length) {
-                coursesEmpty?.classList.remove('d-none');
+                if (coursesEmpty) {
+                    coursesEmpty.textContent = 'No courses found.';
+                    coursesEmpty.classList.remove('d-none');
+                }
                 return;
             }
 
             courses.forEach(course => {
                 const li = document.createElement('li');
                 li.className = 'list-group-item list-group-item-action course-card d-flex align-items-center py-3';
+                if (selectedCourseId === course.id) li.classList.add('active');
+
                 li.innerHTML = `
                     <i class="bi bi-bookmark-star-fill me-3" style="color:#06b6d4; font-size:1.2rem;"></i> 
                     <div class="overflow-hidden">
-                        <span class="fw-bold d-block mb-0 text-truncate">${course.course_code}</span>
-                        <small class="text-muted text-uppercase text-truncate d-block" style="font-size: 0.7rem">${course.course_name}</small>
+                        <span class="fw-bold d-block mb-0 text-truncate">${course.course_code || 'COURSE'}</span>
+                        <small class="text-muted text-uppercase text-truncate d-block" style="font-size: 0.7rem">${course.course_name || ''}</small>
                     </div>
                 `;
                 li.addEventListener('click', () => {
@@ -145,7 +172,11 @@
                 coursesList.appendChild(li);
             });
         } catch (err) {
-            if (coursesEmpty) coursesEmpty.textContent = 'Failed to load curriculum.';
+            console.error("Failed to load curriculum details:", err);
+            if (coursesEmpty) {
+                coursesEmpty.textContent = 'Failed to load curriculum.';
+                coursesEmpty.classList.remove('d-none');
+            }
         }
     }
 
@@ -166,7 +197,9 @@
         const { banner, enableBtn, dismissBtn } = getBannerElements();
         if (!banner) return;
         banner.style.display = 'flex';
-        banner.querySelector('p').textContent = message;
+        const pEl = banner.querySelector('p');
+        if (pEl) pEl.textContent = message;
+        
         if (enableBtn) enableBtn.style.display = showEnable ? 'inline-flex' : 'none';
         if (dismissBtn) dismissBtn.style.display = 'inline-flex';
     }
@@ -183,10 +216,12 @@
         }
 
         if (Notification.permission === 'granted') {
-            const enabled = await window.api.initPush({ prompt: false });
-            if (enabled) {
-                hideBanner();
-                return;
+            if (window.api && typeof window.api.initPush === 'function') {
+                const enabled = await window.api.initPush({ prompt: false });
+                if (enabled) {
+                    hideBanner();
+                    return;
+                }
             }
             showBanner('Notifications are enabled in your browser. Click enable to complete setup.', true);
             return;
@@ -207,13 +242,20 @@
             enableBtn.textContent = 'Enabling...';
         }
         try {
-            const success = await window.api.initPush({ prompt: true });
-            if (success) {
-                hideBanner();
-            } else if (Notification.permission === 'denied') {
-                showBanner('Notifications are blocked. Please update your browser permissions.', false);
+            if (window.api && typeof window.api.initPush === 'function') {
+                const success = await window.api.initPush({ prompt: true });
+                if (success) {
+                    hideBanner();
+                } else if (Notification.permission === 'denied') {
+                    showBanner('Notifications are blocked. Please update your browser permissions.', false);
+                } else {
+                    showBanner('Notification permission declined. You can try again later.', true);
+                }
             } else {
-                showBanner('Notification permission declined. You can try again later.', true);
+                // Fallback to standard request permission signature syntax
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') hideBanner();
+                else updateNotificationBanner();
             }
         } catch (err) {
             console.error('Notification enable error:', err);
@@ -233,30 +275,41 @@
     document.addEventListener('DOMContentLoaded', function() {
         async function init() {
             try {
-                const session = await window.api.fetch('/api/session');
+                const session = await apiFetch('/api/session');
                 if (!session || !session.user) return window.location.assign('/index.html');
                 
                 const user = session.user;
                 userProgram = user.program; 
 
-                document.getElementById('user-firstname').textContent = (user.fullName || '').split(' ')[0];
-                document.getElementById('user-course').textContent = user.program;
-                if (user.avatar_url) document.getElementById('avatar').src = user.avatar_url;
+                const nameEl = document.getElementById('user-firstname');
+                if (nameEl) nameEl.textContent = (user.fullName || 'Student').split(' ')[0];
+                
+                const courseEl = document.getElementById('user-course');
+                if (courseEl) courseEl.textContent = user.program || 'Program';
+                
+                const avatarEl = document.getElementById('avatar');
+                if (avatarEl && user.avatar_url) avatarEl.src = user.avatar_url;
 
-                // Configure viewports layout state mapping upon entry execution
-                toggleMobilePanels(false);
+                // Handle screen scaling conditions natively
+                toggleMobilePanels(!!selectedCourseId);
                 window.addEventListener('resize', () => {
                     if (window.innerWidth >= 992) {
                         toggleMobilePanels(false);
+                    } else {
+                        toggleMobilePanels(!!selectedCourseId);
                     }
                 });
 
                 await loadCourses();
                 updateNotificationBanner();
-            } catch (err) { console.error("Init Error:", err); }
+            } catch (err) { 
+                console.error("Init Error:", err); 
+                window.location.assign('/index.html');
+            }
         }
 
         document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
+        document.getElementById('mobileLogoutBtn')?.addEventListener('click', handleLogout);
         document.getElementById('refreshSlides')?.addEventListener('click', loadSlides);
         document.getElementById('refreshCourses')?.addEventListener('click', loadCourses);
         document.getElementById('enableNotificationsBtn')?.addEventListener('click', handleEnableNotifications);
@@ -265,6 +318,9 @@
         // Bind Mobile panel back-navigation triggers cleanly
         document.getElementById('mobileBackToCourses')?.addEventListener('click', (e) => {
             e.preventDefault();
+            selectedCourseId = null;
+            selectedCourseName = "";
+            setSlidesCourseTitle('Select a Course');
             toggleMobilePanels(false);
         });
 
