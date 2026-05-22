@@ -54,11 +54,29 @@
                 return;
             }
 
-            const programId = u.program_id || "";
-            const currentLevel = u.current_level || 100;
+            // --- FIX: DYNAMICALLY UPDATE SIDEBAR PROFILE DISPLAY ---
+            const profileNameEl = document.querySelector('.sidebar .fw-bold, #profileName, .user-name');
+            const profileBadgeEl = document.querySelector('.sidebar .badge, #profileBadge, .user-program');
+            
+            if (profileNameEl) {
+                profileNameEl.textContent = u.name || u.full_name || u.username || "Student";
+            }
+            if (profileBadgeEl) {
+                profileBadgeEl.textContent = u.program_id || u.program || "Information Technology";
+            }
 
-            // Notice: No courseId parameter used here. Fetches all master compiled materials for this student's cohort level
-            const masterUrl = `/api/resources?master=true&programId=${encodeURIComponent(programId)}&level=${encodeURIComponent(currentLevel)}`;
+            // --- FIX: ENFORCE STRICT FALLBACK FOR PROGRAM FILTERING ---
+            // Detect if the field is completely empty or blank string
+            let programId = u.program_id || u.program || "";
+            if (!programId || programId.trim() === "") {
+                // Hard fallback alignment to prevent pulling all database resources indiscriminately
+                programId = "Information Technology"; 
+            }
+            
+            const currentLevel = u.current_level || u.level || 100;
+
+            // Fetch master items matching ONLY this program track cohort
+            const masterUrl = `/api/resources?master=true&programId=${encodeURIComponent(programId.trim())}&level=${encodeURIComponent(currentLevel)}`;
             const masterData = await apiFetch(masterUrl);
             const masterResources = Array.isArray(masterData.resources) ? masterData.resources : [];
 
@@ -95,7 +113,7 @@
                 masterVaultGrid.innerHTML = `
                     <div class="col-12 text-center py-5 text-white-50 bg-dark bg-opacity-10 rounded-4 border border-secondary border-opacity-10">
                         <i class="bi bi-folder-x fs-3 d-block mb-2 text-muted"></i>
-                        No verified core master reference items matching your program or level track.
+                        No verified core master reference items found matching the ${programId} Level ${currentLevel} curriculum track.
                     </div>`;
             }
         } catch (err) {
@@ -202,7 +220,6 @@
                     document.querySelectorAll('.course-card').forEach(el => el.classList.remove('active'));
                     li.classList.add('active');
                     
-                    // Clicking here updates slides ONLY. It does not touch or refresh the main Master Vault Grid.
                     loadSlides();
                 });
                 coursesList.appendChild(li);
@@ -213,7 +230,6 @@
     }
 
     document.addEventListener("DOMContentLoaded", () => {
-        // Initial setup completely decoupled
         loadMasterVault(); 
         loadCourses();
         
