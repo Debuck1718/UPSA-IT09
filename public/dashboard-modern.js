@@ -56,11 +56,24 @@
         }
 
         try {
-            // 1. Fetch Master Compiled Resources (Rendered as Grid Cards)
-            const masterData = await apiFetch(`/api/resources?courseId=${encodeURIComponent(selectedCourseId)}&master=true`);
+            // 1. Fetch current authenticated session profile context
+            const session = await apiFetch("/api/session");
+            const u = session?.user;
+            if (!u) {
+                window.location.replace("index.html");
+                return;
+            }
+
+            // Extract programmatic context filtering fields linked to public.users_app schema
+            const programId = u.program_id || "";
+            const currentLevel = u.current_level || 100;
+
+            // 2. Fetch Master Compiled Resources (Filtered by Course, Master Status, Program, and Level)
+            const masterUrl = `/api/resources?courseId=${encodeURIComponent(selectedCourseId)}&master=true&programId=${encodeURIComponent(programId)}&level=${encodeURIComponent(currentLevel)}`;
+            const masterData = await apiFetch(masterUrl);
             const masterResources = Array.isArray(masterData.resources) ? masterData.resources : [];
 
-            // 2. Fetch Class Rep Contributions (Rendered as standard List Rows)
+            // 3. Fetch Class Rep Contributions (Rendered as standard List Rows)
             const fallbackData = await apiFetch(`/api/slides?courseTitle=${encodeURIComponent(selectedCourseName)}`);
             const standardSlides = Array.isArray(fallbackData.slides) ? fallbackData.slides : [];
 
@@ -98,7 +111,7 @@
                 masterVaultGrid.innerHTML = `
                     <div class="col-12 text-center py-5 text-white-50 bg-dark bg-opacity-10 rounded-4 border border-secondary border-opacity-10">
                         <i class="bi bi-folder-x fs-3 d-block mb-2 text-muted"></i>
-                        No core verified master reference items populated for this course profile.
+                        No core verified master reference items populated for this course profile matching your program profile or level.
                     </div>`;
             }
 
@@ -157,6 +170,7 @@
                 return;
             }
 
+            coursesList.innerHTML = ''; // Guard against duplication appending loops
             courses.forEach(courseTitle => {
                 const li = document.createElement('li');
                 li.className = 'list-group-item list-group-item-action course-card d-flex align-items-center py-3';
@@ -192,6 +206,7 @@
         }
     }
 
+    // Fixed trailing parenthesis initialization layout bug causing script breakdown
     document.addEventListener("DOMContentLoaded", () => {
         loadCourses();
         
@@ -199,5 +214,5 @@
         const refreshSlides = document.getElementById('refreshSlides');
         if(refreshCourses) refreshCourses.addEventListener('click', loadCourses);
         if(refreshSlides) refreshSlides.addEventListener('click', loadSlides);
-    })();
+    });
 })();

@@ -1099,10 +1099,12 @@ app.get("/api/categories", async (req, res) => {
   }
 });
 
-// GET /api/resources - Only approved items for the public grid
+// GET /api/resources - Contextual routing for master vault & marketplace grids
 app.get("/api/resources", async (req, res) => {
   try {
-    const query = `
+    const { courseId, master, programId, level } = req.query;
+
+    let query = `
       SELECT 
         r.id,
         r.title,
@@ -1124,13 +1126,47 @@ app.get("/api/resources", async (req, res) => {
       FROM resources r
       LEFT JOIN resource_categories c ON r.category_id = c.id
       WHERE r.status = 'approved'
-      ORDER BY r.created_at DESC
     `;
-    const { rows } = await db.pool.query(query);
-    res.json(rows);
+
+    const queryParams = [];
+
+    // 1. Optional Course Filter (Used heavily by the course list selection layout)
+    if (courseId) {
+      queryParams.push(courseId);
+      query += ` AND r.course_id = $${queryParams.length}`;
+    }
+
+    // 2. Structural Split: Master Vault Context vs. General Marketplace
+    if (master === "true") {
+      // Enforce strict master compilation filtering
+      query += ` AND (r.is_master_compiled = true OR r.is_master_compiled = 'true')`;
+
+      // Enforce student program alignment
+      if (programId) {
+        queryParams.push(programId);
+        query += ` AND r.program_id = $${queryParams.length}`;
+      }
+
+      // Enforce student level alignment
+      if (level) {
+        queryParams.push(parseInt(level, 10) || 100);
+        query += ` AND r.level = $${queryParams.length}`;
+      }
+    } else {
+      // Marketplace logic: Hide master-compiled tracks completely to isolate standard submissions
+      query += ` AND (r.is_master_compiled = false OR r.is_master_compiled IS NULL)`;
+    }
+
+    // Append standard descending sorting order
+    query += ` ORDER BY r.created_at DESC`;
+
+    const { rows } = await db.pool.query(query, queryParams);
+    
+    // Returns response envelope that perfectly bridges dashboard-modern.js and resources.js
+    res.json({ resources: rows });
   } catch (e) {
     console.error("Backend resource extraction error:", e);
-    res.status(500).json({ ok: false, message: "Failed to fetch library" });
+    res.status(500).json({ ok: false, message: "Failed to fetch library resources" });
   }
 });
 
