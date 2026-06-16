@@ -29,9 +29,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderSkeletons();
 
     try {
-      const [cats, resources, session] = await Promise.all([
+      const [cats, resourceResponse, session] = await Promise.all([
         window.api.fetch("/api/categories"),
-        window.api.fetch("/api/resources"),
+        window.api.fetch("/api/resources"), // This returns { resources: [...] }
         window.api.fetch("/api/session"),
       ]);
 
@@ -57,7 +57,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       if (cats && Array.isArray(cats)) {
-        // Prevent duplication bugs on hot-reloading loops
         catContainer.innerHTML = `<span class="badge rounded-pill category-pill active" data-cat="all">All Resources</span>`;
         catContainer.querySelector('.category-pill').onclick = (e) => filterByCategory("all", e);
 
@@ -71,9 +70,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
       }
 
-      const rawResources = Array.isArray(resources) ? resources : [];
+      // FIX: Unwrap the 'resources' key from the backend object envelope safely
+      const rawResources = resourceResponse && Array.isArray(resourceResponse.resources) 
+        ? resourceResponse.resources 
+        : [];
       
-      // Strict sanitization across case formatting styles and type evaluations
+      // Keep your dashboard filtering intact: Hide master files on this marketplace page
       allResources = rawResources.filter(res => {
         const isMaster = 
           res.is_master_compiled === true || 
