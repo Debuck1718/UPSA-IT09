@@ -8,6 +8,10 @@ const helmet = require("helmet");
 const bcrypt = require("bcryptjs");
 const { v4: uuidv4 } = require("uuid");
 const { createClient } = require("@supabase/supabase-js");
+const crypto = require("crypto");
+const { Resend } = require("resend");
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1805,30 +1809,155 @@ app.post("/api/admin/categories", requireAdmin, async (req, res) => {
   }
 });
 
-// Step 1: Send the email
 app.post("/api/auth/forgot-password", async (req, res) => {
-  const { email } = req.body;
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: "https://www.evantrahub.me/reset-password.html",
-  });
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
 
-  if (error) {
-    console.error("FULL AUTH ERROR:", JSON.stringify(error, null, 2));
-    return res.status(400).json({ ok: false, message: error.message });
+    const safeResponse = {
+      ok: true,
+      message: "If an account exists, a reset link has been sent.",
+    };
+
+    if (!email) return res.json(safeResponse);
+
+    const user = await db.findUserByEmail(email);
+    if (!user) return res.json(safeResponse);
+
+    // Invalidate old unused reset links
+    await db.pool.query(
+      `
+      UPDATE password_reset_tokens
+      SET used_at = now()
+      WHERE user_id = $1
+        AND used_at IS NULL
+      `,
+      [user.id]
+    );
+
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+
+    await db.pool.query(
+      `
+      INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+      VALUES ($1, $2, now() + interval '30 minutes')
+      `,
+      [user.id, tokenHash]
+    );
+
+    const baseUrl = process.env.APP_BASE_URL || "https://www.evantrahub.me";
+    const resetLink = `${baseUrl}/reset-password.html?token=${rawToken}`;
+
+    const sent = await resend.emails.send({
+      from: process.env.RESET_EMAIL_FROM,
+      to: email,
+      subject: "Reset your Evantrahub password",
+      html: `
+        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;">
+          <h2>Reset your Acadex password</h2>
+          <p>Hello ${user.first_name || user.full_name || "there"},</p>
+          <p>We received a request to reset your Evantrahub password.</p>
+          <p>
+            <a href="${resetLink}" style="background:#0d6efd;color:#ffffff;padding:12px 18px;text-decoration:none;border-radius:8px;display:inline-block;">
+              Reset Password
+            </a>
+          </p>
+          <p>This link expires in 30 minutes.</p>
+          <p>If you did not request this, you can safely ignore this email.</p>
+        </div>
+      `,
+    });
+
+    if (sent.error) {
+      console.error("Resend error:", sent.error);
+      return res.status(500).json({
+        ok: false,
+        message: "Failed to send reset email",
+      });
+    }
+
+    return res.json(safeResponse);
+  } catch (e) {
+    console.error("Forgot password error:", e);
+    return res.status(500).json({
+      ok: false,
+      message: "Failed to send reset email",
+    });
   }
-  res.json({ ok: true });
 });
 
 app.post("/api/auth/reset-password", async (req, res) => {
-    const { password } = req.body;
+  try {
+    const token = String(req.body.token || "").trim();
+    const password = String(req.body.password || "");
 
-    const { error } = await supabase.auth.updateUser({ password });
-
-    if (error) {
-        return res.status(400).json({ ok: false, message: error.message });
+    if (!token || !password) {
+      return res.status(400).json({
+        ok: false,
+        message: "Token and password are required",
+      });
     }
-    
-    res.json({ ok: true, message: "Password updated successfully" });
+
+    if (password.length < 8) {
+      return res.status(400).json({
+        ok: false,
+        message: "Password must be at least 8 characters",
+      });
+    }
+
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+    const found = await db.pool.query(
+      `
+      SELECT id, user_id
+      FROM password_reset_tokens
+      WHERE token_hash = $1
+        AND used_at IS NULL
+        AND expires_at > now()
+      LIMIT 1
+      `,
+      [tokenHash]
+    );
+
+    if (!found.rowCount) {
+      return res.status(400).json({
+        ok: false,
+        message: "Invalid or expired reset link",
+      });
+    }
+
+    const reset = found.rows[0];
+    const passwordHash = bcrypt.hashSync(password, 10);
+
+    await db.pool.query("BEGIN");
+
+    await db.pool.query(
+      "UPDATE users_app SET password_hash = $1 WHERE id = $2",
+      [passwordHash, reset.user_id]
+    );
+
+    await db.pool.query(
+      "UPDATE password_reset_tokens SET used_at = now() WHERE id = $1",
+      [reset.id]
+    );
+
+    await db.pool.query("COMMIT");
+
+    return res.json({
+      ok: true,
+      message: "Password updated successfully",
+    });
+  } catch (e) {
+    try {
+      await db.pool.query("ROLLBACK");
+    } catch (_) {}
+
+    console.error("Reset password error:", e);
+    return res.status(500).json({
+      ok: false,
+      message: "Password reset failed",
+    });
+  }
 });
 
 // GET /api/user/profile-full
