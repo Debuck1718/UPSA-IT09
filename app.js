@@ -605,11 +605,13 @@ app.post("/api/courses/manage", async (req, res) => {
   try {
     const u = req.session?.user;
     if (!u) return res.status(401).json({ ok: false, message: "Unauthorized" });
+    
     const allowed = new Set(["rep", "admin", "teacher"]);
     if (!allowed.has(u.role))
       return res.status(403).json({ ok: false, message: "Forbidden" });
 
-    const title = (req.body?.title || "").toString().trim();
+    // Handle both raw req.body formats gracefully
+    const title = (req.body?.title || req.body?.courseTitle || "").toString().trim();
     if (!title)
       return res.status(400).json({ ok: false, message: "Title is required" });
 
@@ -618,7 +620,14 @@ app.post("/api/courses/manage", async (req, res) => {
         .status(500)
         .json({ ok: false, message: "Course title storage not available" });
     }
-    await db.addCourseTitleForClassGroupId(u.classGroupId, title);
+
+    // FIX: Fall back to snake_case column property populated from users_app table
+    const targetClassGroupId = u.class_group_id || u.classGroupId;
+    if (!targetClassGroupId) {
+      return res.status(400).json({ ok: false, message: "User class group identifier missing from session" });
+    }
+
+    await db.addCourseTitleForClassGroupId(targetClassGroupId, title);
     return res.json({ ok: true, message: "Added", title });
   } catch (e) {
     console.error("Add course title error:", e);

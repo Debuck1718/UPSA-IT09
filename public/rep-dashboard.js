@@ -308,12 +308,20 @@
 
     try {
       if (newTitle) {
-        await apiFetch("/api/courses/manage", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: newTitle }),
-        }).catch(() => {});
-      }
+  await apiFetch("/api/courses/manage", {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      "Accept": "application/json"
+    },
+    body: JSON.stringify({ 
+      title: newTitle,
+      courseTitle: newTitle // Safe redundancy parameter
+    }),
+  }).catch((err) => {
+    console.error("Course title creation failed:", err);
+  });
+}
 
       await apiFetch("/api/upload", { method: "POST", body: fd });
       showAlert("success", "Resource uploaded successfully!");
