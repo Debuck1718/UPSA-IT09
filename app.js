@@ -560,18 +560,17 @@ app.get("/api/check-availability", async (req, res) => {
   }
 });
 
-// Courses endpoints
-// List distinct legacy/global course names across all slides
 app.get("/api/courses", async (req, res) => {
   try {
     if (!db.listCourses) {
       return res.json({ ok: true, courses: [] });
     }
-    // If user is logged in, filter by their classGroupId
+    
     let classGroupId = null;
-    if (req.session && req.session.user && req.session.user.classGroupId) {
-      classGroupId = req.session.user.classGroupId;
+    if (req.session && req.session.user) {
+      classGroupId = req.session.user.class_group_id || req.session.user.classGroupId;
     }
+    
     const courses = await db.listCourses(classGroupId);
     return res.json({ ok: true, courses });
   } catch (e) {
@@ -582,15 +581,19 @@ app.get("/api/courses", async (req, res) => {
   }
 });
 
-// List course titles for current user's classGroupId (rep/student)
+
 app.get("/api/courses/mine", async (req, res) => {
   try {
     const u = req.session?.user;
     if (!u) return res.status(401).json({ ok: false, message: "Unauthorized" });
+    
     if (!db.listCourseTitlesForClassGroupId) {
       return res.json({ ok: true, titles: [] });
     }
-    const titles = await db.listCourseTitlesForClassGroupId(u.classGroupId);
+    
+    const targetGroupId = u.class_group_id || u.classGroupId;
+    
+    const titles = await db.listCourseTitlesForClassGroupId(targetGroupId);
     return res.json({ ok: true, titles });
   } catch (e) {
     console.error("List my course titles error:", e);
@@ -600,7 +603,6 @@ app.get("/api/courses/mine", async (req, res) => {
   }
 });
 
-// Add course title for current rep/teacher/admin (for this classGroupId)
 app.post("/api/courses/manage", async (req, res) => {
   try {
     const u = req.session?.user;

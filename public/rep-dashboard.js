@@ -308,19 +308,23 @@
 
     try {
       if (newTitle) {
-  await apiFetch("/api/courses/manage", {
-    method: "POST",
-    headers: { 
-      "Content-Type": "application/json",
-      "Accept": "application/json"
-    },
-    body: JSON.stringify({ 
-      title: newTitle,
-      courseTitle: newTitle // Safe redundancy parameter
-    }),
-  }).catch((err) => {
+  try {
+    await apiFetch("/api/courses/manage", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({ 
+        title: newTitle,
+        courseTitle: newTitle 
+      }),
+    });
+  } catch (err) {
     console.error("Course title creation failed:", err);
-  });
+    showAlert("danger", "Failed to initialize new course category.");
+    return; 
+  }
 }
 
       await apiFetch("/api/upload", { method: "POST", body: fd });
