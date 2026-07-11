@@ -1848,40 +1848,47 @@ app.post("/api/auth/forgot-password", async (req, res) => {
     const baseUrl = process.env.APP_BASE_URL || "https://www.evantrahub.me";
     const resetLink = `${baseUrl}/reset-password.html?token=${rawToken}`;
 
+    // SAFECRACK: Fallback sender address if env is unparsed or missing
+    const senderEmail = process.env.RESET_EMAIL_FROM || "noreply@evantrahub.me";
+
+    console.log(`Attempting to send mail via Resend from: ${senderEmail} to: ${email}`);
+
     const sent = await resend.emails.send({
-      from: process.env.RESET_EMAIL_FROM,
+      from: senderEmail,
       to: email,
       subject: "Reset your Evantrahub password",
       html: `
-        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;">
-          <h2>Reset your Acadex password</h2>
+        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;max-width:500px;margin:auto;border:1px solid #e5e7eb;padding:20px;border-radius:12px;">
+          <h2 style="color:#0d6efd;">Reset your Evantrahub password</h2>
           <p>Hello ${user.first_name || user.full_name || "there"},</p>
           <p>We received a request to reset your Evantrahub password.</p>
-          <p>
-            <a href="${resetLink}" style="background:#0d6efd;color:#ffffff;padding:12px 18px;text-decoration:none;border-radius:8px;display:inline-block;">
+          <p style="margin:25px 0;">
+            <a href="${resetLink}" style="background:#0d6efd;color:#ffffff;padding:12px 18px;text-decoration:none;border-radius:8px;display:inline-block;font-weight:bold;">
               Reset Password
             </a>
           </p>
-          <p>This link expires in 30 minutes.</p>
-          <p>If you did not request this, you can safely ignore this email.</p>
+          <p style="color:#6b7280;font-size:0.85em;">This link expires in 30 minutes.</p>
+          <p style="color:#6b7280;font-size:0.85em;">If you did not request this, you can safely ignore this email.</p>
         </div>
       `,
     });
 
-    if (sent.error) {
-      console.error("Resend error:", sent.error);
+    // Check both standard response variations safely
+    if (sent && sent.error) {
+      console.error("Resend API rejected transmission:", sent.error);
       return res.status(500).json({
         ok: false,
-        message: "Failed to send reset email",
+        message: `Mailer Error: ${sent.error.message || "Rejected by provider"}`,
       });
     }
 
     return res.json(safeResponse);
   } catch (e) {
-    console.error("Forgot password error:", e);
+    // CRITICAL DEBUG: This exposes exactly what error is breaking your execution in server logs
+    console.error("CRITICAL EXCEPTION inside forgot-password route:", e);
     return res.status(500).json({
       ok: false,
-      message: "Failed to send reset email",
+      message: `Internal processing error: ${e.message}`,
     });
   }
 });
@@ -1927,7 +1934,7 @@ app.post("/api/auth/reset-password", async (req, res) => {
     }
 
     const reset = found.rows[0];
-    const passwordHash = bcrypt.hashSync(password, 10);
+    const passwordHash = crypto.createHash('sha256').update(String(password)).digest('hex');
 
     await db.pool.query("BEGIN");
 

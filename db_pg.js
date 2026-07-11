@@ -1,16 +1,5 @@
-// List all unique course titles from slides (optionally by classGroupId)
-async function listCourses(classGroupId = null) {
-  let query = 'select distinct course_title from slides';
-  let params = [];
-  if (classGroupId) {
-    query += ' where class_group_id = $1';
-    params = [classGroupId];
-  }
-  query += ' order by course_title asc';
-  const { rows } = await pool.query(query, params);
-  return rows.map(r => r.course_title);
-}
 const { Pool } = require('pg');
+const crypto = require('crypto'); // Moved up to use globally across helpers
 
 // Singleton Pool forcing relaxed TLS (Supabase Session Pooler compatible)
 function getPool() {
@@ -26,6 +15,19 @@ function getPool() {
   return globalThis.__PG_POOL;
 }
 const pool = getPool();
+
+// List all unique course titles from slides (optionally by classGroupId)
+async function listCourses(classGroupId = null) {
+  let query = 'select distinct course_title from slides';
+  let params = [];
+  if (classGroupId) {
+    query += ' where class_group_id = $1';
+    params = [classGroupId];
+  }
+  query += ' order by course_title asc';
+  const { rows } = await pool.query(query, params);
+  return rows.map(r => r.course_title);
+}
 
 // Normalizers and IDs
 function normalizeClassGroup(input) {
@@ -79,7 +81,14 @@ async function initSchema() {
           class_group_id text not null,
           password_hash text not null,
           email_verified boolean not null default false,
-          created_at timestamptz not null default now()
+          created_at timestamptz not null default now(),
+          is_rep boolean default false,
+          is_creator boolean default false,
+          is_leader boolean default false,
+          bio text,
+          avatar_url text,
+          push_subscription jsonb,
+          current_level integer default 100
         );
       `);
     }
@@ -119,6 +128,21 @@ async function initSchema() {
         );
       `);
     }
+
+    // ADDED: Password Reset Tokens schema configuration setup
+    const t = await client.query(`select to_regclass('public.password_reset_tokens') as exists`);
+    if (!t.rows[0].exists) {
+      await client.query(`
+        create table if not exists password_reset_tokens (
+          id serial primary key,
+          user_id int not null references users_app(id) on delete cascade,
+          token_hash text not null,
+          created_at timestamptz not null default now(),
+          expires_at timestamptz not null,
+          used_at timestamptz
+        );
+      `);
+    }
   } finally {
     client.release();
   }
@@ -134,6 +158,7 @@ async function findUserByEmail(email) {
   const { rows } = await pool.query('select * from users_app where email=$1', [email]);
   return rows[0] || null;
 }
+
 async function createUser({ 
   studentId, 
   full_name, 
@@ -144,21 +169,17 @@ async function createUser({
   role, 
   institutionId, 
   academicYearStart,
-  current_level // <-- 1. Accept the dynamically calculated level from the route
+  current_level
 }) {
   const programId = programIdFromName(program || 'General');
-  
   const instId = institutionIdFromName(institutionId || 'general');
-  
   const academicYear = academicYearStart || new Date().getFullYear();
   const cohortId = makeCohortId(instId, programId, academicYear);
   const classGroupCode = normalizeClassGroup(classGroup);
   const classGroupId = makeClassGroupId(cohortId, classGroupCode);
   
-  const crypto = require('crypto');
   const passwordHash = crypto.createHash('sha256').update(String(password)).digest('hex');
 
-  // 2. Added current_level to the insert statement columns and added $12 to values
   const { rows } = await pool.query(
     `insert into users_app (
       student_id, full_name, email, role, institution_id, 
@@ -171,11 +192,12 @@ async function createUser({
       studentId, full_name, email, role || 'student', 
       instId, program || null, programId, cohortId, 
       classGroupCode, classGroupId, passwordHash,
-      current_level || 100 // <-- 3. Append to query parameters with a safe level 100 fallback
+      current_level || 100
     ]
   );
   return rows[0];
 }
+
 // Course titles
 async function listCourseTitlesForClassGroupId(classGroupId) {
   const { rows } = await pool.query('select title from course_titles where class_group_id=$1 order by title asc', [classGroupId]);
@@ -205,7 +227,7 @@ async function getSlideById(id) {
   return rows[0] || null;
 }
 
-// Admin: list all users (basic fields)
+// Admin: list all users
 async function getAllUsers() {
   const { rows } = await pool.query(`
     SELECT 
@@ -234,22 +256,18 @@ async function getAllUsers() {
 module.exports = {
   pool,
   initSchema,
-  // utils
   normalizeClassGroup,
   slugify,
   programIdFromName,
   institutionIdFromName,
   makeCohortId,
   makeClassGroupId,
-  // users
   findUserByStudentId,
   findUserByEmail,
   createUser,
   getAllUsers,
-  // titles
   listCourseTitlesForClassGroupId,
   addCourseTitleForClassGroupId,
-  // slides
   insertSlide,
   listSlidesByClassGroupId,
   getSlideById,
