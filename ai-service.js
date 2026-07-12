@@ -18,15 +18,10 @@ async function extractTextFromBuffer(buffer) {
 }
 
 /**
- * Communicates with Gemini using conversation history and document context
+ * Communicates with Gemini using conversation history and the fully constructed prompt
  */
-async function getGeminiResponse(history, prompt, contextContent = "") {
-  // 1. Prepare the prompt with the extracted content context
-  const fullPrompt = contextContent 
-    ? `Context from course materials:\n${contextContent.substring(0, 4000)}\n\nUser Question: ${prompt}`
-    : prompt;
-
-  // 2. Format history and current prompt
+async function getGeminiResponse(history, fullPrompt) {
+  // 1. Format history and the fullPrompt constructed in app.js
   const contents = [
     ...history.map(msg => ({
       role: msg.role === 'model' ? 'model' : 'user',
@@ -35,7 +30,7 @@ async function getGeminiResponse(history, prompt, contextContent = "") {
     { role: "user", parts: [{ text: fullPrompt }] }
   ];
 
-  // 3. Perform the REST call
+  // 2. Perform the REST call
   const response = await fetch(API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

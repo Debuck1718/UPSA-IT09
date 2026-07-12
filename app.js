@@ -2107,7 +2107,6 @@ async function getOrCacheDocumentText(resourceId, objectPath) {
   return text;
 }
 
-// --- CHAT ROUTE ---
 app.post("/api/chat", async (req, res) => {
   const { question, course } = req.body;
   const user = req.session?.user;
@@ -2116,8 +2115,12 @@ app.post("/api/chat", async (req, res) => {
   req.session.chatHistory = req.session.chatHistory || [];
 
   try {
-    // 1. Fetch relevant slides
-    const slides = await db.query("SELECT id, object_path FROM slides WHERE course_title = $1", [course]);
+    // 1. Fetch relevant slides AND master vault resources
+    const [slides, masterVault] = await Promise.all([
+      db.query("SELECT id, title, object_path FROM slides WHERE course_title = $1", [course]),
+      db.query("SELECT title FROM resources WHERE is_master_compiled = true AND program_id = $1 AND level = $2", 
+               [user.program_id, user.level])
+    ]);
     
     // 2. Fetch/Cache content
     let contextContent = "Context from course materials:\n";
@@ -2126,10 +2129,29 @@ app.post("/api/chat", async (req, res) => {
       contextContent += text.substring(0, 1000) + "\n"; 
     }
 
-    // 3. Send to Gemini
-    const answer = await getGeminiResponse(req.session.chatHistory, question, contextContent);
+    // 3. Construct the flexible prompt
+    const prompt = `
+      Role: You are an helpful and versatile academic assistant for Evantrahub.
+      
+      Context:
+      - Course: ${course || "None selected"}
+      - Slides: ${slides.rows.map(s => s.title).join(", ")}
+      - Vault: ${masterVault.rows.map(m => m.title).join(", ")}
+      - Document Content: ${contextContent.substring(0, 2000)}
+      
+      Instructions:
+      1. First, search for the answer in the provided 'Document Content' and 'Vault' context.
+      2. If the answer is found in the course materials, prioritize it and cite the relevant source.
+      3. If the answer is NOT found in the course materials, use your general knowledge to answer the user's question accurately.
+      4. Always maintain an encouraging and professional tone.
+      
+      User Question: ${question}
+    `;
 
-    // 4. Update session
+    // 4. Send the full prompt to Gemini
+    const answer = await getGeminiResponse(req.session.chatHistory, prompt);
+
+    // 5. Update session
     req.session.chatHistory.push({ role: "user", text: question });
     req.session.chatHistory.push({ role: "model", text: answer });
 
