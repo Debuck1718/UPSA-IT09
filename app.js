@@ -15,6 +15,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const { getGeminiResponse, extractTextFromBuffer } = require("./ai-service");
 
 // 1. GLOBAL SECURITY & PARSERS (MUST BE FIRST)
 app.set("trust proxy", 1);
@@ -2083,69 +2084,61 @@ app.post("/api/user/update-avatar", async (req, res) => {
   }
 });
 
-const { getGeminiResponse, extractTextFromBuffer } = require("./ai-service");
+async function getOrCacheDocumentText(resourceId, objectPath) {
+  // 1. Try to get existing content from your database
+  const cached = await db.query("SELECT extracted_text FROM slides WHERE id = $1", [resourceId]);
+  
+  if (cached.rows && cached.rows.length > 0 && cached.rows[0].extracted_text) {
+    return cached.rows[0].extracted_text;
+  }
 
-// Inside your app.post("/api/chat", ...)
-// 1. Download file from Supabase
-const { data, error } = await supabase.storage.from('slides').download(path);
+  // 2. If not found, download from Supabase
+  const { data, error } = await supabase.storage.from('slides').download(objectPath);
+  if (error) {
+    console.error("Supabase download error:", error);
+    return "[File inaccessible]";
+  }
 
-// 2. Parse it
-const arrayBuffer = await data.arrayBuffer();
-const extractedText = await extractTextFromBuffer(Buffer.from(arrayBuffer));
+  // 3. Parse and Save
+  const arrayBuffer = await data.arrayBuffer();
+  const text = await extractTextFromBuffer(Buffer.from(arrayBuffer));
 
-// 3. Send to Gemini
-const answer = await getGeminiResponse(req.session.chatHistory, question, extractedText);
+  await db.query("UPDATE slides SET extracted_text = $1 WHERE id = $2", [text, resourceId]);
+  return text;
+}
 
+// --- CHAT ROUTE ---
 app.post("/api/chat", async (req, res) => {
   const { question, course } = req.body;
   const user = req.session?.user;
-  if (!user) return res.status(401).json({ ok: false });
+  if (!user) return res.status(401).json({ ok: false, message: "Unauthorized" });
 
   req.session.chatHistory = req.session.chatHistory || [];
 
   try {
-    // 1. Fetch relevant files for the course (get their IDs and paths)
+    // 1. Fetch relevant slides
     const slides = await db.query("SELECT id, object_path FROM slides WHERE course_title = $1", [course]);
     
-    // 2. Fetch all extracted content for these files using our cache helper
-    let contextContent = "Content from course materials:\n";
+    // 2. Fetch/Cache content
+    let contextContent = "Context from course materials:\n";
     for (const slide of slides.rows) {
       const text = await getOrCacheDocumentText(slide.id, slide.object_path);
-      contextContent += text.substring(0, 1000) + "\n"; // Chunk to stay within limits
+      contextContent += text.substring(0, 1000) + "\n"; 
     }
 
     // 3. Send to Gemini
     const answer = await getGeminiResponse(req.session.chatHistory, question, contextContent);
 
+    // 4. Update session
     req.session.chatHistory.push({ role: "user", text: question });
     req.session.chatHistory.push({ role: "model", text: answer });
 
     return res.json({ ok: true, answer });
   } catch (error) {
-    console.error("Chat Error:", error);
+    console.error("AI Chat Error:", error);
     res.status(500).json({ ok: false, message: "AI Assistant error." });
   }
 });
-
-// Ensure 'supabase' and 'db' are globally available or imported
-async function getOrCacheDocumentText(resourceId, objectPath) {
-  const cached = await db.query("SELECT extracted_text FROM slides WHERE id = $1", [resourceId]);
-  
-  if (cached.rows[0]?.extracted_text) {
-    return cached.rows[0].extracted_text;
-  }
-
-  // Fetch from Supabase
-  const { data, error } = await supabase.storage.from('slides').download(objectPath);
-  if (error) return "[File inaccessible]";
-
-  const arrayBuffer = await data.arrayBuffer();
-  const text = await extractTextFromBuffer(Buffer.from(arrayBuffer));
-
-  // Update DB cache
-  await db.query("UPDATE slides SET extracted_text = $1 WHERE id = $2", [text, resourceId]);
-  return text;
-}
 
 // health endpoint for keepalive
 app.get("/healthz", (req, res) => res.status(200).send("ok"));
