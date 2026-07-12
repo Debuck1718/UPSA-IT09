@@ -28,15 +28,20 @@
     const headers = { Accept: "application/json", ...(opts.headers || {}) };
 
     if (opts.body && !(opts.body instanceof FormData)) {
-      headers["Content-Type"] = "application/json";
-      opts.body = JSON.stringify(opts.body);
+        headers["Content-Type"] = "application/json";
+        opts.body = JSON.stringify(opts.body);
+    } 
+    // ADD THIS ELSE IF BLOCK
+    else if (opts.body instanceof FormData) {
+        // Do NOT set Content-Type; let browser set it with the correct boundary
+        delete headers["Content-Type"]; 
     }
 
     const fetchOpts = {
-      credentials: "include",
-      method: opts.method || "GET",
-      ...opts,
-      headers: headers,
+        credentials: "include",
+        method: opts.method || "GET",
+        ...opts,
+        headers: headers,
     };
 
     console.debug(`[API] ${fetchOpts.method} ${url}`);
