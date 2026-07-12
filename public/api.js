@@ -27,21 +27,23 @@
     const url = new URL(normalizedPath, `${API_BASE}/`).href;
     const headers = { Accept: "application/json", ...(opts.headers || {}) };
 
-    if (opts.body && !(opts.body instanceof FormData)) {
-        headers["Content-Type"] = "application/json";
-        opts.body = JSON.stringify(opts.body);
-    } 
-    // ADD THIS ELSE IF BLOCK
-    else if (opts.body instanceof FormData) {
-        // Do NOT set Content-Type; let browser set it with the correct boundary
-        delete headers["Content-Type"]; 
+    // FIX: Only stringify if it is a plain object, NOT a string or FormData
+    if (
+      opts.body &&
+      !(opts.body instanceof FormData) &&
+      typeof opts.body === "object"
+    ) {
+      headers["Content-Type"] = "application/json";
+      opts.body = JSON.stringify(opts.body);
+    } else if (opts.body instanceof FormData) {
+      delete headers["Content-Type"];
     }
 
     const fetchOpts = {
-        credentials: "include",
-        method: opts.method || "GET",
-        ...opts,
-        headers: headers,
+      credentials: "include",
+      method: opts.method || "GET",
+      ...opts,
+      headers: headers,
     };
 
     console.debug(`[API] ${fetchOpts.method} ${url}`);
@@ -56,8 +58,8 @@
 
     // Handle session expiration (auto-redirect)
     if (res.status === 401) {
-        window.location.assign('/index.html');
-        return;
+      window.location.assign("/index.html");
+      return;
     }
 
     if (!res.ok || (data && data.ok === false)) {
@@ -82,7 +84,9 @@
       let permission = Notification.permission;
       if (permission === "default") {
         if (!prompt) {
-          console.info("Evantrahub push: permission not requested until user interaction.");
+          console.info(
+            "Evantrahub push: permission not requested until user interaction.",
+          );
           return false;
         }
         permission = await Notification.requestPermission();
@@ -118,7 +122,6 @@
     }
   }
 
- 
   async function getMyCurriculum() {
     return safeFetch("/api/my-program-courses");
   }
@@ -136,12 +139,13 @@
     get: (path, opts) => safeFetch(path, { ...opts, method: "GET" }),
     post: (path, body, opts) =>
       safeFetch(path, { ...opts, method: "POST", body }),
-    unsubscribePush: () => safeFetch("/api/notifications/unsubscribe", { method: "POST" }),
-    
+    unsubscribePush: () =>
+      safeFetch("/api/notifications/unsubscribe", { method: "POST" }),
+
     // Domain Specific Logic
     getCurriculum: getMyCurriculum,
     getMasterVault: getMasterResources,
-    
+
     initPush: initPushNotifications,
   };
 })(window);

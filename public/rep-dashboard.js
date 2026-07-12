@@ -70,12 +70,20 @@
         return;
       }
 
-      const raw = currentUser.fullName || currentUser.name || currentUser.username || currentUser.studentId || "Rep";
-      const firstName = currentUser.firstName || String(raw).trim().split(/\s+/)[0] || "Rep";
-      
-      const nameEls = document.querySelectorAll("#repWelcomeName, .sidebar .fw-bold, #profileName");
-      nameEls.forEach(el => el.textContent = firstName);
-      
+      const raw =
+        currentUser.fullName ||
+        currentUser.name ||
+        currentUser.username ||
+        currentUser.studentId ||
+        "Rep";
+      const firstName =
+        currentUser.firstName || String(raw).trim().split(/\s+/)[0] || "Rep";
+
+      const nameEls = document.querySelectorAll(
+        "#repWelcomeName, .sidebar .fw-bold, #profileName",
+      );
+      nameEls.forEach((el) => (el.textContent = firstName));
+
       const av = document.getElementById("repAvatar");
       if (av) av.src = "/images/avatar.png";
     } catch (err) {
@@ -95,15 +103,24 @@
     try {
       if (!currentUser) return;
 
-      let rawProgram = currentUser.program_id || currentUser.program || "informationtechnology";
-      let dbProgramId = String(rawProgram).toLowerCase().replace(/\s+/g, "").trim();
+      let rawProgram =
+        currentUser.program_id ||
+        currentUser.program ||
+        "informationtechnology";
+      let dbProgramId = String(rawProgram)
+        .toLowerCase()
+        .replace(/\s+/g, "")
+        .trim();
       if (!dbProgramId) dbProgramId = "informationtechnology";
 
-      const currentLevel = currentUser.current_level || currentUser.level || 100;
+      const currentLevel =
+        currentUser.current_level || currentUser.level || 100;
 
       const masterUrl = `/api/resources?master=true&programId=${encodeURIComponent(dbProgramId)}&level=${encodeURIComponent(currentLevel)}`;
       const masterData = await apiFetch(masterUrl);
-      const masterResources = Array.isArray(masterData.resources) ? masterData.resources : [];
+      const masterResources = Array.isArray(masterData.resources)
+        ? masterData.resources
+        : [];
 
       if (masterResources.length > 0) {
         masterVaultGrid.innerHTML = masterResources
@@ -186,7 +203,8 @@
 
   async function loadCourses() {
     if (!coursesSlides) return;
-    coursesSlides.innerHTML = '<div class="text-center p-3 text-white-50">Loading catalog...</div>';
+    coursesSlides.innerHTML =
+      '<div class="text-center p-3 text-white-50">Loading catalog...</div>';
     coursesEmpty.classList.add("d-none");
 
     try {
@@ -209,8 +227,12 @@
 
       for (let i = 0; i < courses.length; i++) {
         const course = courses[i];
-        const slidesResp = await apiFetch(`/api/slides?courseTitle=${encodeURIComponent(course)}`);
-        const slides = Array.isArray(slidesResp.slides) ? slidesResp.slides : [];
+        const slidesResp = await apiFetch(
+          `/api/slides?courseTitle=${encodeURIComponent(course)}`,
+        );
+        const slides = Array.isArray(slidesResp.slides)
+          ? slidesResp.slides
+          : [];
 
         totalSlides += slides.length;
         recentCount += slides.filter((s) => {
@@ -230,9 +252,12 @@
           <div id="collapse${i}" class="accordion-collapse collapse" data-bs-parent="#repDashCoursesSlides">
             <div class="accordion-body p-0 text-dark">
               <ul class="list-group list-group-flush mb-0">
-                ${slides.length === 0 
-                  ? `<li class="list-group-item text-muted small">No slides available.</li>`
-                  : slides.map((s) => `
+                ${
+                  slides.length === 0
+                    ? `<li class="list-group-item text-muted small">No slides available.</li>`
+                    : slides
+                        .map(
+                          (s) => `
                     <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent">
                       <div class="text-truncate me-2">
                         <div class="fw-semibold text-dark small">${s.slideTitle || s.originalName || "Untitled Slide"}</div>
@@ -242,7 +267,9 @@
                         <button class="btn btn-sm btn-outline-primary" data-action="download" data-id="${s.id}"><i class="bi bi-download"></i></button>
                         <button class="btn btn-sm btn-outline-secondary" data-action="view" data-id="${s.id}"><i class="bi bi-eye"></i></button>
                       </div>
-                    </li>`).join("")
+                    </li>`,
+                        )
+                        .join("")
                 }
               </ul>
             </div>
@@ -262,7 +289,9 @@
           if (!id) return showAlert("danger", "Resource ID missing.");
 
           try {
-            const resp = await apiFetch(`/api/slides/${encodeURIComponent(id)}/url`);
+            const resp = await apiFetch(
+              `/api/slides/${encodeURIComponent(id)}/url`,
+            );
             if (!resp || !resp.url) throw new Error("URL not found");
             if (action === "view") {
               window.open(resp.url, "_blank");
@@ -280,52 +309,60 @@
         });
       });
     } catch (e) {
-      coursesSlides.innerHTML = '<div class="text-danger p-3">Error loading catalog.</div>';
+      coursesSlides.innerHTML =
+        '<div class="text-danger p-3">Error loading catalog.</div>';
     }
   }
 
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (!currentUser) return showAlert("danger", "Session expired. Please login again.");
+    if (!currentUser)
+      return showAlert("danger", "Session expired. Please login again.");
 
     const selectedTitle = selTitle?.value ? String(selTitle.value).trim() : "";
-    const newTitle = !newTitleInput.classList.contains("d-none") && newTitleInput.value
+    const newTitle =
+      !newTitleInput.classList.contains("d-none") && newTitleInput.value
         ? String(newTitleInput.value).trim()
         : "";
     const finalCourseTitle = newTitle || selectedTitle;
-    const slideTitle = document.getElementById("repDashSlideTitle")?.value.trim();
+    const slideTitle = document
+      .getElementById("repDashSlideTitle")
+      ?.value.trim();
 
-    if (!finalCourseTitle) return showAlert("danger", "Select or enter a course title.");
+    if (!finalCourseTitle)
+      return showAlert("danger", "Select or enter a course title.");
     if (!slideTitle) return showAlert("danger", "Provide a slide title.");
 
     const fd = new FormData(form);
     fd.set("courseTitle", finalCourseTitle);
     fd.set("slideTitle", slideTitle);
-    
-    fd.set("institution_id", currentUser.institution_id || currentUser.institutionId || "");
+
+    fd.set(
+      "institution_id",
+      currentUser.institution_id || currentUser.institutionId || "",
+    );
     fd.set("program_id", currentUser.program || currentUser.program_id || "");
-    fd.set("class_group_id", currentUser.class_group_id || currentUser.classGroupId || "");
+    fd.set(
+      "class_group_id",
+      currentUser.class_group_id || currentUser.classGroupId || "",
+    );
 
     try {
       if (newTitle) {
-  try {
-    await apiFetch("/api/courses/manage", {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      body: JSON.stringify({ 
-        title: newTitle,
-        courseTitle: newTitle 
-      }),
-    });
-  } catch (err) {
-    console.error("Course title creation failed:", err);
-    showAlert("danger", "Failed to initialize new course category.");
-    return; 
-  }
-}
+        try {
+          await apiFetch("/api/courses/manage", {
+            method: "POST",
+            body: {
+              title: newTitle,
+              courseTitle: newTitle,
+            },
+          });
+        } catch (err) {
+          console.error("Course title creation failed:", err);
+          showAlert("danger", "Failed to initialize new course category.");
+          return;
+        }
+      }
 
       await apiFetch("/api/upload", { method: "POST", body: fd });
       showAlert("success", "Resource uploaded successfully!");
@@ -350,10 +387,18 @@
     }
   }
 
-  document.getElementById("repLogoutBtn")?.addEventListener("click", handleLogout);
-  document.getElementById("mobileLogoutBtn")?.addEventListener("click", handleLogout);
-  document.getElementById("repDashRefreshCourses")?.addEventListener("click", loadCourses);
-  document.getElementById("refreshMasterVault")?.addEventListener("click", loadMasterVault);
+  document
+    .getElementById("repLogoutBtn")
+    ?.addEventListener("click", handleLogout);
+  document
+    .getElementById("mobileLogoutBtn")
+    ?.addEventListener("click", handleLogout);
+  document
+    .getElementById("repDashRefreshCourses")
+    ?.addEventListener("click", loadCourses);
+  document
+    .getElementById("refreshMasterVault")
+    ?.addEventListener("click", loadMasterVault);
 
   async function runBootSequence() {
     try {
@@ -362,12 +407,18 @@
       await loadMyTitles();
       await loadCourses();
 
-      if (window.api && window.api.initPush && Notification.permission === 'granted') {
+      if (
+        window.api &&
+        window.api.initPush &&
+        Notification.permission === "granted"
+      ) {
         await window.api.initPush({ prompt: false }).catch(() => {});
       }
     } catch (err) {
       console.error("Boot error:", err);
-      if (coursesSlides) coursesSlides.innerHTML = '<div class="text-danger p-3">System offline.</div>';
+      if (coursesSlides)
+        coursesSlides.innerHTML =
+          '<div class="text-danger p-3">System offline.</div>';
     }
   }
 
