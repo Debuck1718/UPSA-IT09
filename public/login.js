@@ -16,9 +16,7 @@
     alertEl.style.display = 'none';
   }
 
-  // FIXED: Simplified to use the api.js wrapper properly
   async function login(studentId, password) {
-    // We pass a raw object; window.api.fetch handles JSON.stringify and Headers
     return await window.api.fetch('/api/login', {
       method: 'POST',
       body: { studentId, password } 
@@ -37,7 +35,6 @@
       return;
     }
 
-    // Visual feedback
     const btn = form.querySelector('button[type="submit"]');
     const originalText = btn.innerHTML;
     btn.disabled = true;
@@ -48,24 +45,22 @@
       
       if (data && data.user) {
         const role = data.user.role;
-        
-        // Logical redirection based on your platform roles
-        let redirect = '';
-        if (role === 'admin') {
-          redirect = '/admin.html';
-        } else if (role === 'rep') {
-          redirect = '/rep-dashboard.html'; // Matches your file structure
-        } else {
-          redirect = '/dashboard-modern.html';
-        }
-
+        let redirect = role === 'admin' ? '/admin.html' : 
+                       role === 'rep' ? '/rep-dashboard.html' : 
+                       '/dashboard-modern.html';
         window.location.assign(redirect);
       } else {
         throw new Error(data.message || 'Invalid credentials');
       }
     } catch (err) {
-      // The api.js catch block usually passes the server's {message}
-      showAlert(err.message || 'Login failed. Check your ID/Password.');
+      // SECURITY: Log the real technical error to the console for you
+      console.error("DEBUG: Login error details:", err.message);
+
+      // SECURITY: Show the user a generic, friendly message
+      const userFriendlyMessage = 'Invalid Student ID or Password. Please double-check your credentials.';
+      
+      showAlert(userFriendlyMessage);
+      
       btn.disabled = false;
       btn.innerHTML = originalText;
     }
