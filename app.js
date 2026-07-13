@@ -2107,37 +2107,40 @@ async function getOrCacheDocumentText(resourceId, objectPath) {
   return text;
 }
 
-app.post("/api/chat", async (req, res) => {
+;app.post("/api/chat", async (req, res) => {
   const { question, course } = req.body;
   const user = req.session?.user;
+  
   if (!user) return res.status(401).json({ ok: false, message: "Unauthorized" });
 
   req.session.chatHistory = req.session.chatHistory || [];
 
   try {
     let contextContent = "";
-    let slides = { rows: [] };
-    let masterVault = { rows: [] };
-
-    // ONLY query the DB if a course is actually selected
+    
     if (course) {
-      [slides, masterVault] = await Promise.all([
-        db.query("SELECT id, object_path FROM slides WHERE course_title = $1", [course]),
-        db.query("SELECT title FROM resources WHERE is_master_compiled = true AND program_id = $1 AND level = $2", 
-                 [user.program_id, user.level])
-      ]);
-
-      for (const slide of slides.rows) {
-        const text = await getOrCacheDocumentText(slide.id, slide.object_path);
-        contextContent += text.substring(0, 1000) + "\n"; 
+      try {
+        // Fetch slides
+        const slides = await db.query("SELECT id, object_path FROM slides WHERE course_title = $1", [course]);
+        
+        // Fetch/Cache content with a fallback if parsing fails
+        for (const slide of slides.rows) {
+          try {
+            const text = await getOrCacheDocumentText(slide.id, slide.object_path);
+            contextContent += text.substring(0, 800) + "\n"; 
+          } catch (e) {
+            console.error(`Skipping slide ${slide.id} due to parse error:`, e);
+          }
+        }
+      } catch (dbError) {
+        console.error("Database query failed:", dbError);
       }
     }
 
     const prompt = `
-      Role: You are a helpful academic assistant.
+      Role: You are a helpful academic assistant for Evantrahub.
       Context: Course is ${course || "None"}.
-      ${contextContent ? `Document Content: ${contextContent}` : "No specific course documents provided."}
-      
+      ${contextContent ? `Course Materials: ${contextContent}` : "No specific course materials found."}
       User Question: ${question}
     `;
 
@@ -2148,9 +2151,9 @@ app.post("/api/chat", async (req, res) => {
 
     return res.json({ ok: true, answer });
   } catch (error) {
-    // This will print the actual error to your server logs
     console.error("CRITICAL AI CHAT ERROR:", error);
-    return res.status(500).json({ ok: false, message: "Server-side error. Check logs." });
+    // Return a clean error instead of letting the process hang
+    return res.status(500).json({ ok: false, message: "AI Assistant is currently unavailable." });
   }
 });
 
