@@ -2084,79 +2084,29 @@ app.post("/api/user/update-avatar", async (req, res) => {
   }
 });
 
-async function getOrCacheDocumentText(resourceId, objectPath) {
-  // 1. Try to get existing content from your database
-  const cached = await db.query("SELECT extracted_text FROM slides WHERE id = $1", [resourceId]);
-  
-  if (cached.rows && cached.rows.length > 0 && cached.rows[0].extracted_text) {
-    return cached.rows[0].extracted_text;
-  }
-
-  // 2. If not found, download from Supabase
-  if (!supabase) return "[Supabase not initialized]";
-  
-  const { data, error } = await supabase.storage.from('slides').download(objectPath);
-  if (error) {
-    console.error("Supabase download error:", error);
-    return "[File inaccessible]";
-  }
-
-  // 3. Parse and Save
-  const arrayBuffer = await data.arrayBuffer();
-  const text = await extractTextFromBuffer(Buffer.from(arrayBuffer));
-
-  // 4. Update DB cache
-  await db.query("UPDATE slides SET extracted_text = $1 WHERE id = $2", [text, resourceId]);
-  return text;
-}
-
-;app.post("/api/chat", async (req, res) => {
-  const { question, course } = req.body;
+app.post("/api/chat", async (req, res) => {
+  const { question } = req.body;
   const user = req.session?.user;
-  
-  if (!user) return res.status(401).json({ ok: false, message: "Unauthorized" });
 
+  if (!user) return res.status(401).json({ ok: false, message: "Unauthorized" });
   req.session.chatHistory = req.session.chatHistory || [];
 
   try {
-    let contextContent = "";
-    
-    if (course) {
-      try {
-        // Fetch slides
-        const slides = await db.query("SELECT id, object_path FROM slides WHERE course_title = $1", [course]);
-        
-        // Fetch/Cache content with a fallback if parsing fails
-        for (const slide of slides.rows) {
-          try {
-            const text = await getOrCacheDocumentText(slide.id, slide.object_path);
-            contextContent += text.substring(0, 800) + "\n"; 
-          } catch (e) {
-            console.error(`Skipping slide ${slide.id} due to parse error:`, e);
-          }
-        }
-      } catch (dbError) {
-        console.error("Database query failed:", dbError);
-      }
-    }
+    // 1. Construct a simple, versatile prompt
+    // You can add system instructions to keep it professional
+    const prompt = `You are a helpful academic tutor for Evantrahub. Answer the user's question accurately and encourage their academic growth. If the question is academic, provide detailed explanations. User asked: ${question}`;
 
-    const prompt = `
-      Role: You are a helpful academic assistant for Evantrahub.
-      Context: Course is ${course || "None"}.
-      ${contextContent ? `Course Materials: ${contextContent}` : "No specific course materials found."}
-      User Question: ${question}
-    `;
-
+    // 2. Call Gemini with the history
     const answer = await getGeminiResponse(req.session.chatHistory, prompt);
 
+    // 3. Update history
     req.session.chatHistory.push({ role: "user", text: question });
     req.session.chatHistory.push({ role: "model", text: answer });
 
     return res.json({ ok: true, answer });
   } catch (error) {
-    console.error("CRITICAL AI CHAT ERROR:", error);
-    // Return a clean error instead of letting the process hang
-    return res.status(500).json({ ok: false, message: "AI Assistant is currently unavailable." });
+    console.error("AI Error:", error);
+    return res.status(500).json({ ok: false, message: "I am having trouble connecting to the brain right now." });
   }
 });
 
