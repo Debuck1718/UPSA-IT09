@@ -2115,50 +2115,42 @@ app.post("/api/chat", async (req, res) => {
   req.session.chatHistory = req.session.chatHistory || [];
 
   try {
-    // 1. Fetch relevant slides AND master vault resources
-    const [slides, masterVault] = await Promise.all([
-      db.query("SELECT id, title, object_path FROM slides WHERE course_title = $1", [course]),
-      db.query("SELECT title FROM resources WHERE is_master_compiled = true AND program_id = $1 AND level = $2", 
-               [user.program_id, user.level])
-    ]);
-    
-    // 2. Fetch/Cache content
-    let contextContent = "Context from course materials:\n";
-    for (const slide of slides.rows) {
-      const text = await getOrCacheDocumentText(slide.id, slide.object_path);
-      contextContent += text.substring(0, 1000) + "\n"; 
+    let contextContent = "";
+    let slides = { rows: [] };
+    let masterVault = { rows: [] };
+
+    // ONLY query the DB if a course is actually selected
+    if (course) {
+      [slides, masterVault] = await Promise.all([
+        db.query("SELECT id, object_path FROM slides WHERE course_title = $1", [course]),
+        db.query("SELECT title FROM resources WHERE is_master_compiled = true AND program_id = $1 AND level = $2", 
+                 [user.program_id, user.level])
+      ]);
+
+      for (const slide of slides.rows) {
+        const text = await getOrCacheDocumentText(slide.id, slide.object_path);
+        contextContent += text.substring(0, 1000) + "\n"; 
+      }
     }
 
-    // 3. Construct the flexible prompt
     const prompt = `
-      Role: You are an helpful and versatile academic assistant for Evantrahub.
-      
-      Context:
-      - Course: ${course || "None selected"}
-      - Slides: ${slides.rows.map(s => s.title).join(", ")}
-      - Vault: ${masterVault.rows.map(m => m.title).join(", ")}
-      - Document Content: ${contextContent.substring(0, 2000)}
-      
-      Instructions:
-      1. First, search for the answer in the provided 'Document Content' and 'Vault' context.
-      2. If the answer is found in the course materials, prioritize it and cite the relevant source.
-      3. If the answer is NOT found in the course materials, use your general knowledge to answer the user's question accurately.
-      4. Always maintain an encouraging and professional tone.
+      Role: You are a helpful academic assistant.
+      Context: Course is ${course || "None"}.
+      ${contextContent ? `Document Content: ${contextContent}` : "No specific course documents provided."}
       
       User Question: ${question}
     `;
 
-    // 4. Send the full prompt to Gemini
     const answer = await getGeminiResponse(req.session.chatHistory, prompt);
 
-    // 5. Update session
     req.session.chatHistory.push({ role: "user", text: question });
     req.session.chatHistory.push({ role: "model", text: answer });
 
     return res.json({ ok: true, answer });
   } catch (error) {
-    console.error("AI Chat Error:", error);
-    res.status(500).json({ ok: false, message: "AI Assistant error." });
+    // This will print the actual error to your server logs
+    console.error("CRITICAL AI CHAT ERROR:", error);
+    return res.status(500).json({ ok: false, message: "Server-side error. Check logs." });
   }
 });
 
