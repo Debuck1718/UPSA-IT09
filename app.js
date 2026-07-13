@@ -2093,6 +2093,8 @@ async function getOrCacheDocumentText(resourceId, objectPath) {
   }
 
   // 2. If not found, download from Supabase
+  if (!supabase) return "[Supabase not initialized]";
+  
   const { data, error } = await supabase.storage.from('slides').download(objectPath);
   if (error) {
     console.error("Supabase download error:", error);
@@ -2103,6 +2105,7 @@ async function getOrCacheDocumentText(resourceId, objectPath) {
   const arrayBuffer = await data.arrayBuffer();
   const text = await extractTextFromBuffer(Buffer.from(arrayBuffer));
 
+  // 4. Update DB cache
   await db.query("UPDATE slides SET extracted_text = $1 WHERE id = $2", [text, resourceId]);
   return text;
 }
