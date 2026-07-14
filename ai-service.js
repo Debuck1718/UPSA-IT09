@@ -2,7 +2,8 @@ const pdf = require('pdf-parse');
 
 // Ensure you use a secure environment variable for your key
 const API_KEY = process.env.GEMINI_API_KEY; 
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+// Recommended update: Use a currently active model ID
+const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${API_KEY}`;
 /**
  * Parses PDF buffers into plain text for the AI
  */
