@@ -2110,6 +2110,10 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
+// Add this temporarily to your app.js route
+console.log("TRIGGERING MODEL DISCOVERY...");
+listModels().then(data => console.log("MY_AVAILABLE_MODELS:", data));
+
 // health endpoint for keepalive
 app.get("/healthz", (req, res) => res.status(200).send("ok"));
 
