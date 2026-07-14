@@ -2168,16 +2168,6 @@ app.get("/healthz", (req, res) => res.status(200).send("ok"));
 
   app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
-    listModels()
-      .then((data) => {
-        console.log(
-          "MY_AVAILABLE_MODELS_DEBUG:",
-          JSON.stringify(data, null, 2),
-        );
-      })
-      .catch((err) => {
-        console.error("Failed to list models:", err);
-      });
 
     if (process.env.KEEPALIVE === "true") {
       const urlPath = "/healthz";
