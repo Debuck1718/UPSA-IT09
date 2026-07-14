@@ -15,7 +15,12 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const { getGeminiResponse, extractTextFromBuffer } = require("./ai-service");
+// Find your existing import and update it like this:
+const {
+  getGeminiResponse,
+  extractTextFromBuffer,
+  listModels,
+} = require("./ai-service");
 
 // 1. GLOBAL SECURITY & PARSERS (MUST BE FIRST)
 app.set("trust proxy", 1);
@@ -71,12 +76,11 @@ app.use(
 );
 
 // 6. STATIC FILES
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, "public")));
 
 // --- Static pages ---
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-   
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // Middleware to sanitize any downstream redirect Location headers (defense-in-depth)
@@ -124,9 +128,9 @@ function sanitizeSegment(value, fallback = "x") {
   let v = String(value || "")
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9._-]/g, "_") 
-    .replace(/_+/g, "_") 
-    .replace(/^_+|_+$/g, ""); 
+    .replace(/[^a-z0-9._-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
 
   if (!v) v = fallback;
   return v;
@@ -140,7 +144,6 @@ webpush.setVapidDetails(
   process.env.VAPID_PUBLIC_KEY,
   process.env.VAPID_PRIVATE_KEY,
 );
-
 
 async function notifyTargetGroup(payload, criteria) {
   try {
@@ -468,7 +471,7 @@ app.post("/api/signup", async (req, res) => {
         .json({ ok: false, message: "Email already registered." });
 
     // DYNAMIC LEVEL CALCULATION
-    const currentYear = 2026; 
+    const currentYear = 2026;
     const startYear = Number(academicYearStart);
     let calculatedLevel = 100; // Baseline fallback
 
@@ -476,8 +479,8 @@ app.post("/api/signup", async (req, res) => {
     if (startYear <= currentYear) {
       calculatedLevel = (currentYear - startYear + 1) * 100;
     }
-    
-    // Safety clamp to avoid rendering level 500+ for normal undergraduate tracks 
+
+    // Safety clamp to avoid rendering level 500+ for normal undergraduate tracks
     if (calculatedLevel > 400) {
       calculatedLevel = 400;
     }
@@ -518,7 +521,7 @@ app.post("/api/signup", async (req, res) => {
       classGroupId,
       fullName,
       firstName,
-      currentLevel: user.current_level || calculatedLevel // Pushing accurate level to session memory
+      currentLevel: user.current_level || calculatedLevel, // Pushing accurate level to session memory
     };
     req.session.user = sessionUser;
 
@@ -566,12 +569,13 @@ app.get("/api/courses", async (req, res) => {
     if (!db.listCourses) {
       return res.json({ ok: true, courses: [] });
     }
-    
+
     let classGroupId = null;
     if (req.session && req.session.user) {
-      classGroupId = req.session.user.class_group_id || req.session.user.classGroupId;
+      classGroupId =
+        req.session.user.class_group_id || req.session.user.classGroupId;
     }
-    
+
     const courses = await db.listCourses(classGroupId);
     return res.json({ ok: true, courses });
   } catch (e) {
@@ -582,18 +586,17 @@ app.get("/api/courses", async (req, res) => {
   }
 });
 
-
 app.get("/api/courses/mine", async (req, res) => {
   try {
     const u = req.session?.user;
     if (!u) return res.status(401).json({ ok: false, message: "Unauthorized" });
-    
+
     if (!db.listCourseTitlesForClassGroupId) {
       return res.json({ ok: true, titles: [] });
     }
-    
+
     const targetGroupId = u.class_group_id || u.classGroupId;
-    
+
     const titles = await db.listCourseTitlesForClassGroupId(targetGroupId);
     return res.json({ ok: true, titles });
   } catch (e) {
@@ -608,13 +611,15 @@ app.post("/api/courses/manage", async (req, res) => {
   try {
     const u = req.session?.user;
     if (!u) return res.status(401).json({ ok: false, message: "Unauthorized" });
-    
+
     const allowed = new Set(["rep", "admin", "teacher"]);
     if (!allowed.has(u.role))
       return res.status(403).json({ ok: false, message: "Forbidden" });
 
     // Handle both raw req.body formats gracefully
-    const title = (req.body?.title || req.body?.courseTitle || "").toString().trim();
+    const title = (req.body?.title || req.body?.courseTitle || "")
+      .toString()
+      .trim();
     if (!title)
       return res.status(400).json({ ok: false, message: "Title is required" });
 
@@ -627,7 +632,12 @@ app.post("/api/courses/manage", async (req, res) => {
     // FIX: Fall back to snake_case column property populated from users_app table
     const targetClassGroupId = u.class_group_id || u.classGroupId;
     if (!targetClassGroupId) {
-      return res.status(400).json({ ok: false, message: "User class group identifier missing from session" });
+      return res
+        .status(400)
+        .json({
+          ok: false,
+          message: "User class group identifier missing from session",
+        });
     }
 
     await db.addCourseTitleForClassGroupId(targetClassGroupId, title);
@@ -1070,12 +1080,10 @@ app.get("/api/slides/:id/url", async (req, res) => {
 
     if (error) {
       console.error("Supabase signed URL error:", error.message);
-      return res
-        .status(500)
-        .json({
-          ok: false,
-          message: "Storage access failed: " + error.message,
-        });
+      return res.status(500).json({
+        ok: false,
+        message: "Storage access failed: " + error.message,
+      });
     }
 
     if (!data || !data.signedUrl) {
@@ -1177,12 +1185,14 @@ app.get("/api/resources", async (req, res) => {
     query += ` ORDER BY r.created_at DESC`;
 
     const { rows } = await db.pool.query(query, queryParams);
-    
+
     // Returns response envelope that perfectly bridges dashboard-modern.js and resources.js
     res.json({ resources: rows });
   } catch (e) {
     console.error("Backend resource extraction error:", e);
-    res.status(500).json({ ok: false, message: "Failed to fetch library resources" });
+    res
+      .status(500)
+      .json({ ok: false, message: "Failed to fetch library resources" });
   }
 });
 
@@ -1201,26 +1211,34 @@ app.patch("/api/resources/:id/view", async (req, res) => {
 
 app.post("/api/resources", requireCreator, async (req, res) => {
   try {
-    const { title, description, youtube_id, category_id, is_global, url, program_id } = req.body;
+    const {
+      title,
+      description,
+      youtube_id,
+      category_id,
+      is_global,
+      url,
+      program_id,
+    } = req.body;
     const u = req.session.user;
-    
+
     // Support both snake_case and camelCase for session property naming
-    const instId = u.institution_id || u.institutionId; 
+    const instId = u.institution_id || u.institutionId;
     let finalUrl = url;
 
     // 1. Handle File Upload with Institution-based folder isolation
     if (req.files && req.files.file) {
       const file = req.files.file;
       const fileId = uuidv4();
-      
+
       // Crucial: Files are stored in a folder named after the school's ID
       const objectPath = `resources/${instId}/${fileId}_${file.name}`;
 
       const { error: upErr } = await supabase.storage
         .from("campus-resources")
-        .upload(objectPath, file.data, { 
-            contentType: file.mimetype,
-            upsert: true 
+        .upload(objectPath, file.data, {
+          contentType: file.mimetype,
+          upsert: true,
         });
 
       if (upErr) throw upErr;
@@ -1233,7 +1251,7 @@ app.post("/api/resources", requireCreator, async (req, res) => {
     }
 
     // 2. Status Logic: Admins/Reps auto-approve (if that's your policy), others stay pending
-    const status = (u.role === "admin" || u.is_rep) ? "approved" : "pending";
+    const status = u.role === "admin" || u.is_rep ? "approved" : "pending";
 
     // 3. Database Insertion with Program and Institution scope
     const query = `
@@ -1254,12 +1272,12 @@ app.post("/api/resources", requireCreator, async (req, res) => {
       status,
       is_global === "true" || is_global === true,
       // If global, program is null; otherwise use selected or uploader's program
-      is_global === "true" ? null : (program_id || u.program_id || u.programId),
-      instId
+      is_global === "true" ? null : program_id || u.program_id || u.programId,
+      instId,
     ];
 
     const { rows } = await db.pool.query(query, vals);
-    
+
     res.json({
       ok: true,
       resource: rows[0],
@@ -1267,7 +1285,9 @@ app.post("/api/resources", requireCreator, async (req, res) => {
     });
   } catch (e) {
     console.error("Upload error:", e);
-    res.status(500).json({ ok: false, message: "Submission failed: " + e.message });
+    res
+      .status(500)
+      .json({ ok: false, message: "Submission failed: " + e.message });
   }
 });
 
@@ -1390,19 +1410,19 @@ app.post("/api/admin/resources", requireAdmin, async (req, res) => {
 });
 
 app.post("/api/resources/:id/view", async (req, res) => {
-    const { id } = req.params;
+  const { id } = req.params;
 
-    // This calls the exact SQL function you created
-    const { error } = await supabase.rpc('increment_view_count', { 
-        row_id: id 
-    });
+  // This calls the exact SQL function you created
+  const { error } = await supabase.rpc("increment_view_count", {
+    row_id: id,
+  });
 
-    if (error) {
-        console.error("Database error:", error.message);
-        return res.status(500).json({ ok: false, error: error.message });
-    }
-    
-    res.json({ ok: true });
+  if (error) {
+    console.error("Database error:", error.message);
+    return res.status(500).json({ ok: false, error: error.message });
+  }
+
+  res.json({ ok: true });
 });
 
 // Get all top-level posts and their reply counts for moderation
@@ -1533,7 +1553,7 @@ app.post("/api/notifications/save-subscription", async (req, res) => {
 
     await db.pool.query(
       "UPDATE users_app SET push_subscription = $1 WHERE id = $2",
-      [JSON.stringify(subscription), userId]
+      [JSON.stringify(subscription), userId],
     );
 
     res.json({ ok: true });
@@ -1616,8 +1636,8 @@ app.post("/api/forum", async (req, res) => {
       target_type === "program"
         ? { type: "program", id: target_id || u.programId }
         : target_type === "institution"
-        ? { type: "institution", id: target_id || u.institutionId }
-        : { type: "all" };
+          ? { type: "institution", id: target_id || u.institutionId }
+          : { type: "all" };
 
     notifyTargetGroup(
       {
@@ -1710,18 +1730,21 @@ app.get("/api/programs", async (req, res) => {
 });
 
 // Express Backend Endpoint (/api/my-program-courses)
-app.get('/api/my-program-courses', async (req, res) => {
-    try {
-        const { programId } = req.query;
+app.get("/api/my-program-courses", async (req, res) => {
+  try {
+    const { programId } = req.query;
 
-        if (!programId) {
-            return res.status(400).json({ error: 'Missing programId query parameter.' });
-        }
+    if (!programId) {
+      return res
+        .status(400)
+        .json({ error: "Missing programId query parameter." });
+    }
 
-        // Query joining your program_courses table map to the primary courses definitions
-        const { data, error } = await supabase
-            .from('program_courses')
-            .select(`
+    // Query joining your program_courses table map to the primary courses definitions
+    const { data, error } = await supabase
+      .from("program_courses")
+      .select(
+        `
                 id,
                 program_id,
                 semester,
@@ -1731,30 +1754,32 @@ app.get('/api/my-program-courses', async (req, res) => {
                     course_code,
                     course_name
                 )
-            `)
-            .eq('program_id', programId);
+            `,
+      )
+      .eq("program_id", programId);
 
-        if (error) throw error;
+    if (error) throw error;
 
-        // Flatten the data structure so it fits exactly what dashboard-modern.js expects
-        const formattedCourses = (data || []).map(item => {
-            if (!item.courses) return null;
-            return {
-                id: item.courses.id, // target course ID for resources mapping
-                course_code: item.courses.course_code,
-                course_name: item.courses.course_name,
-                semester: item.semester,
-                is_required: item.is_required
-            };
-        }).filter(Boolean);
+    // Flatten the data structure so it fits exactly what dashboard-modern.js expects
+    const formattedCourses = (data || [])
+      .map((item) => {
+        if (!item.courses) return null;
+        return {
+          id: item.courses.id, // target course ID for resources mapping
+          course_code: item.courses.course_code,
+          course_name: item.courses.course_name,
+          semester: item.semester,
+          is_required: item.is_required,
+        };
+      })
+      .filter(Boolean);
 
-        // Send back a clear dictionary mapping
-        return res.json({ courses: formattedCourses });
-
-    } catch (err) {
-        console.error('Error fetching program curriculum:', err.message);
-        return res.status(500).json({ error: 'Internal server lookup error.' });
-    }
+    // Send back a clear dictionary mapping
+    return res.json({ courses: formattedCourses });
+  } catch (err) {
+    console.error("Error fetching program curriculum:", err.message);
+    return res.status(500).json({ error: "Internal server lookup error." });
+  }
 });
 
 // POST /api/admin/announcements
@@ -1823,7 +1848,9 @@ app.post("/api/admin/categories", requireAdmin, async (req, res) => {
 
 app.post("/api/auth/forgot-password", async (req, res) => {
   try {
-    const email = String(req.body.email || "").trim().toLowerCase();
+    const email = String(req.body.email || "")
+      .trim()
+      .toLowerCase();
 
     const safeResponse = {
       ok: true,
@@ -1843,18 +1870,21 @@ app.post("/api/auth/forgot-password", async (req, res) => {
       WHERE user_id = $1
         AND used_at IS NULL
       `,
-      [user.id]
+      [user.id],
     );
 
     const rawToken = crypto.randomBytes(32).toString("hex");
-    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(rawToken)
+      .digest("hex");
 
     await db.pool.query(
       `
       INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
       VALUES ($1, $2, now() + interval '30 minutes')
       `,
-      [user.id, tokenHash]
+      [user.id, tokenHash],
     );
 
     const baseUrl = process.env.APP_BASE_URL || "https://www.evantrahub.me";
@@ -1863,7 +1893,9 @@ app.post("/api/auth/forgot-password", async (req, res) => {
     // SAFECRACK: Fallback sender address if env is unparsed or missing
     const senderEmail = process.env.RESET_EMAIL_FROM || "noreply@evantrahub.me";
 
-    console.log(`Attempting to send mail via Resend from: ${senderEmail} to: ${email}`);
+    console.log(
+      `Attempting to send mail via Resend from: ${senderEmail} to: ${email}`,
+    );
 
     const sent = await resend.emails.send({
       from: senderEmail,
@@ -1935,7 +1967,7 @@ app.post("/api/auth/reset-password", async (req, res) => {
         AND expires_at > now()
       LIMIT 1
       `,
-      [tokenHash]
+      [tokenHash],
     );
 
     if (!found.rowCount) {
@@ -1946,18 +1978,21 @@ app.post("/api/auth/reset-password", async (req, res) => {
     }
 
     const reset = found.rows[0];
-    const passwordHash = crypto.createHash('sha256').update(String(password)).digest('hex');
+    const passwordHash = crypto
+      .createHash("sha256")
+      .update(String(password))
+      .digest("hex");
 
     await db.pool.query("BEGIN");
 
     await db.pool.query(
       "UPDATE users_app SET password_hash = $1 WHERE id = $2",
-      [passwordHash, reset.user_id]
+      [passwordHash, reset.user_id],
     );
 
     await db.pool.query(
       "UPDATE password_reset_tokens SET used_at = now() WHERE id = $1",
-      [reset.id]
+      [reset.id],
     );
 
     await db.pool.query("COMMIT");
@@ -2088,7 +2123,8 @@ app.post("/api/chat", async (req, res) => {
   const { question } = req.body;
   const user = req.session?.user;
 
-  if (!user) return res.status(401).json({ ok: false, message: "Unauthorized" });
+  if (!user)
+    return res.status(401).json({ ok: false, message: "Unauthorized" });
   req.session.chatHistory = req.session.chatHistory || [];
 
   try {
@@ -2106,13 +2142,14 @@ app.post("/api/chat", async (req, res) => {
     return res.json({ ok: true, answer });
   } catch (error) {
     console.error("AI Error:", error);
-    return res.status(500).json({ ok: false, message: "I am having trouble connecting to the brain right now." });
+    return res
+      .status(500)
+      .json({
+        ok: false,
+        message: "I am having trouble connecting to the brain right now.",
+      });
   }
 });
-
-// Add this temporarily to your app.js route
-console.log("TRIGGERING MODEL DISCOVERY...");
-listModels().then(data => console.log("MY_AVAILABLE_MODELS:", data));
 
 // health endpoint for keepalive
 app.get("/healthz", (req, res) => res.status(200).send("ok"));
@@ -2131,7 +2168,17 @@ app.get("/healthz", (req, res) => res.status(200).send("ok"));
 
   app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
-    // Self-ping keepalive (optional) using relative path to avoid localhost construction
+    listModels()
+      .then((data) => {
+        console.log(
+          "MY_AVAILABLE_MODELS_DEBUG:",
+          JSON.stringify(data, null, 2),
+        );
+      })
+      .catch((err) => {
+        console.error("Failed to list models:", err);
+      });
+
     if (process.env.KEEPALIVE === "true") {
       const urlPath = "/healthz";
       const intervalMs = Number(process.env.KEEPALIVE_INTERVAL_MS || 60000);
