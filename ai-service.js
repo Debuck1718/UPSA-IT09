@@ -1,9 +1,10 @@
 const pdf = require('pdf-parse');
 
-// Ensure you use a secure environment variable for your key
-const API_KEY = process.env.GEMINI_API_KEY; 
-// Recommended update: Use a currently active model ID
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${API_KEY}`;
+const API_KEY = process.env.GEMINI_API_KEY;
+
+// List of models to try in order of preference (Failover chain)
+const MODEL_PRIORITY = ['gemini-3.5-flash', 'gemini-2.0-flash', 'gemini-2.5-pro'];
+
 /**
  * Parses PDF buffers into plain text for the AI
  */
@@ -18,23 +19,13 @@ async function extractTextFromBuffer(buffer) {
 }
 
 /**
- * Debugging function to list models available to your API Key
+ * Communicates with Gemini with built-in retry and failover logic
  */
-async function listModels() {
-  try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${API_KEY}`);
-    const data = await response.json();
-    console.log("AVAILABLE MODELS:", JSON.stringify(data, null, 2));
-    return data;
-  } catch (error) {
-    console.error("Error listing models:", error);
-  }
-}
+async function getGeminiResponse(history, fullPrompt, modelIndex = 0, attempt = 1) {
+  const MAX_RETRIES = 3;
+  const currentModel = MODEL_PRIORITY[modelIndex];
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${API_KEY}`;
 
-/**
- * Communicates with Gemini using conversation history and the fully constructed prompt
- */
-async function getGeminiResponse(history, fullPrompt) {
   const contents = [
     ...history.map(msg => ({
       role: msg.role === 'model' ? 'model' : 'user',
@@ -43,20 +34,41 @@ async function getGeminiResponse(history, fullPrompt) {
     { role: "user", parts: [{ text: fullPrompt }] }
   ];
 
-  const response = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contents })
-  });
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents })
+    });
 
-  const data = await response.json();
-  
-  if (!data.candidates || !data.candidates[0]) {
-    console.error("Gemini API Error:", JSON.stringify(data));
-    throw new Error("AI failed to generate a response");
+    // If 503 (Overloaded), wait and retry with current model
+    if (response.status === 503 && attempt <= MAX_RETRIES) {
+      const waitTime = Math.pow(2, attempt) * 1000;
+      console.warn(`Model ${currentModel} overloaded. Retrying in ${waitTime}ms...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      return getGeminiResponse(history, fullPrompt, modelIndex, attempt + 1);
+    }
+
+    const data = await response.json();
+    
+    // If other errors occur, try the next model in the list
+    if (!data.candidates || !data.candidates[0]) {
+      throw new Error(data.error?.message || "AI failed to generate a response");
+    }
+
+    return data.candidates[0].content.parts[0].text;
+
+  } catch (error) {
+    console.error(`Error with model ${currentModel}:`, error.message);
+    
+    // Failover: If we have more models to try, move to next model
+    if (modelIndex + 1 < MODEL_PRIORITY.length) {
+      console.log(`Failing over to model: ${MODEL_PRIORITY[modelIndex + 1]}`);
+      return getGeminiResponse(history, fullPrompt, modelIndex + 1, 1);
+    }
+    
+    throw new Error("AI failed to generate a response after trying all models.");
   }
-
-  return data.candidates[0].content.parts[0].text;
 }
 
-module.exports = { getGeminiResponse, extractTextFromBuffer, listModels };
+module.exports = { getGeminiResponse, extractTextFromBuffer };
