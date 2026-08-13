@@ -1700,34 +1700,26 @@ app.get("/api/announcements", async (req, res) => {
   }
 });
 
+// Get all unique programs directly from your PostgreSQL program_courses table
 app.get("/api/programs", async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from("users_app")
-      .select("program")
-      .not("program", "is", null)
-      .neq("program", "");
+    const { rows } = await db.pool.query(
+      `SELECT DISTINCT program_id 
+       FROM program_courses 
+       WHERE program_id IS NOT NULL AND program_id != '' 
+       ORDER BY program_id ASC`
+    );
 
-    if (error) {
-      console.warn("Supabase query warning on users_app:", error.message);
-      return res.json([]); // Return empty array gracefully instead of 500
-    }
-
-    // Extract unique names and sort them safely
-    const uniquePrograms = [
-      ...new Set((data || []).map((item) => item.program)),
-    ].sort();
-
-    // Format for the frontend dropdown
-    const programsList = uniquePrograms.map((name, index) => ({
-      id: index + 1,
-      name: name,
+    // Format for the frontend dropdown (using program_id as both id and name)
+    const programsList = rows.map((row) => ({
+      id: row.program_id,
+      name: row.program_id,
     }));
 
     res.json(programsList);
   } catch (err) {
     console.error("Error fetching programs:", err.message);
-    res.json([]); // Fallback to empty array to prevent frontend crash
+    res.status(500).json([]);
   }
 });
 
