@@ -1700,7 +1700,6 @@ app.get("/api/announcements", async (req, res) => {
   }
 });
 
-// Get all unique programs for the announcement/resource targeting dropdown
 app.get("/api/programs", async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -1709,11 +1708,14 @@ app.get("/api/programs", async (req, res) => {
       .not("program", "is", null)
       .neq("program", "");
 
-    if (error) throw error;
+    if (error) {
+      console.warn("Supabase query warning on users_app:", error.message);
+      return res.json([]); // Return empty array gracefully instead of 500
+    }
 
-    // Extract unique names and sort them
+    // Extract unique names and sort them safely
     const uniquePrograms = [
-      ...new Set(data.map((item) => item.program)),
+      ...new Set((data || []).map((item) => item.program)),
     ].sort();
 
     // Format for the frontend dropdown
@@ -1725,7 +1727,7 @@ app.get("/api/programs", async (req, res) => {
     res.json(programsList);
   } catch (err) {
     console.error("Error fetching programs:", err.message);
-    res.status(500).json({ error: "Database error" });
+    res.json([]); // Fallback to empty array to prevent frontend crash
   }
 });
 
