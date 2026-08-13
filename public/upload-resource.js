@@ -25,21 +25,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       }
 
-      // Populate Categories & Programs
-      const [categories, programs] = await Promise.all([
-        window.api.fetch("/api/categories"),
-        window.api.fetch("/api/programs")
-      ]);
+      if (!window.api) throw new Error("API client not initialized");
 
-      if (Array.isArray(categories)) {
-        catDropdown.innerHTML = `<option value="" disabled selected>Select category...</option>` +
-          categories.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
-      }
+    const [categories, programs] = await Promise.all([
+      window.api.fetch("/api/categories"),
+      window.api.fetch("/api/programs")
+    ]);
 
-      if (Array.isArray(programs)) {
-        programDropdown.innerHTML = `<option value="" disabled selected>Select target program...</option>` +
-          programs.map(p => `<option value="${p.program_id}">${p.program_name}</option>`).join("");
-      }
+    console.log("Categories response:", categories); // CHECK THIS IN CONSOLE
+
+    if (Array.isArray(categories)) {
+      catDropdown.innerHTML = `<option value="" disabled selected>Select category...</option>` +
+        categories.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+    } else {
+      catDropdown.innerHTML = `<option value="" disabled>Error loading categories</option>`;
+    }
     } catch (e) {
       console.error("Initialization Error:", e);
     }
