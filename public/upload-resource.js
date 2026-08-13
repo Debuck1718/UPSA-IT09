@@ -27,19 +27,29 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (!window.api) throw new Error("API client not initialized");
 
-    const [categories, programs] = await Promise.all([
-      window.api.fetch("/api/categories"),
-      window.api.fetch("/api/programs")
-    ]);
+      // Populate Categories & Programs independently or safely via Promise.allSettled or Promise.all
+      const [categories, programs] = await Promise.all([
+        window.api.fetch("/api/categories"),
+        window.api.fetch("/api/programs")
+      ]);
 
-    console.log("Categories response:", categories); // CHECK THIS IN CONSOLE
+      console.log("Categories response:", categories);
+      console.log("Programs response:", programs);
 
-    if (Array.isArray(categories)) {
-      catDropdown.innerHTML = `<option value="" disabled selected>Select category...</option>` +
-        categories.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
-    } else {
-      catDropdown.innerHTML = `<option value="" disabled>Error loading categories</option>`;
-    }
+      if (Array.isArray(categories)) {
+        catDropdown.innerHTML = `<option value="" disabled selected>Select category...</option>` +
+          categories.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+      } else {
+        catDropdown.innerHTML = `<option value="" disabled>Error loading categories</option>`;
+      }
+
+      if (Array.isArray(programs)) {
+        programDropdown.innerHTML = `<option value="" disabled selected>Select target program...</option>` +
+          programs.map(p => `<option value="${p.id}">${p.name}</option>`).join("");
+      } else {
+        programDropdown.innerHTML = `<option value="" disabled>Error loading programs</option>`;
+      }
+
     } catch (e) {
       console.error("Initialization Error:", e);
     }
