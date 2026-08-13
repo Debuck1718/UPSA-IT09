@@ -27,26 +27,28 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (!window.api) throw new Error("API client not initialized");
 
-      // Populate Categories & Programs independently or safely via Promise.allSettled or Promise.all
-      const [categories, programs] = await Promise.all([
+      // Use Promise.allSettled so that if /api/programs throws a 500 database error, 
+      // the categories can still load successfully instead of crashing the entire page init.
+      const [categoriesRes, programsRes] = await Promise.allSettled([
         window.api.fetch("/api/categories"),
         window.api.fetch("/api/programs")
       ]);
 
-      console.log("Categories response:", categories);
-      console.log("Programs response:", programs);
-
-      if (Array.isArray(categories)) {
+      // Handle Categories
+      if (categoriesRes.status === "fulfilled" && Array.isArray(categoriesRes.value)) {
         catDropdown.innerHTML = `<option value="" disabled selected>Select category...</option>` +
-          categories.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+          categoriesRes.value.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
       } else {
+        console.error("Failed to load categories:", categoriesRes.reason);
         catDropdown.innerHTML = `<option value="" disabled>Error loading categories</option>`;
       }
 
-      if (Array.isArray(programs)) {
+      // Handle Programs
+      if (programsRes.status === "fulfilled" && Array.isArray(programsRes.value)) {
         programDropdown.innerHTML = `<option value="" disabled selected>Select target program...</option>` +
-          programs.map(p => `<option value="${p.id}">${p.name}</option>`).join("");
+          programsRes.value.map(p => `<option value="${p.id}">${p.name}</option>`).join("");
       } else {
+        console.error("Failed to load programs:", programsRes.reason);
         programDropdown.innerHTML = `<option value="" disabled>Error loading programs</option>`;
       }
 
