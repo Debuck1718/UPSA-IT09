@@ -2058,13 +2058,26 @@ app.get("/api/user/profile-full", async (req, res) => {
 app.post("/api/user/update-bio", async (req, res) => {
   if (!req.session.user) return res.status(401).json({ ok: false });
 
-  const { bio } = req.body;
+  const { bio, classGroup } = req.body;
   try {
-    await db.pool.query("UPDATE users_app SET bio = $1 WHERE id = $2", [
-      bio,
-      req.session.user.id,
-    ]);
-    res.json({ ok: true });
+    const normalizedClassGroup = db.normalizeClassGroup
+      ? db.normalizeClassGroup(classGroup)
+      : String(classGroup || "").trim();
+    await db.pool.query(
+      "UPDATE users_app SET bio = $1, class_group = $2 WHERE id = $3",
+      [bio, normalizedClassGroup || null, req.session.user.id],
+    );
+    req.session.user.class_group = normalizedClassGroup;
+    req.session.user.classGroup = normalizedClassGroup;
+    if (db.makeClassGroupId && req.session.user.cohort_id) {
+      const classGroupId = db.makeClassGroupId(
+        req.session.user.cohort_id,
+        normalizedClassGroup,
+      );
+      req.session.user.class_group_id = classGroupId;
+      req.session.user.classGroupId = classGroupId;
+    }
+    res.json({ ok: true, class_group: normalizedClassGroup });
   } catch (err) {
     console.error("Bio Update Error:", err);
     res.status(500).json({ ok: false });

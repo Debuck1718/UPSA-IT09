@@ -8,6 +8,24 @@
 
   if (!toggle || !win) return; // Exit if elements aren't present
 
+  function formatAnswer(answer) {
+    const escaped = String(answer)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+    return escaped
+      .split(/\n{2,}/)
+      .map((paragraph) =>
+        `<p class="mb-2">${paragraph
+          .replace(/\n/g, "<br>")
+          .replace(/\*\*([\s\S]+?)\*\*/g, "<strong>$1</strong>")}</p>`,
+      )
+      .join("");
+  }
+
   toggle.addEventListener("click", () => win.classList.remove("d-none"));
   close.addEventListener("click", () => win.classList.add("d-none"));
 
@@ -38,7 +56,7 @@
 
       // 4. Add AI Answer to UI
       if (data.ok && data.answer) {
-        messages.innerHTML += `<div class="mb-2 text-start"><small class="bg-white p-2 rounded border d-inline-block">${data.answer}</small></div>`;
+        messages.innerHTML += `<div class="mb-2 text-start"><small class="bg-white p-2 rounded border d-inline-block">${formatAnswer(data.answer)}</small></div>`;
       } else {
         messages.innerHTML += `<div class="mb-2 text-start text-danger"><small>Error: ${data.message || 'Could not get response.'}</small></div>`;
       }

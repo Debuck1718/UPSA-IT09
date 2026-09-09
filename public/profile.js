@@ -26,6 +26,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("userBio").innerText =
       user.bio || "Add a bio to let others know who you are.";
     document.getElementById("bioInput").value = user.bio || "";
+    document.getElementById("classGroupInput").value = user.class_group || "";
     document.getElementById("userStudentId").innerText =
       user.student_id || "N/A";
     document.getElementById("userEmail").innerText = user.email || "";
@@ -108,12 +109,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   // --- Bio Save ---
   document.getElementById("saveBioBtn").onclick = async () => {
     const bio = document.getElementById("bioInput").value;
+    const classGroup = document.getElementById("classGroupInput").value;
     try {
       await window.api.fetch("/api/user/update-bio", {
         method: "POST",
-        body: { bio },
+        body: { bio, classGroup },
       });
       document.getElementById("userBio").innerText = bio;
+      document.getElementById("userProgram").innerText =
+        `${document.getElementById("userProgram").innerText.split(" • ")[0]} • ${classGroup.trim().toUpperCase()}`;
       editModal.hide();
     } catch (err) {
       alert("Error saving bio");
